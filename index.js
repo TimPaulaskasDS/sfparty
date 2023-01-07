@@ -17,6 +17,7 @@ import * as labelCombine from './lib/label/combine.js'
 import * as workflowSplit from './lib/workflow/split.js'
 import * as workflowCombine from './lib/workflow/combine.js'
 import * as workflowDefinition from './lib/workflow/definition.js'
+import * as pson from './package.json'  assert { type: "json" }
 
 const startTime = process.hrtime.bigint()
 
@@ -36,11 +37,12 @@ global.processed = {
     current: 1,
 }
 
-global.statusLevel = {
+global.icons = {
     "warn": '🔕',
     "success": chalk.greenBright('✔'),
     "fail": '❗',
-    "working": '⏳'
+    "working": '⏳',
+    "party": '🎉',
 }
 
 function getRootPath(packageDir) {
@@ -70,8 +72,16 @@ function getRootPath(packageDir) {
 
     return defaultDir
 }
-
 let errorMessage = chalk.red('Please specify the action of ' + chalk.whiteBright.bgRedBright('split') + ' or ' + chalk.whiteBright.bgRedBright('combine') + '.')
+let versionString = 'sfparty v' + pson.default.version
+let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
+titleMessage = titleMessage.padEnd((process.stdout.columns / 2)+ versionString.length)
+titleMessage = titleMessage.padStart(process.stdout.columns)
+titleMessage = chalk.yellowBright.bold('∫') + '  ' + titleMessage + '      ' + chalk.yellowBright.bold('∫')
+console.log(`${chalk.yellowBright('='.repeat(process.stdout.columns))}`)
+console.log(titleMessage)
+console.log(`${chalk.yellowBright('='.repeat(process.stdout.columns))}`)
+console.log()
 
 yargs(hideBin(process.argv))
     .alias('h', 'help')
