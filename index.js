@@ -17,7 +17,7 @@ import * as labelCombine from './lib/label/combine.js'
 import * as workflowSplit from './lib/workflow/split.js'
 import * as workflowCombine from './lib/workflow/combine.js'
 import * as workflowDefinition from './lib/workflow/definition.js'
-import * as pson from './package.json'  assert { type: "json" }
+import * as pkgObj from './package.json'  assert { type: "json" }
 
 const startTime = process.hrtime.bigint()
 
@@ -73,15 +73,28 @@ function getRootPath(packageDir) {
     return defaultDir
 }
 let errorMessage = chalk.red('Please specify the action of ' + chalk.whiteBright.bgRedBright('split') + ' or ' + chalk.whiteBright.bgRedBright('combine') + '.')
-let versionString = 'sfparty v' + pson.default.version
-let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
-titleMessage = titleMessage.padEnd((process.stdout.columns / 2)+ versionString.length)
-titleMessage = titleMessage.padStart(process.stdout.columns)
-titleMessage = chalk.yellowBright.bold('∫') + '  ' + titleMessage + '      ' + chalk.yellowBright.bold('∫')
-console.log(`${chalk.yellowBright('='.repeat(process.stdout.columns))}`)
-console.log(titleMessage)
-console.log(`${chalk.yellowBright('='.repeat(process.stdout.columns))}`)
-console.log()
+
+displayHeader() // display header mast
+
+function displayHeader() {
+    const table = {
+        topLeft: '╭',
+        topRight: '╮',
+        bottomLeft: '╰',
+        bottomRight: '╯',
+        horizontal: '─',
+        vertical: '│',
+    }
+    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
+    let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
+    titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
+    titleMessage = titleMessage.padStart(process.stdout.columns)
+    titleMessage = chalk.blackBright(table.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(table.vertical)
+    console.log(`${chalk.blackBright(table.topLeft + table.horizontal.repeat(process.stdout.columns - 2) + table.topRight)}`)
+    console.log(titleMessage)
+    console.log(`${chalk.blackBright(table.bottomLeft + table.horizontal.repeat(process.stdout.columns - 2) + table.bottomRight)}`)
+    console.log()
+}
 
 yargs(hideBin(process.argv))
     .alias('h', 'help')

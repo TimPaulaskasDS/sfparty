@@ -1,7 +1,7 @@
 {
   "name": "@ds-sfdc/sfparty",
   "version": "0.0.0",
-  "description": "Split Salesforce metadata XML file into YAML (or JSON) parts, and combine back to XML",
+  "description": "Salesforce metadata XML splitter for CI/CD",
   "type": "module",
   "repository": {
     "type": "git",
@@ -44,7 +44,6 @@
   },
   "homepage": "https://github.com/TimPaulaskasDS/sfparty#readme",
   "directories": {
-    "example": "examples",
     "lib": "lib",
     "test": "tests"
   }
