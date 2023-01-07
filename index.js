@@ -8,6 +8,7 @@ import winston from 'winston'
 import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
 import * as fileUtils from './lib/fileUtils.js'
+import * as pkgObj from './package.json'  assert { type: "json" }
 import * as profileSplit from './lib/profile/split.js'
 import * as profileCombine from './lib/profile/combine.js'
 import * as permSetSplit from './lib/permset/split.js'
@@ -17,7 +18,6 @@ import * as labelCombine from './lib/label/combine.js'
 import * as workflowSplit from './lib/workflow/split.js'
 import * as workflowCombine from './lib/workflow/combine.js'
 import * as workflowDefinition from './lib/workflow/definition.js'
-import * as pkgObj from './package.json'  assert { type: "json" }
 
 const startTime = process.hrtime.bigint()
 
