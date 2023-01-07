@@ -228,3 +228,4 @@ force-app/main/default/workflows/**
 test/**
 .vscode/settings.json
 .vscode/launch.json
+yarn.lock
