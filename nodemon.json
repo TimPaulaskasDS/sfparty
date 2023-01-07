@@ -1,0 +1,4 @@
+{   
+    "ignore": ["json-**/**", "**/test/**", "**.json", "**/**.yaml", "**/**.xml", "**/**undefined"],
+    "verbose": true
+}

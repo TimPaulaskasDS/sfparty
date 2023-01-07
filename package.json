@@ -1,0 +1,51 @@
+{
+  "name": "@sfparty/sfparty",
+  "version": "0.0.6",
+  "description": "Salesforce XML file tools",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DTS-Productivity-Engineering/dstools.git"
+  },
+  "bin": {
+    "sfparty": "index.js"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha 'tests/**/*.js' --recursive--reporter spec"
+  },
+  "keywords": [
+    "xml,split,combine,yaml,json"
+  ],
+  "author": "Tim Paulaskas",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "chai": "^4.3.7",
+    "chalk": "^5.2.0",
+    "cli-spinners": "^2.7.0",
+    "convert-hrtime": "^5.0.0",
+    "js-yaml": "^4.1.0",
+    "log-update": "^5.0.1",
+    "util": "^0.10.3",
+    "winston": "^3.8.2",
+    "xml2js": "^0.4.23",
+    "yargs": "^17.6.2"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "nodemon": "^2.0.20",
+    "should": "^7.1.0"
+  },
+  "engines": {
+    "node": ">=0.11"
+  },
+  "bugs": {
+    "url": "https://github.com/DTS-Productivity-Engineering/dstools/issues"
+  },
+  "homepage": "https://github.com/DTS-Productivity-Engineering/dstools#readme",
+  "directories": {
+    "example": "examples",
+    "lib": "lib",
+    "test": "tests"
+  }
+}
