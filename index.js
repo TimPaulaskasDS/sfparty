@@ -313,7 +313,7 @@ yargs(hideBin(process.argv))
             })
             Promise.allSettled(promList).then((results) => {
                 let message = `Split ${chalk.bgBlackBright(global.processed.current)} file(s) ${(global.processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(global.processed.errors) + ' error(s) ' : ''}in `
-                displayMessage(startTime, message)
+                displayMessageAndDuration(startTime, message)
             })
         }
     })
@@ -513,7 +513,7 @@ yargs(hideBin(process.argv))
             Promise.allSettled(promList).then(([result]) => {
                 if (result !== undefined && result.status == 'fulfilled') {
                     let message = `Combined ${chalk.bgBlackBright(global.processed.total)} file(s) in `
-                    displayMessage(startTime, message)
+                    displayMessageAndDuration(startTime, message)
                 } else {
                     global.logger.error((result !== undefined) ? result.reason : 'metadata error')
                 }
@@ -531,7 +531,7 @@ yargs(hideBin(process.argv))
     .argv
     .parse
 
-function displayMessage(startTime, message) {
+function displayMessageAndDuration(startTime, message) {
     const diff = process.hrtime.bigint() - BigInt(startTime)
     let durationMessage
     let executionTime = convertHrtime(diff);
