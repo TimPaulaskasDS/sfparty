@@ -1,11 +1,11 @@
 {
-  "name": "@sfparty/sfparty",
-  "version": "0.0.6",
-  "description": "Salesforce XML file tools",
+  "name": "@ds-sfdc/sfparty",
+  "version": "0.0.0",
+  "description": "Split Salesforce metadata XML file into YAML (or JSON) parts, and combine back to XML",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DTS-Productivity-Engineering/dstools.git"
+    "url": "git+https://github.com/TimPaulaskasDS/sfparty.git"
   },
   "bin": {
     "sfparty": "index.js"
@@ -40,9 +40,9 @@
     "node": ">=0.11"
   },
   "bugs": {
-    "url": "https://github.com/DTS-Productivity-Engineering/dstools/issues"
+    "url": "https://github.com/TimPaulaskasDS/sfparty/issues"
   },
-  "homepage": "https://github.com/DTS-Productivity-Engineering/dstools#readme",
+  "homepage": "https://github.com/TimPaulaskasDS/sfparty#readme",
   "directories": {
     "example": "examples",
     "lib": "lib",
