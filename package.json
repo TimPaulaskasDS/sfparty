@@ -12,7 +12,8 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "mocha 'tests/**/*.js' --recursive--reporter spec"
+    "test": "mocha 'tests/**/*.js' --recursive--reporter spec",
+    "postinstall": "husky install"
   },
   "keywords": [
     "xml,split,combine,yaml,json"
@@ -32,6 +33,9 @@
     "yargs": "^17.6.2"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.4.0",
+    "@commitlint/config-conventional": "^17.4.0",
+    "husky": "^8.0.3",
     "mocha": "^10.2.0",
     "nodemon": "^2.0.20",
     "should": "^7.1.0"
