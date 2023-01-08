@@ -1,5 +1,6 @@
 export const metadataDefinition = {
     metaUrl: 'https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/meta_workflow.htm',
+    directory: 'workflows',
     filetype: 'workflow',
     root: 'Workflow',
     main: [

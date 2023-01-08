@@ -9,13 +9,11 @@ import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
 import * as fileUtils from './lib/fileUtils.js'
 import * as pkgObj from '../package.json'  assert { type: "json" }
-import * as profileSplit from './lib/profile/split.js'
-import * as profileCombine from './lib/profile/combine.js'
-import * as permSetSplit from './lib/permset/split.js'
-import * as permSetCombine from './lib/permset/combine.js'
 import * as metadataSplit from './party/split.js'
 import * as metadataCombine from './party/combine.js'
 import * as labelDefinition from './meta/CustomLabels.js'
+import * as profileDefinition from './meta/Profiles.js'
+import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
 
 const startTime = process.hrtime.bigint()
@@ -24,7 +22,7 @@ const startTime = process.hrtime.bigint()
 global.logger = winston.createLogger({
     levels: winston.config.syslog.levels,
     format: winston.format.cli(),
-    defaultMeta: { service: 'dstools', method: 'profile' },
+    defaultMeta: { service: 'sfparty' },
     transports: [
         new winston.transports.Console(),
     ],
@@ -44,11 +42,30 @@ global.icons = {
     "party": '🎉',
 }
 
+const typeArray = [
+    'label',
+    'profile',
+    'permset',
+    'workflow',
+]
+
 const metaTypes = {
-    profile: 'profiles',
-    permset: 'permissionsets',
-    workflow: 'workflows',
-    label: 'labels',
+    label: {
+        type: labelDefinition.metadataDefinition.filetype,
+        definition: labelDefinition.metadataDefinition,
+    },
+    profile: {
+        type: profileDefinition.metadataDefinition.filetype,
+        definition: profileDefinition.metadataDefinition,
+    },
+    permset: {
+        type: permsetDefinition.metadataDefinition.filetype,
+        definition: permsetDefinition.metadataDefinition,
+    },
+    workflow: {
+        type: workflowDefinition.metadataDefinition.filetype,
+        definition: workflowDefinition.metadataDefinition,
+    },
 }
 
 function getRootPath(packageDir) {
@@ -160,7 +177,7 @@ yargs(hideBin(process.argv))
                         type: 'string',
                     }
                 })
-                .choices('type', ['label', 'permset', 'profile', 'workflow'])
+                .choices('type', typeArray)
                 .choices('format', ['json', 'yaml'])
                 .check((argv, options) => {
                     const name = argv.name
@@ -186,31 +203,15 @@ yargs(hideBin(process.argv))
                 })
         },
         handler: (argv) => {
-            let metaExtension
-            const fileList = []
-            let type = argv.type
-            global.format = argv.format
-            switch (type) {
-                case 'profile':
-                    type = 'profiles'
-                    metaExtension = '.profile-meta.xml'
-                    break
-                case 'permset':
-                    type = 'permissionsets'
-                    metaExtension = '.permissionset-meta.xml'
-                    break
-                case 'label':
-                    type = 'labels'
-                    metaExtension = '.labels-meta.xml'
-                    break
-                case 'workflow':
-                    type = 'workflows'
-                    metaExtension = '.workflow-meta.xml'
-                    break
-                default:
-                    global.logger.error('Metadata type not supported: ' + type)
-                    process.exit(1)
+            if (!typeArray.includes(argv.type)) {
+                global.logger.error('Metadata type not supported: ' + type)
+                process.exit(1)
             }
+            const fileList = []
+            const typeObj = metaTypes[argv.type]
+            const type = typeObj.type
+            const metaExtension = `.${type}-meta.xml`
+            global.format = argv.format
 
             let sourceDir = argv.source || ''
             let targetDir = argv.target || ''
@@ -218,14 +219,14 @@ yargs(hideBin(process.argv))
             let all = argv.all
             let packageDir = getRootPath(sourceDir)
 
-            if (type == 'labels') {
-                name = 'CustomLabels'
+            if (type == metaTypes.label.type) {
+                name = metaTypes.label.definition.root
             }
-            sourceDir = path.join(global.__basedir, packageDir, 'main', 'default', type)
+            sourceDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
             if (targetDir == '') {
-                targetDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', type)
+                targetDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
             } else {
-                targetDir = path.join(targetDir, 'main', 'default', type)
+                targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
             }
             let metaDirPath = sourceDir
             console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
@@ -257,8 +258,9 @@ yargs(hideBin(process.argv))
             const promList = []
             fileList.forEach(metaFile => {
                 switch (type) {
-                    case 'profiles':
+                    case metaTypes.profile.type:
                         const profile = new profileSplit.Profile({
+                            metadataDefinition: typeObj.definition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaFilePath: path.join(sourceDir, metaFile),
@@ -270,8 +272,9 @@ yargs(hideBin(process.argv))
                             global.processed.current++
                         })
                         break
-                    case 'permissionsets':
+                    case metaTypes.permset.type:
                         const permSet = new permSetSplit.Permset({
+                            metadataDefinition: typeObj.definition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaFilePath: path.join(sourceDir, metaFile),
@@ -283,9 +286,9 @@ yargs(hideBin(process.argv))
                             global.processed.current++
                         })
                         break
-                    case 'labels':
+                    case metaTypes.label.type:
                         const label = new metadataSplit.Split({
-                            metadataDefinition: labelDefinition.metadataDefinition,
+                            metadataDefinition: typeObj.definition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaFilePath: path.join(sourceDir, metaFile),
@@ -297,9 +300,9 @@ yargs(hideBin(process.argv))
                             global.processed.current++
                         })
                         break
-                    case 'workflows':
+                    case metaTypes.workflow.type:
                         const workflow = new metadataSplit.Split({
-                            metadataDefinition: workflowDefinition.metadataDefinition,
+                            metadataDefinition: typeObj.definition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaFilePath: path.join(sourceDir, metaFile),
@@ -379,7 +382,7 @@ yargs(hideBin(process.argv))
                         type: 'string',
                     }
                 })
-                .choices('type', ['label', 'permset', 'profile', 'workflow'])
+                .choices('type', typeArray)
                 .choices('format', ['json', 'yaml'])
                 .check((argv, options) => {
                     const name = argv.name
@@ -405,29 +408,14 @@ yargs(hideBin(process.argv))
                 })
         },
         handler: (argv) => {
+            if (!typeArray.includes(argv.type)) {
+                global.logger.error('Metadata type not supported: ' + type)
+                process.exit(1)
+            }
             let processList = []
             global.format = argv.format
-            let type = argv.type
-            let definitionObj
-            switch (type) {
-                case 'profile':
-                    type = metaTypes.profile
-                    break
-                case 'permset':
-                    type = metaTypes.permset
-                    break
-                case 'label':
-                    type = metaTypes.label
-                    definitionObj = labelDefinition.metadataDefinition
-                    break
-                case 'workflow':
-                    type = metaTypes.workflow
-                    definitionObj = workflowDefinition.metadataDefinition
-                    break
-                default:
-                    global.logger.error('Metadata type not supported: ' + type)
-                    process.exit(1)
-            }
+            const typeObj = metaTypes[argv.type]
+            const type = typeObj.type
 
             let sourceDir = argv.source || ''
             let targetDir = argv.target || ''
@@ -435,19 +423,19 @@ yargs(hideBin(process.argv))
             let all = argv.all
             let packageDir = getRootPath(sourceDir)
 
-            sourceDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', type)
+            sourceDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
             if (targetDir == '') {
-                targetDir = path.join(global.__basedir, packageDir, 'main', 'default', type)
+                targetDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
             } else {
-                targetDir = path.join(targetDir, 'main', 'default', type)
+                targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
             }
 
             console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
             console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
             console.log()
 
-            if (type == metaTypes.label) {
-                processList.push('CustomLabels')
+            if (type == metaTypes.label.type) {
+                processList.push(metaTypes.label.definition.root)
             } else if (!all) {
                 let metaDirPath = path.join(sourceDir, name)
                 if (!fileUtils.directoryExists(metaDirPath)) {
@@ -466,7 +454,7 @@ yargs(hideBin(process.argv))
             const promList = []
             processList.forEach(metaDir => {
                 switch (type) {
-                    case metaTypes.profile:
+                    case metaTypes.profile.type:
                         const profile = new profileCombine.Profile({
                             sourceDir: sourceDir,
                             targetDir: targetDir,
@@ -479,7 +467,7 @@ yargs(hideBin(process.argv))
                             global.processed.current++
                         })
                         break
-                    case metaTypes.permset:
+                    case metaTypes.permset.type:
                         const permSet = new permSetCombine.Permset({
                             sourceDir: sourceDir,
                             targetDir: targetDir,
@@ -492,10 +480,10 @@ yargs(hideBin(process.argv))
                             global.processed.current++
                         })
                         break
-                    case metaTypes.workflow:
-                    case metaTypes.label:
+                    case metaTypes.workflow.type:
+                    case metaTypes.label.type:
                         const metadataItem = new metadataCombine.Combine({
-                            metadataDefinition: definitionObj,
+                            metadataDefinition: typeObj.definition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaDir: metaDir,
