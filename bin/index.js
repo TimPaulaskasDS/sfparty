@@ -13,10 +13,9 @@ import * as profileSplit from '../lib/profile/split.js'
 import * as profileCombine from '../lib/profile/combine.js'
 import * as permSetSplit from '../lib/permset/split.js'
 import * as permSetCombine from '../lib/permset/combine.js'
-import * as labelSplit from '../lib/label/split.js'
-import * as labelCombine from '../lib/label/combine.js'
 import * as metadataSplit from '../lib/party/split.js'
 import * as metadataCombine from '../lib/party/combine.js'
+import * as labelDefinition from '../lib/label/definition.js'
 import * as workflowDefinition from '../lib/workflow/definition.js'
 
 const startTime = process.hrtime.bigint()
@@ -43,6 +42,13 @@ global.icons = {
     "fail": '❗',
     "working": '⏳',
     "party": '🎉',
+}
+
+const metaTypes = {
+    profile: 'profiles',
+    permset: 'permissionsets',
+    workflow: 'workflows',
+    label: 'labels',
 }
 
 function getRootPath(packageDir) {
@@ -278,7 +284,8 @@ yargs(hideBin(process.argv))
                         })
                         break
                     case 'labels':
-                        const label = new labelSplit.CustomLabel({
+                        const label = new metadataSplit.Split({
+                            metadataDefinition: labelDefinition.metadataDefinition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaFilePath: path.join(sourceDir, metaFile),
@@ -312,7 +319,7 @@ yargs(hideBin(process.argv))
                 }
             })
             Promise.allSettled(promList).then((results) => {
-                let message = `Split ${chalk.bgBlackBright(global.processed.current)} file(s) ${(global.processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(global.processed.errors) + ' error(s) ' : ''}in `
+                let message = `Split ${chalk.bgBlackBright((global.processed.current > promList.length) ? promList.length : global.processed.current)} file(s) ${(global.processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(global.processed.errors) + ' error(s) ' : ''}in `
                 displayMessageAndDuration(startTime, message)
             })
         }
@@ -401,18 +408,21 @@ yargs(hideBin(process.argv))
             let processList = []
             global.format = argv.format
             let type = argv.type
+            let definitionObj
             switch (type) {
                 case 'profile':
-                    type = 'profiles'
+                    type = metaTypes.profile
                     break
                 case 'permset':
-                    type = 'permissionsets'
+                    type = metaTypes.permset
                     break
                 case 'label':
-                    type = 'labels'
+                    type = metaTypes.label
+                    definitionObj = labelDefinition.metadataDefinition
                     break
                 case 'workflow':
-                    type = 'workflows'
+                    type = metaTypes.workflow
+                    definitionObj = workflowDefinition.metadataDefinition
                     break
                 default:
                     global.logger.error('Metadata type not supported: ' + type)
@@ -436,8 +446,8 @@ yargs(hideBin(process.argv))
             console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
             console.log()
 
-            if (type == 'labels') {
-                processList = fileUtils.getFiles(sourceDir, `.${global.format}`)
+            if (type == metaTypes.label) {
+                processList.push('CustomLabels')
             } else if (!all) {
                 let metaDirPath = path.join(sourceDir, name)
                 if (!fileUtils.directoryExists(metaDirPath)) {
@@ -454,9 +464,9 @@ yargs(hideBin(process.argv))
             console.log()
 
             const promList = []
-            if (type != 'labels') {
-                processList.forEach(metaDir => {
-                    if (type == 'profiles') {
+            processList.forEach(metaDir => {
+                switch (type) {
+                    case metaTypes.profile:
                         const profile = new profileCombine.Profile({
                             sourceDir: sourceDir,
                             targetDir: targetDir,
@@ -468,7 +478,8 @@ yargs(hideBin(process.argv))
                         profProm.then(() => {
                             global.processed.current++
                         })
-                    } else if (type == 'permissionsets') {
+                        break
+                    case metaTypes.permset:
                         const permSet = new permSetCombine.Permset({
                             sourceDir: sourceDir,
                             targetDir: targetDir,
@@ -480,43 +491,37 @@ yargs(hideBin(process.argv))
                         permProm.then(() => {
                             global.processed.current++
                         })
-                    } else if (type == 'workflows') {
-                        const workflow = new metadataCombine.Combine({
-                            metadataDefinition: workflowDefinition.metadataDefinition,
+                        break
+                    case metaTypes.workflow:
+                    case metaTypes.label:
+                        const metadataItem = new metadataCombine.Combine({
+                            metadataDefinition: definitionObj,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaDir: metaDir,
                             sequence: promList.length + 1,
                         })
-                        const workflowProm = workflow.combine()
-                        promList.push(workflowProm)
-                        workflowProm.then((resolve, reject) => {
+                        const metadataItemProm = metadataItem.combine()
+                        promList.push(metadataItemProm)
+                        metadataItemProm.then((resolve, reject) => {
                             global.processed.current++
                         })
+                        break
+                }
+            })
+
+            Promise.allSettled(promList).then((results) => {
+                let successes = 0
+                let errors = 0
+                results.forEach(result => {
+                    if (result.value == true) {
+                        successes++
+                    } else if (result.value == false) {
+                        errors++
                     }
                 })
-            } else if (type == 'labels') {
-                const label = new labelCombine.CustomLabel({
-                    sourceDir: sourceDir,
-                    targetDir: targetDir,
-                    metaDir: sourceDir, // use sourceDir
-                    processList: processList,
-                })
-                const labelProm = label.combine()
-                promList.push(labelProm)
-                labelProm.then(() => {
-                    global.processed.current++
-                })
-
-            }
-
-            Promise.allSettled(promList).then(([result]) => {
-                if (result !== undefined && result.status == 'fulfilled') {
-                    let message = `Combined ${chalk.bgBlackBright(global.processed.total)} file(s) in `
-                    displayMessageAndDuration(startTime, message)
-                } else {
-                    global.logger.error((result !== undefined) ? result.reason : 'metadata error')
-                }
+                let message = `Combined ${chalk.bgBlackBright(successes)} file(s) with ${chalk.bgBlackBright(errors)} error(s) in `
+                displayMessageAndDuration(startTime, message)
             })
         }
     })
