@@ -37,23 +37,31 @@ export function deleteDirectory(dirPath, recursive = false) {
 
 export function getFiles(dirPath, filter = undefined) {
     const filesList = []
-    fs.readdirSync(dirPath).forEach(file => {
-        if (!filter) {
-            filesList.push(file)
-        } else {
-            if (file.endsWith(filter)) {
+    if (directoryExists(dirPath)) {
+        fs.readdirSync(dirPath).forEach(file => {
+            if (!filter) {
                 filesList.push(file)
+            } else {
+                if (file.endsWith(filter)) {
+                    filesList.push(file)
+                }
             }
-        }
-    })
-    filesList.sort()
-    return filesList
+        })
+        filesList.sort()
+        return filesList
+    } else {
+        return []
+    }
 }
 
 export function getDirectories(dirPath) {
-    return fs.readdirSync(dirPath, { withFileTypes: true })
+    if (directoryExists(dirPath)) {
+        return fs.readdirSync(dirPath, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => dirent.name)
+    } else {
+        return []
+    }
 }
 
 export function deleteFile(filePath) {
