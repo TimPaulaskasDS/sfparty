@@ -123,6 +123,9 @@ export class Combine {
                         fullName: path.join(that.sourceDir, that.metaDir, `main.${global.format}`),
                     }
                     processFile(that, key, fileObj)
+                    if (that.#json['$'] === undefined) {
+                        that.#json['$'] = {xmlns: 'https://soap.sforce.com/2006/04/metadata'}
+                    }
                 } else if (that.metadataDefinition.singleFiles.includes(key)) {
                     // TODO process single file
                 } else if (that.metadataDefinition.directories.includes(key)) {
