@@ -136,7 +136,7 @@ export class Split {
                         processDirectory(that, json[key], key, targetDir)
                     }
                 } else if (that.metadataDefinition.singleFiles !== undefined && that.metadataDefinition.singleFiles.includes(key)) {
-                    processFile(that, json[key], key, targetDir)
+                    processFile(that, json[key], key, baseDir)
                 } else if (that.metadataDefinition.main !== undefined && that.metadataDefinition.main.includes(key)) {
                     // Main will get processed in it's own call
                 } else {
