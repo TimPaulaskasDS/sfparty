@@ -257,30 +257,23 @@ yargs(hideBin(process.argv))
             console.log()
             const promList = []
             fileList.forEach(metaFile => {
-                switch (type) {
-                    case metaTypes.label.type:
-                    case metaTypes.permset.type:
-                    case metaTypes.profile.type:
-                    case metaTypes.workflow.type:
-                        const metadataItem = new metadataSplit.Split({
-                            metadataDefinition: typeObj.definition,
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaFilePath: path.join(sourceDir, metaFile),
-                            sequence: promList.length + 1,
-                        })
-                        const metadataItemProm = metadataItem.split()
-                        promList.push(metadataItemProm)
-                        metadataItemProm.then((resolve, reject) => {
-                            if (resolve == false) {
-                                global.processed.errors++
-                                global.processed.current--
-                            } else {
-                                global.processed.current++
-                            }
-                        })
-                        break
-                }
+                const metadataItem = new metadataSplit.Split({
+                    metadataDefinition: typeObj.definition,
+                    sourceDir: sourceDir,
+                    targetDir: targetDir,
+                    metaFilePath: path.join(sourceDir, metaFile),
+                    sequence: promList.length + 1,
+                })
+                const metadataItemProm = metadataItem.split()
+                promList.push(metadataItemProm)
+                metadataItemProm.then((resolve, reject) => {
+                    if (resolve == false) {
+                        global.processed.errors++
+                        global.processed.current--
+                    } else {
+                        global.processed.current++
+                    }
+                })
             })
             Promise.allSettled(promList).then((results) => {
                 let message = `Split ${chalk.bgBlackBright((global.processed.current > promList.length) ? promList.length : global.processed.current)} file(s) ${(global.processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(global.processed.errors) + ' error(s) ' : ''}in `
