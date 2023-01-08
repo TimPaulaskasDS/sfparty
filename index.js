@@ -15,8 +15,8 @@ import * as permSetSplit from './lib/permset/split.js'
 import * as permSetCombine from './lib/permset/combine.js'
 import * as labelSplit from './lib/label/split.js'
 import * as labelCombine from './lib/label/combine.js'
-import * as workflowSplit from './lib/workflow/split.js'
-import * as workflowCombine from './lib/workflow/combine.js'
+import * as metadataSplit from './lib/party/split.js'
+import * as metadataCombine from './lib/party/combine.js'
 import * as workflowDefinition from './lib/workflow/definition.js'
 
 const startTime = process.hrtime.bigint()
@@ -291,7 +291,7 @@ yargs(hideBin(process.argv))
                         })
                         break
                     case 'workflows':
-                        const workflow = new workflowSplit.Split({
+                        const workflow = new metadataSplit.Split({
                             metadataDefinition: workflowDefinition.metadataDefinition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
@@ -481,7 +481,7 @@ yargs(hideBin(process.argv))
                             global.processed.current++
                         })
                     } else if (type == 'workflows') {
-                        const workflow = new workflowCombine.Combine({
+                        const workflow = new metadataCombine.Combine({
                             metadataDefinition: workflowDefinition.metadataDefinition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
