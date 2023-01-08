@@ -11,7 +11,7 @@ import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
 import * as yaml from 'js-yaml'
 import * as fileUtils from '../fileUtils.js'
-import { permsetDefinition } from './definition.js'
+import { permsetDefinition } from '../../meta/PermissionSets.js'
 
 const spinner = cliSpinners['dots']
 

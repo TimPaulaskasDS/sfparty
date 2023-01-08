@@ -6,7 +6,7 @@ import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
 import * as fileUtils from '../fileUtils.js'
-import { profileDefinition } from './definition.js'
+import { profileDefinition } from '../../meta/Profiles.js'
 import * as xml2js from 'xml2js'
 import * as yaml from 'js-yaml'
 

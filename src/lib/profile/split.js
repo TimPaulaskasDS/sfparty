@@ -11,7 +11,7 @@ import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
 import * as yaml from 'js-yaml'
 import * as fileUtils from '../fileUtils.js'
-import { profileDefinition } from './definition.js'
+import { profileDefinition } from '../../meta/Profiles.js'
 
 const spinner = cliSpinners['dots']
 let spinnerFrame = spinner.frames[0]

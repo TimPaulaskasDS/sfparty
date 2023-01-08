@@ -15,8 +15,8 @@ import * as permSetSplit from './lib/permset/split.js'
 import * as permSetCombine from './lib/permset/combine.js'
 import * as metadataSplit from './party/split.js'
 import * as metadataCombine from './party/combine.js'
-import * as labelDefinition from './label/definition.js'
-import * as workflowDefinition from './workflow/definition.js'
+import * as labelDefinition from './meta/CustomLabels.js'
+import * as workflowDefinition from './meta/Workflows.js'
 
 const startTime = process.hrtime.bigint()
 
