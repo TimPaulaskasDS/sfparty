@@ -7,17 +7,17 @@ import { hideBin } from 'yargs/helpers'
 import winston from 'winston'
 import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
-import * as fileUtils from './lib/fileUtils.js'
-import * as pkgObj from './package.json'  assert { type: "json" }
-import * as profileSplit from './lib/profile/split.js'
-import * as profileCombine from './lib/profile/combine.js'
-import * as permSetSplit from './lib/permset/split.js'
-import * as permSetCombine from './lib/permset/combine.js'
-import * as labelSplit from './lib/label/split.js'
-import * as labelCombine from './lib/label/combine.js'
-import * as metadataSplit from './lib/party/split.js'
-import * as metadataCombine from './lib/party/combine.js'
-import * as workflowDefinition from './lib/workflow/definition.js'
+import * as fileUtils from '../lib/fileUtils.js'
+import * as pkgObj from '../package.json'  assert { type: "json" }
+import * as profileSplit from '../lib/profile/split.js'
+import * as profileCombine from '../lib/profile/combine.js'
+import * as permSetSplit from '../lib/permset/split.js'
+import * as permSetCombine from '../lib/permset/combine.js'
+import * as labelSplit from '../lib/label/split.js'
+import * as labelCombine from '../lib/label/combine.js'
+import * as metadataSplit from '../lib/party/split.js'
+import * as metadataCombine from '../lib/party/combine.js'
+import * as workflowDefinition from '../lib/workflow/definition.js'
 
 const startTime = process.hrtime.bigint()
 

@@ -8,9 +8,9 @@
     "url": "git+https://github.com/TimPaulaskasDS/sfparty.git"
   },
   "bin": {
-    "sfparty": "index.js"
+    "sfparty": "bin/index.js"
   },
-  "main": "index.js",
+  "main": "bin/index.js",
   "scripts": {
     "test": "mocha 'tests/**/*.js' --recursive--reporter spec",
     "postinstall": "husky install"
