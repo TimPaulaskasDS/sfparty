@@ -287,30 +287,17 @@ yargs(hideBin(process.argv))
                         })
                         break
                     case metaTypes.label.type:
-                        const label = new metadataSplit.Split({
-                            metadataDefinition: typeObj.definition,
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaFilePath: path.join(sourceDir, metaFile),
-                            sequence: promList.length + 1,
-                        })
-                        const labelProm = label.split()
-                        promList.push(labelProm)
-                        labelProm.then(() => {
-                            global.processed.current++
-                        })
-                        break
                     case metaTypes.workflow.type:
-                        const workflow = new metadataSplit.Split({
+                        const metadataItem = new metadataSplit.Split({
                             metadataDefinition: typeObj.definition,
                             sourceDir: sourceDir,
                             targetDir: targetDir,
                             metaFilePath: path.join(sourceDir, metaFile),
                             sequence: promList.length + 1,
                         })
-                        const workflowProm = workflow.split()
-                        promList.push(workflowProm)
-                        workflowProm.then((resolve, reject) => {
+                        const metadataItemProm = metadataItem.split()
+                        promList.push(metadataItemProm)
+                        metadataItemProm.then((resolve, reject) => {
                             if (resolve == false) {
                                 global.processed.errors++
                                 global.processed.current--
