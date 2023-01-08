@@ -78,19 +78,5 @@ export const metadataDefinition = {
         tabVisibilities: ['tab', 'visibility'],
         userPermissions: ['name', 'enabled'],
     },
-    xmlOrder: {
-        applicationVisibilities: ['application'],
-        classAccesses: ['apexClass'],
-        customMetadataTypeAccesses: ['name'],
-        customPermissions: ['name'],
-        customSettingAccesses: ['name'],
-        externalDataSourceAccesses: ['externalDataSource'],
-        fieldPermissions: ['field'],
-        flowAccesses: ['flow'],
-        objectPermissions: ['object'],
-        pageAccesses: ['apexPage'],
-        recordTypeVisibilities: ['recordType'],
-        tabVisibilities: ['tab'],
-        userPermissions: ['name'],
-    }
+    xmlFirst: 'fullName'
 }
