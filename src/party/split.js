@@ -75,7 +75,7 @@ export class Split {
                     readFile(that.metaFilePath, function (err, data) {
                         parser.parseString(data, function (err, result) {
                             if (result) {
-                                resolve(result)
+                                resolve({ data: result, startTime: process.hrtime.bigint() })
                             } else {
                                 global.logger.error(`error converting xml to json: ${that.metaFilePath}`)
                                 reject(`error converting xml to json: ${that.metaFilePath}`)
@@ -87,6 +87,8 @@ export class Split {
                     throw error
                 })
                 getJSON.then((result) => {
+                    that.#startTime = result.startTime
+                    result = result.data
                     try {
                         result[that.#root]['$'].xmlns = result[that.#root]['$'].xmlns.replace('http:', 'https:')
                     } catch (error) {
@@ -94,12 +96,12 @@ export class Split {
                         resolve(false)
                         return
                     }
-    
+
                     // modify the json to remove unwanted arrays
                     that.#json = transformJSON(that, result, that.#root)
                     fileUtils.deleteDirectory(that.targetDir, true) // recursive delete existing directory
                     fileUtils.createDirectory(that.targetDir) // create directory
-    
+
                     try {
                         processJSON(that, that.#json[that.#root], that.targetDir)
                         completeFile(that)
@@ -108,14 +110,13 @@ export class Split {
                         global.logger.error(error)
                         throw error
                     }
-    
+
                     resolve(true)
                 })
             }
         })
 
         function processJSON(that, json, baseDir) {
-            that.#startTime = process.hrtime.bigint()
             that.#spinnerMessage = `[%1] of ${global.processed.total} - Workflow: [%4]${chalk.yellowBright(that.#fileName.shortName)}[%2][%3]`
 
             let targetDir = baseDir
@@ -135,8 +136,7 @@ export class Split {
                         processDirectory(that, json[key], key, targetDir)
                     }
                 } else if (that.metadataDefinition.singleFiles !== undefined && that.metadataDefinition.singleFiles.includes(key)) {
-                    logUpdate(key, 'single file')
-                    logUpdate.done()
+                    processFile(that, json[key], key, targetDir)
                 } else if (that.metadataDefinition.main !== undefined && that.metadataDefinition.main.includes(key)) {
                     // Main will get processed in it's own call
                 } else {
@@ -152,8 +152,10 @@ export class Split {
 
         function Main(that) {
             let fileName = path.join(that.targetDir, `main.${global.format}`)
-            let mainInfo = {}
-            mainInfo.name = that.#fileName.shortName
+            let mainInfo = {
+                main: {}
+            }
+            mainInfo.main.name = that.#fileName.shortName
             that.metadataDefinition.main.forEach(key => {
                 that.sequence = global.processed.current
                 logUpdate(that.#spinnerMessage
@@ -164,7 +166,7 @@ export class Split {
                 )
 
                 if (that.#json[that.#root][key] !== undefined) {
-                    mainInfo[key] = that.#json[that.#root][key]
+                    mainInfo.main[key] = that.#json[that.#root][key]
                 }
             })
 
@@ -191,11 +193,52 @@ export class Split {
 }
 
 function processDirectory(that, json, key, baseDir) {
-    json.forEach(arrItem => {
+    if (that.metadataDefinition.splitObjects !== undefined && that.metadataDefinition.splitObjects.includes(key)) {
         const sortKey = that.metadataDefinition.sortKeys[key]
-        let fileName = path.join(baseDir, `${arrItem[sortKey]}.${global.format}`)
-        fileUtils.savePartFile(arrItem, fileName, global.format)
-    })
+        const objects = {}
+
+        if (sortKey === undefined) {
+            throw new Error(`No sort key specified for: ${key}`)
+        }
+        json.forEach(arrItem => {
+            const object = arrItem[sortKey].split('.')[0]
+            arrItem[sortKey] = arrItem[sortKey].split('.').pop()
+            if (objects[object] === undefined) {
+                objects[object] = {
+                    object: object
+                }
+                objects[object][key] = []
+            }
+            delete arrItem['object']
+            objects[object][key].push(arrItem)
+        })
+
+        Object.keys(objects).forEach(object => {
+            processFile(that, objects[object], key, baseDir, object)
+        })
+
+    } else {
+        json.forEach(arrItem => {
+            processFile(that, arrItem, key, baseDir)
+        })
+    }
+
+
+}
+
+function processFile(that, json, key, baseDir, fileNameOverride) {
+    let newJSON
+    let fileName
+    if (fileNameOverride !== undefined) {
+        fileName = path.join(baseDir, `${fileNameOverride}.${global.format}`)
+        newJSON = json
+    } else {
+        const sortKey = that.metadataDefinition.sortKeys[key]
+        fileName = path.join(baseDir, `${(json[sortKey] !== undefined) ? json[sortKey] : key}.${global.format}`)
+        newJSON = {}
+        newJSON[key] = json
+    }
+    fileUtils.savePartFile(newJSON, fileName, global.format)
 }
 
 function transformJSON(that, result, rootTag) {
@@ -237,17 +280,22 @@ function keySort(that, key, json) {
 
         // arrange json keys in specified order using keyOrder
         json.forEach(function (part, index) {
-            this[index] = Object.keys(this[index])
-                .sort((a, b) => {
-                    if (keyOrder.indexOf(a) == -1) return 1
-                    if (keyOrder.indexOf(a) < keyOrder.indexOf(b)) return -1
-                    if (keyOrder.indexOf(a) > keyOrder.indexOf(b)) return 1
-                    return 0
-                })
-                .reduce((accumulator, key) => {
-                    accumulator[key] = this[index][key]
-                    return accumulator
-                }, {})
+            try {
+                this[index] = Object.keys(this[index])
+                    .sort((a, b) => {
+                        if (keyOrder.indexOf(a) == -1) return 1
+                        if (keyOrder.indexOf(a) < keyOrder.indexOf(b)) return -1
+                        if (keyOrder.indexOf(a) > keyOrder.indexOf(b)) return 1
+                        return 0
+                    })
+                    .reduce((accumulator, key) => {
+                        accumulator[key] = this[index][key]
+                        return accumulator
+                    }, {})
+            } catch (error) {
+                let test = key
+                throw error
+            }
         }, json)
 
         // recursive objects

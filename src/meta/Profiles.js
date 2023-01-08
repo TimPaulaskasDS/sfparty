@@ -33,6 +33,11 @@ export const metadataDefinition = {
         'objectPermissions',
         'recordTypeVisibilities',
     ],
+    splitObjects: [
+        'fieldPermissions',
+        'objectPermissions',
+        'recordTypeVisibilities',
+    ],
     sortKeys: {
         'applicationVisibilities': 'application',
         'categoryGroupVisibilities': 'dataCategoryGroup',
@@ -55,6 +60,7 @@ export const metadataDefinition = {
     },
     keyOrder: {
         applicationVisibilities: ['application', 'visible'],
+        categoryGroupVisibilities: ['dataCategoryGroup'], // TODO
         classAccesses: ['apexClass', 'enabled'],
         customMetadataTypeAccesses: ['name', 'enabled'],
         customPermissions: ['name', 'enabled'],
@@ -62,8 +68,12 @@ export const metadataDefinition = {
         externalDataSourceAccesses: ['externalDataSource', 'enabled'],
         fieldPermissions: ['field', 'editable', 'readable'],
         flowAccesses: ['flow', 'enabled'],
+        layoutAssignments: ['layout'], // TODO
+        loginFlows: ['friendlyName'], // TODO
+        loginIpRanges: ['startAddress'], // TODO
         objectPermissions: ['object', 'allowCreate', 'allowRead', 'allowEdit', 'allowDelete', 'viewAllRecords', 'modifyAllRecords'],
         pageAccesses: ['apexPage', 'enabled'],
+        profileActionOverrides: ['pageOrSobjectType'], // TODO
         recordTypeVisibilities: ['recordType', 'visible'],
         tabVisibilities: ['tab', 'visibility'],
         userPermissions: ['name', 'enabled'],

@@ -258,20 +258,6 @@ yargs(hideBin(process.argv))
             const promList = []
             fileList.forEach(metaFile => {
                 switch (type) {
-                    case metaTypes.profile.type:
-                        const profile = new profileSplit.Profile({
-                            metadataDefinition: typeObj.definition,
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaFilePath: path.join(sourceDir, metaFile),
-                            sequence: promList.length + 1,
-                        })
-                        const profProm = profile.split()
-                        promList.push(profProm)
-                        profProm.then(() => {
-                            global.processed.current++
-                        })
-                        break
                     case metaTypes.permset.type:
                         const permSet = new permSetSplit.Permset({
                             metadataDefinition: typeObj.definition,
@@ -287,6 +273,7 @@ yargs(hideBin(process.argv))
                         })
                         break
                     case metaTypes.label.type:
+                    case metaTypes.profile.type:
                     case metaTypes.workflow.type:
                         const metadataItem = new metadataSplit.Split({
                             metadataDefinition: typeObj.definition,
