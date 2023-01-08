@@ -74,18 +74,18 @@ export class Combine {
         return new Promise((resolve, reject) => {
             const that = this
             if (!fileUtils.directoryExists(that.sourceDir)) reject(`Path does not exist: ${that.sourceDir}`)
+            let types = ['directories', 'singleFiles', 'main']
+            types.forEach(type => {
+                if (that.metadataDefinition[type] !== undefined) {
+                    that.#types = that.#types.concat(that.metadataDefinition[type])
+                }
+            })
 
-            if (that.metadataDefinition.directories !== undefined) {
-                that.#types = that.#types.concat(that.metadataDefinition.directories)
-            }
-            if (that.metadataDefinition.singleFiles !== undefined) {
-                that.#types = that.#types.concat(that.metadataDefinition.singleFiles)
-            }
-            if (that.metadataDefinition.main !== undefined) {
-                that.#types = that.#types.concat(that.metadataDefinition.main)
-            }
             that.#types.sort((a, b) => {
                 if (a == '$') return -1
+                if (that.metadataDefinition.xmlFirst !== undefined) {
+                    if (a == that.metadataDefinition.xmlFirst) return -1
+                }
                 if (a < b) return -1
                 if (a > b) return 1
                 return 0
@@ -122,18 +122,27 @@ export class Combine {
                         shortName: 'Main',
                         fullName: path.join(that.sourceDir, that.metaDir, `main.${global.format}`),
                     }
-                    processFile(that, key, fileObj)
-                    if (that.#json['$'] === undefined) {
-                        that.#json['$'] = {xmlns: 'https://soap.sforce.com/2006/04/metadata'}
+                    processFile(that, key, fileObj, 'main')
+                    if (that.#json.$ === undefined) {
+                        that.#json.$ = { xmlns: 'https://soap.sforce.com/2006/04/metadata' }
                     }
                 } else if (that.metadataDefinition.singleFiles.includes(key)) {
-                    // TODO process single file
+                    processSingleFile(that, key)
                 } else if (that.metadataDefinition.directories.includes(key)) {
                     processDirectory(that, key)
                 } else {
                     global.logger.warn(`Unexpected metadata type: ${chalk.redBright(key)}`)
                 }
             })
+        }
+
+        function processSingleFile(that, key) {
+            const fileObj = {
+                shortName: key,
+                fullName: path.join(that.sourceDir, that.metaDir, key + `.${global.format}`),
+            }
+            processFile(that, key, fileObj)
+
         }
 
         function processDirectory(that, key) {
@@ -166,7 +175,7 @@ export class Combine {
             return true
         }
 
-        function processFile(that, key, fileObj = undefined) {
+        function processFile(that, key, fileObj = undefined, rootKey = undefined) {
             if (
                 fileObj === undefined ||
                 typeof fileObj != 'object' ||
@@ -177,27 +186,77 @@ export class Combine {
                 return false
             }
 
-            if (fileUtils.fileExists(fileObj.fullName)) {
-                let result = fileUtils.readPartFile(fileObj.fullName)
-                result = sortAndArrange(that, result, key)
-                if (Array.isArray(that.#json[key])) {
-                    that.#json[key].push(result[key])
-                } else {
-                    that.#json[key] = result[key][key][key]
+            if (!fileUtils.fileExists(fileObj.fullName)) {
+                return
+            }
+
+            let result = fileUtils.readPartFile(fileObj.fullName)
+
+            // if split by object we need to add object back to values
+            if (that.metadataDefinition.splitObjects !== undefined && that.metadataDefinition.splitObjects.includes(key)) {
+                result = hydrateObject(that, result, key, fileObj)
+            }
+            result = sortAndArrange(that, result, key)
+
+            if (Array.isArray(that.#json[key])) {
+                try {
+                    if (Array.isArray(result[key])) {
+                        result[key].forEach(arrItem => {
+                            that.#json[key].push(arrItem)
+                        })                          
+                    } else {
+                        that.#json[key].push(result[key])
+                    }
+                } catch (error) {
+                    throw error
+                }
+            } else {
+                try {
+                    that.#json[key] = (rootKey !== undefined) ? result[rootKey][key] : result[key]
+                } catch (error) {
+                    let test = { key: key, rootKey: rootKey, json: result }
+                    throw error
                 }
             }
 
-            updateFileStats(that, fileUtils.fileInfo(fileObj.fullName).stats)
+            updateFileStats(that, fileObj.fullName, fileUtils.fileInfo(fileObj.fullName).stats)
             // genericXML(that, key, fileObj.fullName)
         }
 
-        function updateFileStats(that, stats) {
-            if (that.#fileStats.atime === undefined || stats.atime > that.#fileStats.atime) {
-                that.#fileStats.atime = stats.atime
+        function hydrateObject(that, json, key, fileObj) {
+            const sortKey = that.metadataDefinition.sortKeys[key]
+            let object = json.object
+
+            try {
+                json[key].forEach((arrItem) => {
+                    arrItem[sortKey] = `${object}.${arrItem[sortKey]}`.replace('.undefined', '')
+
+                    // add object key if previously existed
+                    if (that.metadataDefinition.keyOrder[key] !== undefined && that.metadataDefinition.keyOrder[key].includes('order')) {
+                        arrItem.object = object
+                    }
+                })
+
+                // delete object key that we added to the part file
+                delete json.object
+            } catch (error) {
+                throw error
             }
 
-            if (that.#fileStats.mtime === undefined || stats.mtime > that.#fileStats.mtime) {
-                that.#fileStats.mtime = stats.mtime
+            return json
+        }
+
+        function updateFileStats(that, fileName, stats) {
+            try {
+                if (that.#fileStats.atime === undefined || stats.atime > that.#fileStats.atime) {
+                    that.#fileStats.atime = stats.atime
+                }
+
+                if (that.#fileStats.mtime === undefined || stats.mtime > that.#fileStats.mtime) {
+                    that.#fileStats.mtime = stats.mtime
+                }
+            } catch (error) {
+                throw error
             }
         }
 
@@ -214,7 +273,7 @@ export class Combine {
             Object.keys(that.#json).forEach(key => {
                 if (that.#json[key] === undefined) delete that.#json[key]
             })
-            const xml = builder.buildObject(that.#json) + os.EOL
+            const xml = builder.buildObject(that.#json)
 
             fileUtils.writeFile(
                 that.#fileName.fullName,
@@ -254,7 +313,7 @@ export class Combine {
 }
 
 function sortJSON(json, key) {
-    if (Array.isArray(json)) {
+    if (Array.isArray(json) && key !== undefined) {
         json.sort((a, b) => {
             if (a[key] < b[key]) return -1
             if (a[key] > b[key]) return 1
@@ -267,15 +326,17 @@ function sortJSON(json, key) {
 function sortAndArrange(that, json, key = undefined, topLevel = true) {
     // sort and order keys
     const sortKey = that.metadataDefinition.sortKeys[key]
-    let jsonResult = {}
+
     json = arrangeKeys(that, json, key)
     json = sortJSON(json, sortKey)
 
     Object.keys(json).forEach((subKey, index, thisObj) => {
         if (typeof json[subKey] == 'object') {
             if (!Array.isArray(json[subKey])) {
-                // call recursively on object
-                json[subKey] = sortAndArrange(that, json[subKey], subKey)
+                if (Object.keys(json[subKey]).length > 1) {
+                    // call recursively on object
+                    json[subKey] = sortAndArrange(that, json[subKey], subKey, false)
+                }
             } else {
                 // iterate array for objects
                 json[subKey].forEach((arrItem, index) => {
@@ -288,14 +349,7 @@ function sortAndArrange(that, json, key = undefined, topLevel = true) {
         }
     })
 
-    // we need to include the key into the json for the top-level only
-    if (topLevel) {
-        jsonResult[key] = json
-    } else {
-        jsonResult = json
-    }
-
-    return jsonResult
+    return json
 }
 
 function arrangeKeys(that, json, key = undefined) {

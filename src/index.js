@@ -407,49 +407,18 @@ yargs(hideBin(process.argv))
 
             const promList = []
             processList.forEach(metaDir => {
-                switch (type) {
-                    case metaTypes.profile.type:
-                        const profile = new profileCombine.Profile({
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaDir: metaDir,
-                            sequence: promList.length + 1,
-                        })
-                        const profProm = profile.combine()
-                        promList.push(profProm)
-                        profProm.then(() => {
-                            global.processed.current++
-                        })
-                        break
-                    case metaTypes.permset.type:
-                        const permSet = new permSetCombine.Permset({
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaDir: metaDir,
-                            sequence: promList.length + 1,
-                        })
-                        const permProm = permSet.combine()
-                        promList.push(permProm)
-                        permProm.then(() => {
-                            global.processed.current++
-                        })
-                        break
-                    case metaTypes.workflow.type:
-                    case metaTypes.label.type:
-                        const metadataItem = new metadataCombine.Combine({
-                            metadataDefinition: typeObj.definition,
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaDir: metaDir,
-                            sequence: promList.length + 1,
-                        })
-                        const metadataItemProm = metadataItem.combine()
-                        promList.push(metadataItemProm)
-                        metadataItemProm.then((resolve, reject) => {
-                            global.processed.current++
-                        })
-                        break
-                }
+                const metadataItem = new metadataCombine.Combine({
+                    metadataDefinition: typeObj.definition,
+                    sourceDir: sourceDir,
+                    targetDir: targetDir,
+                    metaDir: metaDir,
+                    sequence: promList.length + 1,
+                })
+                const metadataItemProm = metadataItem.combine()
+                promList.push(metadataItemProm)
+                metadataItemProm.then((resolve, reject) => {
+                    global.processed.current++
+                })
             })
 
             Promise.allSettled(promList).then((results) => {
