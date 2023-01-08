@@ -16,7 +16,7 @@
     "postinstall": "husky install"
   },
   "keywords": [
-    "xml,split,combine,yaml,json"
+    "salesforce,metadata,xml,split,yaml,json"
   ],
   "author": "Tim Paulaskas",
   "license": "BSD-3-Clause",
