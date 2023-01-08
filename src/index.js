@@ -258,21 +258,8 @@ yargs(hideBin(process.argv))
             const promList = []
             fileList.forEach(metaFile => {
                 switch (type) {
-                    case metaTypes.permset.type:
-                        const permSet = new permSetSplit.Permset({
-                            metadataDefinition: typeObj.definition,
-                            sourceDir: sourceDir,
-                            targetDir: targetDir,
-                            metaFilePath: path.join(sourceDir, metaFile),
-                            sequence: promList.length + 1,
-                        })
-                        const permProm = permSet.split()
-                        promList.push(permProm)
-                        permProm.then(() => {
-                            global.processed.current++
-                        })
-                        break
                     case metaTypes.label.type:
+                    case metaTypes.permset.type:
                     case metaTypes.profile.type:
                     case metaTypes.workflow.type:
                         const metadataItem = new metadataSplit.Split({

@@ -29,6 +29,11 @@ export const metadataDefinition = {
         'objectPermissions',
         'recordTypeVisibilities',
     ],
+    splitObjects: [
+        'fieldPermissions',
+        'objectPermissions',
+        'recordTypeVisibilities',
+    ],
     sortKeys: {
         'applicationVisibilities': 'application',
         'classAccesses': 'apexClass',
