@@ -5,7 +5,7 @@ import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
 import os from 'node:os'
 import * as xml2js from 'xml2js'
-import * as fileUtils from '../fileUtils.js'
+import * as fileUtils from '../lib/fileUtils.js'
 
 const spinner = cliSpinners['dots']
 

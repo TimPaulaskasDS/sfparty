@@ -7,16 +7,16 @@ import { hideBin } from 'yargs/helpers'
 import winston from 'winston'
 import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
-import * as fileUtils from '../../lib/fileUtils.js'
-import * as pkgObj from '../../package.json'  assert { type: "json" }
-import * as profileSplit from '../../lib/profile/split.js'
-import * as profileCombine from '../../lib/profile/combine.js'
-import * as permSetSplit from '../../lib/permset/split.js'
-import * as permSetCombine from '../../lib/permset/combine.js'
-import * as metadataSplit from '../../lib/party/split.js'
-import * as metadataCombine from '../src/lib/party/combine.js.js'
-import * as labelDefinition from '../label/definition.js'
-import * as workflowDefinition from '../workflow/definition.js'
+import * as fileUtils from './lib/fileUtils.js'
+import * as pkgObj from '../package.json'  assert { type: "json" }
+import * as profileSplit from './lib/profile/split.js'
+import * as profileCombine from './lib/profile/combine.js'
+import * as permSetSplit from './lib/permset/split.js'
+import * as permSetCombine from './lib/permset/combine.js'
+import * as metadataSplit from './party/split.js'
+import * as metadataCombine from './party/combine.js'
+import * as labelDefinition from './label/definition.js'
+import * as workflowDefinition from './workflow/definition.js'
 
 const startTime = process.hrtime.bigint()
 
@@ -520,7 +520,7 @@ yargs(hideBin(process.argv))
                         errors++
                     }
                 })
-                let message = `Combined ${chalk.bgBlackBright(successes)} file(s) with ${chalk.bgBlackBright(errors)} error(s) in `
+                let message = `Combined ${chalk.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : ''}in `
                 displayMessageAndDuration(startTime, message)
             })
         }

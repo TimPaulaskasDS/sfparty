@@ -9,7 +9,7 @@ import logUpdate from 'log-update'
 import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
-import * as fileUtils from '../fileUtils.js'
+import * as fileUtils from '../lib/fileUtils.js'
 
 const spinner = cliSpinners['dots']
 
