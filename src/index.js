@@ -177,7 +177,6 @@ yargs(hideBin(process.argv))
                         type: 'string',
                     }
                 })
-                // .choices('type', typeArray)
                 .choices('format', ['json', 'yaml'])
                 .check((argv, options) => {
                     const name = argv.name
@@ -282,7 +281,7 @@ yargs(hideBin(process.argv))
                         type: 'string',
                     }
                 })
-                // .choices('type', typeArray)
+                .choices('type', typeArray)
                 .choices('format', ['json', 'yaml'])
                 .check((argv, options) => {
                     const name = argv.name
