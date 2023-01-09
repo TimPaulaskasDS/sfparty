@@ -124,7 +124,7 @@ yargs(hideBin(process.argv))
     .command({
         command: '[split]',
         alias: 'split',
-        description: 'splits metadata xml to json files',
+        description: 'splits metadata xml to yaml/json files',
         builder: (yargs) => {
             yargs
                 .example([
@@ -173,7 +173,7 @@ yargs(hideBin(process.argv))
                     target: {
                         demand: false,
                         alias: 't',
-                        description: 'target path to directory to create json files',
+                        description: 'target path to directory to create yaml/json files',
                         type: 'string',
                     }
                 })
@@ -284,7 +284,7 @@ yargs(hideBin(process.argv))
     .command({
         command: '[combine]',
         alias: 'combine',
-        description: 'combines json files into metadata xml',
+        description: 'combines yaml/json files into metadata xml',
         builder: (yargs) => {
             yargs
                 .example([
@@ -319,7 +319,7 @@ yargs(hideBin(process.argv))
                     },
                     all: {
                         alias: 'a',
-                        description: 'all json files of type will be combined',
+                        description: 'all yaml/json files of type will be combined',
                         demandOption: false,
                         type: 'boolean',
                     },
