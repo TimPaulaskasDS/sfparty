@@ -12,6 +12,12 @@ import cliSpinners from 'cli-spinners'
 import * as fileUtils from '../lib/fileUtils.js'
 
 const spinner = cliSpinners['dots']
+const processed = {
+    total: 0,
+    errors: 0,
+    current: 0,
+    type: undefined,
+}
 
 export class Split {
     #type = undefined
@@ -33,6 +39,7 @@ export class Split {
         this.targetDir = config.targetDir
         this.metaFilePath = config.metaFilePath
         this.sequence = config.sequence
+        this.total = config.total
     }
 
     get metadataDefinition() {
@@ -117,13 +124,23 @@ export class Split {
         })
 
         function processJSON(that, json, baseDir) {
-            that.#spinnerMessage = `[%1] of ${global.processed.total} - Workflow: [%4]${chalk.yellowBright(that.#fileName.shortName)}[%2][%3]`
+            that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${chalk.yellowBright(that.#fileName.shortName)}[%2][%3]`
 
             let targetDir = baseDir
+            if (processed.type != that.#root) {
+                processed.current = 0
+                processed.type = that.#root
+                console.log(`${chalk.bgBlackBright('Source path:')} ${that.sourceDir}`)
+                console.log(`${chalk.bgBlackBright('Target path:')} ${that.targetDir}`)
+                console.log()
+                console.log(`Splitting a total of ${that.total} file(s)`)
+                console.log()
+            }
+            processed.current++
             Object.keys(json).forEach(key => {
-                that.sequence = global.processed.current
+                that.sequence = processed.current
                 logUpdate(that.#spinnerMessage
-                    .replace('[%1]', that.sequence.toString().padStart(global.processed.total.toString().length, ' '))
+                    .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
                     .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
                     .replace('[%3]', `${that.#errorMessage}`)
                     .replace('[%4]', `${global.icons.working} `)
@@ -157,9 +174,9 @@ export class Split {
             }
             mainInfo.main.name = that.#fileName.shortName
             that.metadataDefinition.main.forEach(key => {
-                that.sequence = global.processed.current
+                that.sequence = processed.current
                 logUpdate(that.#spinnerMessage
-                    .replace('[%1]', that.sequence.toString().padStart(global.processed.total.toString().length, ' '))
+                    .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
                     .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
                     .replace('[%3]', `${that.#errorMessage}`)
                     .replace('[%4]', `${global.icons.working} `)
@@ -182,7 +199,7 @@ export class Split {
             let durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
             let stateIcon = (that.#errorMessage == '') ? global.icons.success : global.icons.fail
             logUpdate(that.#spinnerMessage
-                .replace('[%1]', that.sequence.toString().padStart(global.processed.total.toString().length, ' '))
+                .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
                 .replace('[%2]', `. Processed in ${durationMessage}.`)
                 .replace('[%3]', `${that.#errorMessage}`)
                 .replace('[%4]', `${stateIcon} `)
