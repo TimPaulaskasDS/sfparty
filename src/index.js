@@ -177,107 +177,52 @@ yargs(hideBin(process.argv))
                         type: 'string',
                     }
                 })
-                .choices('type', typeArray)
                 .choices('format', ['json', 'yaml'])
                 .check((argv, options) => {
                     const name = argv.name
                     const all = argv.all
+                    const types = argv.type.split(',')
+                    types.forEach(type => {
+                        type = type.trim()
+                        if (!typeArray.includes(type)) {
+                            throw new Error(`Invalid type: ${type}`)
+                        }
+                    })
 
-                    switch (argv.type) {
-                        case 'profile':
-                        case 'permset':
-                        case 'workflow':
-                            if ((typeof name != 'undefined' || name == '') && (typeof all != 'undefined' && all)) {
-                                throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' and ' + chalk.whiteBright.bgRedBright('--all') + ' at the same time.'))
-                            } else if (typeof name == 'undefined' && (typeof all == 'undefined' || !all)) {
-                                throw new Error(chalk.redBright('You must specify the ' + chalk.whiteBright.bgRedBright('--name') + ' parameter or use the ' + chalk.whiteBright.bgRedBright('--all') + ' switch.'))
-                            } else {
-                                return true // tell Yargs that the arguments passed the check
-                            }
-                        case 'label':
-                            if ((typeof name != 'undefined' && name != '') || (typeof all != 'undefined' && all)) {
-                                throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' or ' + chalk.whiteBright.bgRedBright('--all') + ' when using label.'))
-                            }
-                            return true
+                    if (types.length > 1) {
+                        // if using multiple types you cannot specify name or all
+                        if ((typeof name != 'undefined' && name != '') || (typeof all != 'undefined' && all)) {
+                            throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' or ' + chalk.whiteBright.bgRedBright('--all') + ' when using multiple types.'))
+                        }
+                        return true
+                    } else {
+                        switch (argv.type) {
+                            case 'profile':
+                            case 'permset':
+                            case 'workflow':
+                                if ((typeof name != 'undefined' || name == '') && (typeof all != 'undefined' && all)) {
+                                    throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' and ' + chalk.whiteBright.bgRedBright('--all') + ' at the same time.'))
+                                } else if (typeof name == 'undefined' && (typeof all == 'undefined' || !all)) {
+                                    throw new Error(chalk.redBright('You must specify the ' + chalk.whiteBright.bgRedBright('--name') + ' parameter or use the ' + chalk.whiteBright.bgRedBright('--all') + ' switch.'))
+                                } else {
+                                    return true // tell Yargs that the arguments passed the check
+                                }
+                            case 'label':
+                                if ((typeof name != 'undefined' && name != '') || (typeof all != 'undefined' && all)) {
+                                    throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' or ' + chalk.whiteBright.bgRedBright('--all') + ' when using label.'))
+                                }
+                                return true
+                        }
                     }
                 })
         },
         handler: (argv) => {
-            if (!typeArray.includes(argv.type)) {
-                global.logger.error('Metadata type not supported: ' + type)
-                process.exit(1)
-            }
-            const fileList = []
-            const typeObj = metaTypes[argv.type]
-            const type = typeObj.type
-            const metaExtension = `.${type}-meta.xml`
-            global.format = argv.format
-
-            let sourceDir = argv.source || ''
-            let targetDir = argv.target || ''
-            let name = argv.name
-            let all = argv.all
-            let packageDir = getRootPath(sourceDir)
-
-            if (type == metaTypes.label.type) {
-                name = metaTypes.label.definition.root
-            }
-            sourceDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
-            if (targetDir == '') {
-                targetDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
-            } else {
-                targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
-            }
-            let metaDirPath = sourceDir
-            console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-            console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
-            console.log()
-
-            if (!all) {
-                let metaFilePath = path.join(metaDirPath, name)
-                if (!fileUtils.fileExists(metaFilePath)) {
-                    name += metaExtension
-                    metaFilePath = path.join(metaDirPath, name)
-                    if (!fileUtils.fileExists(metaFilePath)) {
-                        global.logger.error('File not found: ' + metaFilePath)
-                        process.exit(1)
-                    }
-                }
-                fileList.push(name)
-            } else {
-                if (fileUtils.directoryExists(sourceDir)) {
-                    fileUtils.getFiles(sourceDir, metaExtension).forEach(file => {
-                        fileList.push(file)
-                    })
-                }
-            }
-
-            global.processed.total = fileList.length
-            console.log(`Splitting a total of ${fileList.length} file(s)`)
-            console.log()
-            const promList = []
-            fileList.forEach(metaFile => {
-                const metadataItem = new metadataSplit.Split({
-                    metadataDefinition: typeObj.definition,
-                    sourceDir: sourceDir,
-                    targetDir: targetDir,
-                    metaFilePath: path.join(sourceDir, metaFile),
-                    sequence: promList.length + 1,
+            const types = argv.type.split(',')
+            types.forEach(typeItem => {
+                const test = processSplit(typeItem, types.length, argv)
+                test.then((resolve) => {
+                    console.log()
                 })
-                const metadataItemProm = metadataItem.split()
-                promList.push(metadataItemProm)
-                metadataItemProm.then((resolve, reject) => {
-                    if (resolve == false) {
-                        global.processed.errors++
-                        global.processed.current--
-                    } else {
-                        global.processed.current++
-                    }
-                })
-            })
-            Promise.allSettled(promList).then((results) => {
-                let message = `Split ${chalk.bgBlackBright((global.processed.current > promList.length) ? promList.length : global.processed.current)} file(s) ${(global.processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(global.processed.errors) + ' error(s) ' : ''}in `
-                displayMessageAndDuration(startTime, message)
             })
         }
     })
@@ -472,3 +417,86 @@ process.on('SIGINT', function () {
 
     callAmount++;
 })
+
+function processSplit(typeItem, typesNum, argv) {
+    return new Promise((resolve, reject) => {
+        const processed = {
+            total: 0,
+            errors: 0,
+            current: 1,
+        }
+        if (!typeArray.includes(typeItem)) {
+            global.logger.error('Metadata type not supported: ' + type)
+            process.exit(1)
+        }
+        const fileList = []
+        const typeObj = metaTypes[typeItem]
+        const type = typeObj.type
+        const metaExtension = `.${type}-meta.xml`
+        global.format = argv.format
+
+        let sourceDir = argv.source || ''
+        let targetDir = argv.target || ''
+        let name = argv.name
+        let all = (typesNum > 1) ? true : argv.all
+        let packageDir = getRootPath(sourceDir)
+
+        if (type == metaTypes.label.type) {
+            name = metaTypes.label.definition.root
+        }
+        sourceDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
+        if (targetDir == '') {
+            targetDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
+        } else {
+            targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
+        }
+        let metaDirPath = sourceDir
+
+        if (!all) {
+            let metaFilePath = path.join(metaDirPath, name)
+            if (!fileUtils.fileExists(metaFilePath)) {
+                name += metaExtension
+                metaFilePath = path.join(metaDirPath, name)
+                if (!fileUtils.fileExists(metaFilePath)) {
+                    global.logger.error('File not found: ' + metaFilePath)
+                    process.exit(1)
+                }
+            }
+            fileList.push(name)
+        } else {
+            if (fileUtils.directoryExists(sourceDir)) {
+                fileUtils.getFiles(sourceDir, metaExtension).forEach(file => {
+                    fileList.push(file)
+                })
+            }
+        }
+
+        processed.total = fileList.length
+        const promList = []
+        fileList.forEach(metaFile => {
+            const metadataItem = new metadataSplit.Split({
+                metadataDefinition: typeObj.definition,
+                sourceDir: sourceDir,
+                targetDir: targetDir,
+                metaFilePath: path.join(sourceDir, metaFile),
+                sequence: promList.length + 1,
+                total: processed.total,
+            })
+            const metadataItemProm = metadataItem.split()
+            promList.push(metadataItemProm)
+            metadataItemProm.then((resolve, reject) => {
+                if (resolve == false) {
+                    processed.errors++
+                    processed.current--
+                } else {
+                    processed.current++
+                }
+            })
+        })
+        Promise.allSettled(promList).then((results) => {
+            let message = `Split ${chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current)} file(s) ${(processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : ''}in `
+            displayMessageAndDuration(startTime, message)
+            resolve(true)
+        })
+    })
+}
