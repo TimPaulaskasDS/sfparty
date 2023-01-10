@@ -68,6 +68,8 @@ const metaTypes = {
     },
 }
 
+let types = []
+
 function getRootPath(packageDir) {
     let rootPath = fileUtils.find('sfdx-project.json')
     let defaultDir
@@ -138,10 +140,10 @@ yargs(hideBin(process.argv))
                 ])
                 .options({
                     type: {
-                        demand: true,
+                        demand: false,
                         alias: 'type',
                         description: 'type of metadata to split',
-                        demandOption: true,
+                        demandOption: false,
                         type: 'string',
                     },
                     format: {
@@ -181,7 +183,7 @@ yargs(hideBin(process.argv))
                 .check((argv, options) => {
                     const name = argv.name
                     const all = argv.all
-                    const types = argv.type.split(',')
+                    types = (argv.type !== undefined) ? argv.type.split(',') : typeArray
                     types.forEach(type => {
                         type = type.trim()
                         if (!typeArray.includes(type)) {
@@ -217,13 +219,8 @@ yargs(hideBin(process.argv))
                 })
         },
         handler: (argv) => {
-            const types = argv.type.split(',')
-            types.forEach(typeItem => {
-                const test = processSplit(typeItem, types.length, argv)
-                test.then((resolve) => {
-                    console.log()
-                })
-            })
+            global.format = argv.format
+            splitHandler(argv)
         }
     })
     .command({
@@ -311,8 +308,9 @@ yargs(hideBin(process.argv))
                 global.logger.error('Metadata type not supported: ' + type)
                 process.exit(1)
             }
-            let processList = []
             global.format = argv.format
+
+            let processList = []
             const typeObj = metaTypes[argv.type]
             const type = typeObj.type
 
@@ -418,7 +416,18 @@ process.on('SIGINT', function () {
     callAmount++;
 })
 
-function processSplit(typeItem, typesNum, argv) {
+function splitHandler(argv) {
+    const split = processSplit(types[0], argv)
+    split.then((resolve) => {
+        console.log()
+        types.shift() // remove first item from array
+        if (types.length > 0) {
+            splitHandler(argv)
+        }
+    })
+}
+
+function processSplit(typeItem, argv) {
     return new Promise((resolve, reject) => {
         const processed = {
             total: 0,
@@ -433,12 +442,11 @@ function processSplit(typeItem, typesNum, argv) {
         const typeObj = metaTypes[typeItem]
         const type = typeObj.type
         const metaExtension = `.${type}-meta.xml`
-        global.format = argv.format
 
         let sourceDir = argv.source || ''
         let targetDir = argv.target || ''
         let name = argv.name
-        let all = (typesNum > 1) ? true : argv.all
+        let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
         let packageDir = getRootPath(sourceDir)
 
         if (type == metaTypes.label.type) {
@@ -472,6 +480,13 @@ function processSplit(typeItem, typesNum, argv) {
         }
 
         processed.total = fileList.length
+
+        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+        console.log()
+        console.log(`Splitting a total of ${processed.total} file(s)`)
+        console.log()
+
         const promList = []
         fileList.forEach(metaFile => {
             const metadataItem = new metadataSplit.Split({

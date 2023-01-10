@@ -130,11 +130,6 @@ export class Split {
             if (processed.type != that.#root) {
                 processed.current = 0
                 processed.type = that.#root
-                console.log(`${chalk.bgBlackBright('Source path:')} ${that.sourceDir}`)
-                console.log(`${chalk.bgBlackBright('Target path:')} ${that.targetDir}`)
-                console.log()
-                console.log(`Splitting a total of ${that.total} file(s)`)
-                console.log()
             }
             processed.current++
             Object.keys(json).forEach(key => {
