@@ -2,9 +2,9 @@
 
 [![NPM](https://img.shields.io/npm/v/@ds-sfdc/sfparty.svg?label=@ds-sfdc/sfparty)](https://www.npmjs.com/package/@ds-sfdc/sfparty) [![Downloads/week](https://img.shields.io/npm/dw/@ds-sfdc/sfparty.svg)](https://npmjs.org/package/@ds-sfdc/sfparty) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://github.com/TimPaulaskasDS/sfparty/blob/main/LICENSE.md)
 
-## Using the template
+## What is sfparty?
 
-This tool will split Salesforce metadata XML files into YAML parts (or JSON).
+For those that are familiar with Salesforce metadata, you know that it uses large XML files. These XML files are difficult to diff, hard to read, and can cause conflicts and corrupted XML when merging. This tool will split Salesforce metadata XML files into YAML parts (or JSON), and combine them back into XML files. A great solution for your CI/CD needs.
 
 ## Install
 
@@ -27,7 +27,6 @@ sfparty combine
 
 ```
   -n, --name     name of metadata file  
-  -a, --all      all metadata files of type will be processed  
   -s, --source   package directory path specified in sfdx-project.json  
   -t, --target   target path to directory to create yaml/json files  
   -h, --help     Show help  
