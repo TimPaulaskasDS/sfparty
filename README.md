@@ -13,6 +13,73 @@ npm i @ds-sfdc/sfparty
 ```
 ## Commands
 
-<!-- commands -->
+### Split
+```bash
+sfparty split
+```
 
-<!-- commandsstop -->
+### Combine
+```bash
+sfparty combine
+```
+
+### Options
+
+```
+  -n, --name     name of metadata file  
+  -a, --all      all metadata files of type will be processed  
+  -s, --source   package directory path specified in sfdx-project.json  
+  -t, --target   target path to directory to create yaml/json files  
+  -h, --help     Show help  
+```
+## Examples
+### Custom Labels
+```bash
+sfparty split --type=label
+```
+
+### Permission Set
+```bash
+sfparty split --type=permset
+sfparty split --type=permset --name="My Permission Set"
+```
+### Profile
+```bash
+sfparty split --type=profile
+sfparty split --type=profile --name="My Profile"
+```
+### Workflow
+```bash
+sfparty split --type=workflow
+sfparty split --type=workflow --name="Workflow"
+```
+### Source Directory
+The source directory will use your default package folder as specified in the sfdx-project.json file, and therefore must be executed from your Salesforce project directory. It will create the main/default folders if they do not exist.
+
+```
+{
+    "packageDirectories": [
+        {
+            "path": "force-app",
+            "default": true
+        },
+        {
+            "path": "my-package"
+        }
+    ],
+    "namespace": "",
+    "sfdcLoginUrl": "https://login.salesforce.com",
+    "sourceApiVersion": "53.0"
+}
+```
+
+```bash
+sfparty split --source="my-package"
+```
+
+### Target Directory
+The source directory will use your default package folder as specified in the sfdx-project.json file, and append `-party` to the end. For example, if the default source path is `force-app`, then the default target directory will be `force-app-party` unless otherwise specified. The target does not need to be specified in the sfdx-project.json, however the combine command will not work on folders that are not specified in the sfdx-project.json.
+
+```bash
+sfparty split --target="test"
+```

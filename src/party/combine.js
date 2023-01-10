@@ -8,6 +8,12 @@ import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
 
 const spinner = cliSpinners['dots']
+const processed = {
+    total: 0,
+    errors: 0,
+    current: 0,
+    type: undefined,
+}
 
 export class Combine {
     #type = undefined
@@ -33,6 +39,7 @@ export class Combine {
         this.targetDir = config.targetDir
         this.metaDir = config.metaDir
         this.sequence = config.sequence
+        this.total = config.total
     }
 
     get metadataDefinition() {
@@ -102,13 +109,19 @@ export class Combine {
         })
 
         function getXML(that) {
+            if (processed.type != that.#root) {
+                processed.current = 0
+                processed.type = that.#root
+            }
+            processed.current++
+
             that.#startTime = process.hrtime.bigint()
-            that.#spinnerMessage = `[%1] of ${global.processed.total} - ${that.#root}: [%4]${chalk.yellowBright('[%5]')}[%2][%3]`
+            that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${chalk.yellowBright('[%5]')}[%2][%3]`
 
             that.#types.forEach(key => {
                 // display message
                 logUpdate(that.#spinnerMessage
-                    .replace('[%1]', that.sequence.toString().padStart(global.processed.total.toString().length, ' '))
+                    .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
                     .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
                     .replace('[%3]', `${that.#errorMessage}`)
                     .replace('[%4]', `${global.icons.working} `)
@@ -157,7 +170,7 @@ export class Combine {
                 // iterate over fileList
                 fileList.forEach((file, index) => {
                     logUpdate(that.#spinnerMessage
-                        .replace('[%1]', that.sequence.toString().padStart(global.processed.total.toString().length, ' '))
+                        .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
                         .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key} - ${index + 1} of ${fileList.length} - ${chalk.magentaBright(file)}`)
                         .replace('[%3]', `${that.#errorMessage}`)
                         .replace('[%4]', `${global.icons.working} `)
@@ -292,7 +305,7 @@ export class Combine {
             let stateIcon = (that.#errorMessage == '') ? global.icons.success : global.icons.fail
 
             logUpdate(that.#spinnerMessage
-                .replace('[%1]', that.sequence.toString().padStart(global.processed.total.toString().length, ' '))
+                .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
                 .replace('[%2]', `. Processed in ${durationMessage}.`)
                 .replace('[%3]', `${that.#errorMessage}`)
                 .replace('[%4]', `${stateIcon} `)

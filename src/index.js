@@ -9,6 +9,7 @@ import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
 import * as fileUtils from './lib/fileUtils.js'
 import * as pkgObj from '../package.json'  assert { type: "json" }
+import * as yargOptions from './meta/yargs.js'
 import * as metadataSplit from './party/split.js'
 import * as metadataCombine from './party/combine.js'
 import * as labelDefinition from './meta/CustomLabels.js'
@@ -16,8 +17,7 @@ import * as profileDefinition from './meta/Profiles.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
 
-const startTime = process.hrtime.bigint()
-
+const processStartTime = process.hrtime.bigint()
 
 global.logger = winston.createLogger({
     levels: winston.config.syslog.levels,
@@ -27,12 +27,6 @@ global.logger = winston.createLogger({
         new winston.transports.Console(),
     ],
 });
-
-global.processed = {
-    total: 0,
-    errors: 0,
-    current: 1,
-}
 
 global.icons = {
     "warn": '🔕',
@@ -102,7 +96,7 @@ let errorMessage = chalk.red('Please specify the action of ' + chalk.whiteBright
 displayHeader() // display header mast
 
 function displayHeader() {
-    const table = {
+    const box = {
         topLeft: '╭',
         topRight: '╮',
         bottomLeft: '╰',
@@ -114,10 +108,10 @@ function displayHeader() {
     let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)
-    titleMessage = chalk.blackBright(table.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(table.vertical)
-    console.log(`${chalk.blackBright(table.topLeft + table.horizontal.repeat(process.stdout.columns - 2) + table.topRight)}`)
+    titleMessage = chalk.blackBright(box.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(box.vertical)
+    console.log(`${chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
     console.log(titleMessage)
-    console.log(`${chalk.blackBright(table.bottomLeft + table.horizontal.repeat(process.stdout.columns - 2) + table.bottomRight)}`)
+    console.log(`${chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
     console.log()
 }
 
@@ -129,98 +123,14 @@ yargs(hideBin(process.argv))
         description: 'splits metadata xml to yaml/json files',
         builder: (yargs) => {
             yargs
-                .example([
-                    ['$0 split --type=profile --all'],
-                    ['$0 split --type=permset --name="Permission Set Name"'],
-                    ['--source=packageDir --target=dir/dir'],
-                    ['name portion of file: [name].profile-meta.xml'],
-                    ['Example: --name="Admin" for Admin.profile-meta.xml'],
-                    ['\nCommands not supporting name or all parameters:'],
-                    ['$0 split --type=label'],
-                ])
-                .options({
-                    type: {
-                        demand: false,
-                        alias: 'type',
-                        description: 'type of metadata to split',
-                        demandOption: false,
-                        type: 'string',
-                    },
-                    format: {
-                        demand: true,
-                        alias: 'format',
-                        default: 'yaml',
-                        description: 'type of output',
-                        demandOption: true,
-                        type: 'string',
-                    },
-                    name: {
-                        alias: 'n',
-                        description: 'name of metadata file to split',
-                        demandOption: false,
-                        type: 'string',
-                    },
-                    all: {
-                        alias: 'a',
-                        description: 'all metadata files of type will be split',
-                        demandOption: false,
-                        type: 'boolean',
-                    },
-                    source: {
-                        demand: false,
-                        alias: 's',
-                        description: 'package directory path specified in sfdx-project.json',
-                        type: 'string',
-                    },
-                    target: {
-                        demand: false,
-                        alias: 't',
-                        description: 'target path to directory to create yaml/json files',
-                        type: 'string',
-                    }
-                })
+                .example(yargOptions.splitExamples)
+                .options(yargOptions.splitOptions)
                 .choices('format', ['json', 'yaml'])
-                .check((argv, options) => {
-                    const name = argv.name
-                    const all = argv.all
-                    types = (argv.type !== undefined) ? argv.type.split(',') : typeArray
-                    types.forEach(type => {
-                        type = type.trim()
-                        if (!typeArray.includes(type)) {
-                            throw new Error(`Invalid type: ${type}`)
-                        }
-                    })
-
-                    if (types.length > 1) {
-                        // if using multiple types you cannot specify name or all
-                        if ((typeof name != 'undefined' && name != '') || (typeof all != 'undefined' && all)) {
-                            throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' or ' + chalk.whiteBright.bgRedBright('--all') + ' when using multiple types.'))
-                        }
-                        return true
-                    } else {
-                        switch (argv.type) {
-                            case 'profile':
-                            case 'permset':
-                            case 'workflow':
-                                if ((typeof name != 'undefined' || name == '') && (typeof all != 'undefined' && all)) {
-                                    throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' and ' + chalk.whiteBright.bgRedBright('--all') + ' at the same time.'))
-                                } else if (typeof name == 'undefined' && (typeof all == 'undefined' || !all)) {
-                                    throw new Error(chalk.redBright('You must specify the ' + chalk.whiteBright.bgRedBright('--name') + ' parameter or use the ' + chalk.whiteBright.bgRedBright('--all') + ' switch.'))
-                                } else {
-                                    return true // tell Yargs that the arguments passed the check
-                                }
-                            case 'label':
-                                if ((typeof name != 'undefined' && name != '') || (typeof all != 'undefined' && all)) {
-                                    throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' or ' + chalk.whiteBright.bgRedBright('--all') + ' when using label.'))
-                                }
-                                return true
-                        }
-                    }
-                })
+                .check(yargCheck)
         },
         handler: (argv) => {
             global.format = argv.format
-            splitHandler(argv)
+            splitHandler(argv, processStartTime)
         }
     })
     .command({
@@ -229,154 +139,14 @@ yargs(hideBin(process.argv))
         description: 'combines yaml/json files into metadata xml',
         builder: (yargs) => {
             yargs
-                .example([
-                    ['$0 combine --type=profile --all'],
-                    ['$0 combine --type=permset --name="Permission Set Name"'],
-                    ['--source=packageDir --target=dir/dir'],
-                    ['name portion of file: [name].profile-meta.xml'],
-                    ['Example: --name="Admin" for Admin.profile-meta.xml'],
-                    ['\nCommands not supporting name or all parameters:'],
-                    ['$0 combine --type=label'],])
-                .options({
-                    type: {
-                        demand: true,
-                        alias: 'type',
-                        description: 'type of metadata to combine',
-                        demandOption: true,
-                        type: 'string',
-                    },
-                    format: {
-                        demand: true,
-                        alias: 'format',
-                        default: 'yaml',
-                        description: 'type of output',
-                        demandOption: true,
-                        type: 'string',
-                    },
-                    name: {
-                        alias: 'n',
-                        description: 'name of metadata file to combine',
-                        demandOption: false,
-                        type: 'string',
-                    },
-                    all: {
-                        alias: 'a',
-                        description: 'all yaml/json files of type will be combined',
-                        demandOption: false,
-                        type: 'boolean',
-                    },
-                    source: {
-                        demand: false,
-                        alias: 's',
-                        description: 'package directory path specified in sfdx-project.json',
-                        type: 'string',
-                    },
-                    target: {
-                        demand: false,
-                        alias: 't',
-                        description: 'target path to directory to create xml files',
-                        type: 'string',
-                    }
-                })
-                .choices('type', typeArray)
+                .example(yargOptions.combineExamples)
+                .options(yargOptions.combineOptions)
                 .choices('format', ['json', 'yaml'])
-                .check((argv, options) => {
-                    const name = argv.name
-                    const all = argv.all
-
-                    switch (argv.type) {
-                        case 'profile':
-                        case 'permset':
-                        case 'workflow':
-                            if ((typeof name != 'undefined' || name == '') && (typeof all != 'undefined' && all)) {
-                                throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' and ' + chalk.whiteBright.bgRedBright('--all') + ' at the same time.'))
-                            } else if (typeof name == 'undefined' && (typeof all == 'undefined' || !all)) {
-                                throw new Error(chalk.redBright('You must specify the ' + chalk.whiteBright.bgRedBright('--name') + ' parameter or use the ' + chalk.whiteBright.bgRedBright('--all') + ' switch.'))
-                            } else {
-                                return true // tell Yargs that the arguments passed the check
-                            }
-                        case 'label':
-                            if ((typeof name != 'undefined' && name != '') || (typeof all != 'undefined' && all)) {
-                                throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' or ' + chalk.whiteBright.bgRedBright('--all') + ' when using label.'))
-                            }
-                            return true
-                    }
-                })
+                .check(yargCheck)
         },
         handler: (argv) => {
-            if (!typeArray.includes(argv.type)) {
-                global.logger.error('Metadata type not supported: ' + type)
-                process.exit(1)
-            }
             global.format = argv.format
-
-            let processList = []
-            const typeObj = metaTypes[argv.type]
-            const type = typeObj.type
-
-            let sourceDir = argv.source || ''
-            let targetDir = argv.target || ''
-            let name = argv.name
-            let all = argv.all
-            let packageDir = getRootPath(sourceDir)
-
-            sourceDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
-            if (targetDir == '') {
-                targetDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
-            } else {
-                targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
-            }
-
-            console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-            console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
-            console.log()
-
-            if (type == metaTypes.label.type) {
-                processList.push(metaTypes.label.definition.root)
-            } else if (!all) {
-                let metaDirPath = path.join(sourceDir, name)
-                if (!fileUtils.directoryExists(metaDirPath)) {
-                    global.logger.error('Directory not found: ' + metaDirPath)
-                    process.exit(1)
-                }
-                processList.push(name)
-            } else {
-                processList = fileUtils.getDirectories(sourceDir)
-            }
-
-            global.processed.total = processList.length
-            console.log(`Combining a total of ${global.processed.total} file(s)`)
-            console.log()
-
-            const promList = []
-            processList.forEach(metaDir => {
-                const metadataItem = new metadataCombine.Combine({
-                    metadataDefinition: typeObj.definition,
-                    sourceDir: sourceDir,
-                    targetDir: targetDir,
-                    metaDir: metaDir,
-                    sequence: promList.length + 1,
-                })
-                const metadataItemProm = metadataItem.combine()
-                promList.push(metadataItemProm)
-                metadataItemProm.then((resolve, reject) => {
-                    global.processed.current++
-                })
-            })
-
-            Promise.allSettled(promList).then((results) => {
-                let successes = 0
-                let errors = 0
-                results.forEach(result => {
-                    if (result.value == true) {
-                        successes++
-                    } else if (result.value == false) {
-                        errors++
-                    }
-                })
-                let message = `Combined ${chalk.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : ''}in `
-                displayMessageAndDuration(startTime, message)
-            })
+            combineHandler(argv, processStartTime)
         }
     })
     .demandCommand(1, errorMessage)
@@ -389,6 +159,35 @@ yargs(hideBin(process.argv))
     .help()
     .argv
     .parse
+
+function yargCheck(argv, options) {
+    const name = argv.name
+    types = (argv.type !== undefined) ? argv.type.split(',') : typeArray
+    types.forEach(type => {
+        type = type.trim()
+        if (!typeArray.includes(type)) {
+            throw new Error(`Invalid type: ${type}`)
+        }
+    })
+
+    if (types.length > 1) {
+        // if using multiple types you cannot specify name
+        if ((typeof name != 'undefined' && name != '')) {
+            throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' when using multiple types.'))
+        }
+        return true
+    } else {
+        switch (argv.type) {
+            case 'label':
+                if ((typeof name != 'undefined' && name != '')) {
+                    throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + '  when using label.'))
+                }
+                break
+            default:
+                return true
+        }
+    }
+}
 
 function displayMessageAndDuration(startTime, message) {
     const diff = process.hrtime.bigint() - BigInt(startTime)
@@ -419,10 +218,15 @@ process.on('SIGINT', function () {
 function splitHandler(argv) {
     const split = processSplit(types[0], argv)
     split.then((resolve) => {
-        console.log()
         types.shift() // remove first item from array
         if (types.length > 0) {
+            console.log()
             splitHandler(argv)
+        } else {
+            if (argv.type === undefined || argv.type.split(',').length > 1) {
+                let message = `Split completed in `
+                displayMessageAndDuration(startTime, message)
+            }
         }
     })
 }
@@ -434,10 +238,13 @@ function processSplit(typeItem, argv) {
             errors: 0,
             current: 1,
         }
+        const startTime = process.hrtime.bigint()
+
         if (!typeArray.includes(typeItem)) {
-            global.logger.error('Metadata type not supported: ' + type)
+            global.logger.error('Metadata type not supported: ' + typeItem)
             process.exit(1)
         }
+
         const fileList = []
         const typeObj = metaTypes[typeItem]
         const type = typeObj.type
@@ -510,6 +317,109 @@ function processSplit(typeItem, argv) {
         })
         Promise.allSettled(promList).then((results) => {
             let message = `Split ${chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current)} file(s) ${(processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : ''}in `
+            displayMessageAndDuration(startTime, message)
+            resolve(true)
+        })
+    })
+}
+
+function combineHandler(argv, startTime) {
+    const combine = processCombine(types[0], argv)
+    combine.then((resolve) => {
+        types.shift() // remove first item from array
+        if (types.length > 0) {
+            console.log()
+            combineHandler(argv, startTime)
+        } else {
+            if (argv.type === undefined || argv.type.split(',').length > 1) {
+                let message = `Split completed in `
+                displayMessageAndDuration(startTime, message)
+            }
+        }
+    })
+
+}
+
+function processCombine(typeItem, argv) {
+    return new Promise((resolve, reject) => {
+        const processed = {
+            total: 0,
+            errors: 0,
+            current: 1,
+        }
+        const startTime = process.hrtime.bigint()
+
+        if (!typeArray.includes(typeItem)) {
+            global.logger.error('Metadata type not supported: ' + typeItem)
+            process.exit(1)
+        }
+
+        let processList = []
+        const typeObj = metaTypes[typeItem]
+        const type = typeObj.type
+
+        let sourceDir = argv.source || ''
+        let targetDir = argv.target || ''
+        let name = argv.name
+        let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
+        let packageDir = getRootPath(sourceDir)
+
+        sourceDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
+        if (targetDir == '') {
+            targetDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
+        } else {
+            targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
+        }
+
+        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+        console.log()
+
+        if (type == metaTypes.label.type) {
+            processList.push(metaTypes.label.definition.root)
+        } else if (!all) {
+            let metaDirPath = path.join(sourceDir, name)
+            if (!fileUtils.directoryExists(metaDirPath)) {
+                global.logger.error('Directory not found: ' + metaDirPath)
+                process.exit(1)
+            }
+            processList.push(name)
+        } else {
+            processList = fileUtils.getDirectories(sourceDir)
+        }
+
+        processed.total = processList.length
+        console.log(`Combining a total of ${processed.total} file(s)`)
+        console.log()
+
+        const promList = []
+        processList.forEach(metaDir => {
+            const metadataItem = new metadataCombine.Combine({
+                metadataDefinition: typeObj.definition,
+                sourceDir: sourceDir,
+                targetDir: targetDir,
+                metaDir: metaDir,
+                sequence: promList.length + 1,
+                total: processed.total,
+            })
+            const metadataItemProm = metadataItem.combine()
+            promList.push(metadataItemProm)
+            metadataItemProm.then((resolve, reject) => {
+                processed.current++
+            })
+        })
+
+        Promise.allSettled(promList).then((results) => {
+            let successes = 0
+            let errors = 0
+            results.forEach(result => {
+                if (result.value == true) {
+                    successes++
+                } else if (result.value == false) {
+                    errors++
+                }
+            })
+            let message = `Combined ${chalk.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : ''}in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
