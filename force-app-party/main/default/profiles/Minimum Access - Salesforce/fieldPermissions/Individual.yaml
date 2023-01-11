@@ -1,0 +1,65 @@
+object: Individual
+fieldPermissions:
+  - field: BirthDate
+    editable: false
+    readable: false
+  - field: CanStorePiiElsewhere
+    editable: false
+    readable: false
+  - field: ChildrenCount
+    editable: false
+    readable: false
+  - field: ConsumerCreditScore
+    editable: false
+    readable: false
+  - field: ConsumerCreditScoreProviderName
+    editable: false
+    readable: false
+  - field: ConvictionsCount
+    editable: false
+    readable: false
+  - field: DeathDate
+    editable: false
+    readable: false
+  - field: HasOptedOutGeoTracking
+    editable: false
+    readable: false
+  - field: HasOptedOutProcessing
+    editable: false
+    readable: false
+  - field: HasOptedOutProfiling
+    editable: false
+    readable: false
+  - field: HasOptedOutSolicit
+    editable: false
+    readable: false
+  - field: HasOptedOutTracking
+    editable: false
+    readable: false
+  - field: IndividualsAge
+    editable: false
+    readable: false
+  - field: InfluencerRating
+    editable: false
+    readable: false
+  - field: IsHomeOwner
+    editable: false
+    readable: false
+  - field: MasterRecordId
+    editable: false
+    readable: false
+  - field: MilitaryService
+    editable: false
+    readable: false
+  - field: Occupation
+    editable: false
+    readable: false
+  - field: SendIndividualData
+    editable: false
+    readable: false
+  - field: ShouldForget
+    editable: false
+    readable: false
+  - field: Website
+    editable: false
+    readable: false

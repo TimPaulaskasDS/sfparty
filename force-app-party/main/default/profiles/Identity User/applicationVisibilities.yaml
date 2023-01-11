@@ -1,0 +1,67 @@
+applicationVisibilities:
+  - application: standard__AllTabSet
+    default: false
+    visible: true
+  - application: standard__AppLauncher
+    default: true
+    visible: true
+  - application: standard__Chatter
+    default: false
+    visible: true
+  - application: standard__Community
+    default: false
+    visible: true
+  - application: standard__Content
+    default: false
+    visible: true
+  - application: standard__DataManager
+    default: false
+    visible: true
+  - application: standard__Insights
+    default: false
+    visible: true
+  - application: standard__LightningBolt
+    default: false
+    visible: true
+  - application: standard__LightningInstrumentation
+    default: false
+    visible: true
+  - application: standard__LightningSales
+    default: false
+    visible: true
+  - application: standard__LightningSalesConsole
+    default: false
+    visible: true
+  - application: standard__LightningScheduler
+    default: false
+    visible: false
+  - application: standard__LightningService
+    default: false
+    visible: true
+  - application: standard__Marketing
+    default: false
+    visible: true
+  - application: standard__Platform
+    default: false
+    visible: false
+  - application: standard__QueueManagement
+    default: false
+    visible: true
+  - application: standard__RevenueCloudConsole
+    default: false
+    visible: true
+  - application: standard__Sales
+    default: false
+    visible: true
+  - application: standard__SalesforceCMS
+    default: false
+    visible: true
+  - application: standard__Service
+    default: false
+    visible: true
+  - application: standard__ServiceConsole
+    default: false
+    visible: false
+  - application: standard__Sites
+    default: false
+    visible: true

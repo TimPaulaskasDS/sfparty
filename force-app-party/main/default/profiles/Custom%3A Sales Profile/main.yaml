@@ -1,0 +1,7 @@
+main:
+  name: Custom%3A Sales Profile
+  fullName: Custom%3A Sales Profile
+  custom: true
+  userLicense: Salesforce
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

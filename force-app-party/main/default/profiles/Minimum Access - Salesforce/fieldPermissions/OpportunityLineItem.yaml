@@ -1,0 +1,23 @@
+object: OpportunityLineItem
+fieldPermissions:
+  - field: Description
+    editable: false
+    readable: false
+  - field: Discount
+    editable: false
+    readable: false
+  - field: ListPrice
+    editable: false
+    readable: false
+  - field: ProductCode
+    editable: false
+    readable: false
+  - field: ServiceDate
+    editable: false
+    readable: false
+  - field: Subtotal
+    editable: false
+    readable: false
+  - field: TotalPrice
+    editable: false
+    readable: false

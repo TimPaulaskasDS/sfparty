@@ -1,0 +1,80 @@
+object: Lead
+fieldPermissions:
+  - field: Address
+    editable: true
+    readable: true
+  - field: AnnualRevenue
+    editable: true
+    readable: true
+  - field: CleanStatus
+    editable: false
+    readable: true
+  - field: CompanyDunsNumber
+    editable: false
+    readable: true
+  - field: CurrentGenerators__c
+    editable: true
+    readable: true
+  - field: DandbCompanyId
+    editable: false
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: DoNotCall
+    editable: false
+    readable: false
+  - field: Email
+    editable: true
+    readable: true
+  - field: Fax
+    editable: true
+    readable: true
+  - field: HasOptedOutOfEmail
+    editable: false
+    readable: false
+  - field: HasOptedOutOfFax
+    editable: false
+    readable: false
+  - field: Industry
+    editable: true
+    readable: true
+  - field: Jigsaw
+    editable: true
+    readable: true
+  - field: LastTransferDate
+    editable: false
+    readable: false
+  - field: LeadSource
+    editable: true
+    readable: true
+  - field: MobilePhone
+    editable: true
+    readable: true
+  - field: NumberOfEmployees
+    editable: true
+    readable: true
+  - field: NumberofLocations__c
+    editable: true
+    readable: true
+  - field: Phone
+    editable: true
+    readable: true
+  - field: Primary__c
+    editable: true
+    readable: true
+  - field: ProductInterest__c
+    editable: true
+    readable: true
+  - field: Rating
+    editable: true
+    readable: true
+  - field: SICCode__c
+    editable: true
+    readable: true
+  - field: Title
+    editable: true
+    readable: true
+  - field: Website
+    editable: true
+    readable: true

@@ -1,0 +1,5 @@
+object: ChangeRequestRelatedItem
+fieldPermissions:
+  - field: Comment
+    editable: true
+    readable: true

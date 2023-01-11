@@ -1,0 +1,7 @@
+main:
+  name: Experience_Profile_Manager
+  label: Experience Profile Manager
+  hasActivationRequired: false
+  license: Salesforce
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

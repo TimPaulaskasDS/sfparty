@@ -1,0 +1,7 @@
+main:
+  name: Standard
+  fullName: Standard
+  custom: false
+  userLicense: Salesforce
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

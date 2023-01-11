@@ -1,0 +1,14 @@
+object: ServiceResource
+fieldPermissions:
+  - field: AccountId
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: IsActive
+    editable: true
+    readable: true
+  - field: LocationId
+    editable: true
+    readable: true

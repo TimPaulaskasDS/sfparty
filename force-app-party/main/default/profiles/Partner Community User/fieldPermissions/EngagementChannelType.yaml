@@ -1,0 +1,5 @@
+object: EngagementChannelType
+fieldPermissions:
+  - field: ContactPointType
+    editable: true
+    readable: true

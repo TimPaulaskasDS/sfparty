@@ -1,0 +1,7 @@
+main:
+  name: Read Only
+  fullName: Read Only
+  custom: true
+  userLicense: Salesforce
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

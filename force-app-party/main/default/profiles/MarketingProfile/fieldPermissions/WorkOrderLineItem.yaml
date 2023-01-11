@@ -1,0 +1,77 @@
+object: WorkOrderLineItem
+fieldPermissions:
+  - field: Address
+    editable: true
+    readable: true
+  - field: AssetId
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: Discount
+    editable: true
+    readable: true
+  - field: EndDate
+    editable: true
+    readable: true
+  - field: IsClosed
+    editable: true
+    readable: true
+  - field: ListPrice
+    editable: true
+    readable: true
+  - field: LocationId
+    editable: true
+    readable: true
+  - field: OrderId
+    editable: true
+    readable: true
+  - field: ParentWorkOrderLineItemId
+    editable: true
+    readable: true
+  - field: PricebookEntryId
+    editable: true
+    readable: true
+  - field: Priority
+    editable: true
+    readable: true
+  - field: Product2Id
+    editable: true
+    readable: true
+  - field: Quantity
+    editable: true
+    readable: true
+  - field: RootWorkOrderLineItemId
+    editable: true
+    readable: true
+  - field: ServiceAppointmentCount
+    editable: true
+    readable: true
+  - field: ServiceTerritoryId
+    editable: true
+    readable: true
+  - field: StartDate
+    editable: true
+    readable: true
+  - field: Status
+    editable: true
+    readable: true
+  - field: StatusCategory
+    editable: true
+    readable: true
+  - field: Subject
+    editable: true
+    readable: true
+  - field: Subtotal
+    editable: true
+    readable: true
+  - field: TotalPrice
+    editable: true
+    readable: true
+  - field: UnitPrice
+    editable: true
+    readable: true
+  - field: WorkTypeId
+    editable: true
+    readable: true

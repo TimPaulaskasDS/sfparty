@@ -1,0 +1,8 @@
+object: CommSubscription
+fieldPermissions:
+  - field: DataUsePurposeId
+    editable: false
+    readable: false
+  - field: IsDefault
+    editable: false
+    readable: false

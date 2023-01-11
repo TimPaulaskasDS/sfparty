@@ -1,0 +1,7 @@
+main:
+  name: Force%2Ecom - Free User
+  fullName: Force%2Ecom - Free User
+  custom: false
+  userLicense: Force.com - Free
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

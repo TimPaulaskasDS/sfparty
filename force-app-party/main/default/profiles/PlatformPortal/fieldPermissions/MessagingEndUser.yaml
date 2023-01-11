@@ -1,0 +1,14 @@
+object: MessagingEndUser
+fieldPermissions:
+  - field: AccountId
+    editable: false
+    readable: false
+  - field: ContactId
+    editable: false
+    readable: false
+  - field: HasInitialResponseSent
+    editable: false
+    readable: false
+  - field: IsOptedOut
+    editable: false
+    readable: false

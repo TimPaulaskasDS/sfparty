@@ -1,0 +1,9 @@
+fieldUpdates:
+  fullName: ChangePriorityToHigh
+  name: Changes the case priority to high.
+  field: Priority
+  notifyAssignee: false
+  protected: false
+  reevaluateOnChange: false
+  operation: Literal
+  literalValue: High

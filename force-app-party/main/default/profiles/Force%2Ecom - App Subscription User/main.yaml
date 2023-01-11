@@ -1,0 +1,7 @@
+main:
+  name: Force%2Ecom - App Subscription User
+  fullName: Force%2Ecom - App Subscription User
+  custom: false
+  userLicense: Force.com - App Subscription
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

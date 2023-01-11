@@ -1,0 +1,7 @@
+main:
+  name: Partner App Subscription User
+  fullName: Partner App Subscription User
+  custom: false
+  userLicense: Partner App Subscription
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

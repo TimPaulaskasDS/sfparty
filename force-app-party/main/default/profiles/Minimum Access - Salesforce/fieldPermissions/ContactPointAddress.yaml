@@ -1,0 +1,41 @@
+object: ContactPointAddress
+fieldPermissions:
+  - field: ActiveFromDate
+    editable: false
+    readable: false
+  - field: ActiveToDate
+    editable: false
+    readable: false
+  - field: Address
+    editable: false
+    readable: false
+  - field: AddressType
+    editable: false
+    readable: false
+  - field: BestTimeToContactEndTime
+    editable: false
+    readable: false
+  - field: BestTimeToContactStartTime
+    editable: false
+    readable: false
+  - field: BestTimeToContactTimezone
+    editable: false
+    readable: false
+  - field: ContactPointPhoneId
+    editable: false
+    readable: false
+  - field: IsDefault
+    editable: false
+    readable: false
+  - field: IsPrimary
+    editable: false
+    readable: false
+  - field: ParentId
+    editable: false
+    readable: false
+  - field: PreferenceRank
+    editable: true
+    readable: true
+  - field: UsageType
+    editable: true
+    readable: true

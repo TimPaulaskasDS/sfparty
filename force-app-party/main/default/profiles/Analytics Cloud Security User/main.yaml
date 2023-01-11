@@ -1,0 +1,7 @@
+main:
+  name: Analytics Cloud Security User
+  fullName: Analytics Cloud Security User
+  custom: false
+  userLicense: Analytics Cloud Integration User
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

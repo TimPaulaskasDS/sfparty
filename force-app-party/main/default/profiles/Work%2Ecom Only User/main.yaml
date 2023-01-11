@@ -1,0 +1,7 @@
+main:
+  name: Work%2Ecom Only User
+  fullName: Work%2Ecom Only User
+  custom: false
+  userLicense: Work.com Only
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

@@ -1,0 +1,17 @@
+object: DataUsePurpose
+fieldPermissions:
+  - field: Description
+    editable: false
+    readable: false
+  - field: IsMaintainablePerContactPoint
+    editable: false
+    readable: false
+  - field: IsMaintainablePerParty
+    editable: false
+    readable: false
+  - field: IsMaintainablePerType
+    editable: false
+    readable: false
+  - field: LegalBasisId
+    editable: false
+    readable: false

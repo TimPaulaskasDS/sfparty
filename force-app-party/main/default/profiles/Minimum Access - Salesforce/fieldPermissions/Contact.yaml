@@ -1,0 +1,74 @@
+object: Contact
+fieldPermissions:
+  - field: AccountId
+    editable: false
+    readable: false
+  - field: AssistantName
+    editable: false
+    readable: false
+  - field: AssistantPhone
+    editable: false
+    readable: false
+  - field: Birthdate
+    editable: false
+    readable: false
+  - field: CleanStatus
+    editable: false
+    readable: false
+  - field: Department
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: DoNotCall
+    editable: false
+    readable: false
+  - field: Email
+    editable: false
+    readable: false
+  - field: Fax
+    editable: false
+    readable: false
+  - field: HasOptedOutOfEmail
+    editable: false
+    readable: false
+  - field: HasOptedOutOfFax
+    editable: false
+    readable: false
+  - field: HomePhone
+    editable: false
+    readable: false
+  - field: Jigsaw
+    editable: false
+    readable: false
+  - field: Languages__c
+    editable: false
+    readable: false
+  - field: LeadSource
+    editable: false
+    readable: false
+  - field: Level__c
+    editable: false
+    readable: false
+  - field: MailingAddress
+    editable: false
+    readable: false
+  - field: MobilePhone
+    editable: false
+    readable: false
+  - field: OtherAddress
+    editable: false
+    readable: false
+  - field: OtherPhone
+    editable: false
+    readable: false
+  - field: Phone
+    editable: false
+    readable: false
+  - field: ReportsToId
+    editable: false
+    readable: false
+  - field: Title
+    editable: false
+    readable: false

@@ -1,0 +1,263 @@
+tabVisibilities:
+  - tab: standard-Account
+    visibility: DefaultOn
+  - tab: standard-AlternativePaymentMethod
+    visibility: DefaultOn
+  - tab: standard-AppLauncher
+    visibility: DefaultOn
+  - tab: standard-AppointmentInvitation
+    visibility: DefaultOff
+  - tab: standard-Asset
+    visibility: DefaultOn
+  - tab: standard-AssetAction
+    visibility: DefaultOn
+  - tab: standard-AssetActionSource
+    visibility: DefaultOn
+  - tab: standard-AssetStatePeriod
+    visibility: DefaultOn
+  - tab: standard-AsyncOperationLog
+    visibility: DefaultOn
+  - tab: standard-AuthorizationForm
+    visibility: DefaultOn
+  - tab: standard-AuthorizationFormConsent
+    visibility: DefaultOn
+  - tab: standard-AuthorizationFormDataUse
+    visibility: DefaultOn
+  - tab: standard-AuthorizationFormText
+    visibility: DefaultOn
+  - tab: standard-BackgroundOperation
+    visibility: DefaultOn
+  - tab: standard-BusinessBrand
+    visibility: DefaultOn
+  - tab: standard-Campaign
+    visibility: DefaultOn
+  - tab: standard-CardPaymentMethod
+    visibility: DefaultOn
+  - tab: standard-Case
+    visibility: DefaultOn
+  - tab: standard-ChangeRequest
+    visibility: DefaultOn
+  - tab: standard-Chatter
+    visibility: DefaultOn
+  - tab: standard-CmsAuthorHome
+    visibility: DefaultOn
+  - tab: standard-CollaborationGroup
+    visibility: DefaultOn
+  - tab: standard-CommSubscription
+    visibility: DefaultOn
+  - tab: standard-CommSubscriptionChannelType
+    visibility: DefaultOn
+  - tab: standard-CommSubscriptionConsent
+    visibility: DefaultOn
+  - tab: standard-CommSubscriptionTiming
+    visibility: DefaultOn
+  - tab: standard-ConsumptionSchedule
+    visibility: DefaultOn
+  - tab: standard-Contact
+    visibility: DefaultOn
+  - tab: standard-ContactPointConsent
+    visibility: DefaultOn
+  - tab: standard-ContactPointTypeConsent
+    visibility: DefaultOn
+  - tab: standard-ContactRequest
+    visibility: DefaultOn
+  - tab: standard-ContentSearch
+    visibility: DefaultOn
+  - tab: standard-ContentSubscriptions
+    visibility: DefaultOn
+  - tab: standard-Contract
+    visibility: DefaultOn
+  - tab: standard-ContractLineItem
+    visibility: DefaultOn
+  - tab: standard-Coupon
+    visibility: DefaultOn
+  - tab: standard-CreditMemo
+    visibility: DefaultOn
+  - tab: standard-Customer
+    visibility: DefaultOn
+  - tab: standard-DandBCompany
+    visibility: DefaultOn
+  - tab: standard-Dashboard
+    visibility: DefaultOff
+  - tab: standard-DataUseLegalBasis
+    visibility: DefaultOn
+  - tab: standard-DataUsePurpose
+    visibility: DefaultOn
+  - tab: standard-DeleteEvent
+    visibility: DefaultOn
+  - tab: standard-DigitalWallet
+    visibility: DefaultOn
+  - tab: standard-Document
+    visibility: DefaultOn
+  - tab: standard-DuplicateRecordSet
+    visibility: DefaultOn
+  - tab: standard-EmailTemplate
+    visibility: DefaultOn
+  - tab: standard-EngagementChannelType
+    visibility: DefaultOff
+  - tab: standard-EnhancedLetterhead
+    visibility: DefaultOn
+  - tab: standard-Entitlement
+    visibility: DefaultOn
+  - tab: standard-Event
+    visibility: DefaultOn
+  - tab: standard-Feed
+    visibility: DefaultOn
+  - tab: standard-File
+    visibility: DefaultOn
+  - tab: standard-FinanceBalanceSnapshot
+    visibility: DefaultOn
+  - tab: standard-FinanceTransaction
+    visibility: DefaultOn
+  - tab: standard-FlowInterview
+    visibility: DefaultOn
+  - tab: standard-FlowOrchestrationInstance
+    visibility: DefaultOn
+  - tab: standard-FlowOrchestrationWorkItem
+    visibility: DefaultOn
+  - tab: standard-Forecasting3
+    visibility: DefaultOff
+  - tab: standard-Idea
+    visibility: DefaultOn
+  - tab: standard-Image
+    visibility: DefaultOn
+  - tab: standard-Incident
+    visibility: DefaultOn
+  - tab: standard-Individual
+    visibility: DefaultOn
+  - tab: standard-Invoice
+    visibility: DefaultOn
+  - tab: standard-JigsawSearch
+    visibility: DefaultOn
+  - tab: standard-Lead
+    visibility: DefaultOn
+  - tab: standard-LegalEntity
+    visibility: DefaultOn
+  - tab: standard-LightningBoltHome
+    visibility: DefaultOn
+  - tab: standard-LightningInstrumentation
+    visibility: DefaultOn
+  - tab: standard-LightningQuickText
+    visibility: DefaultOff
+  - tab: standard-LightningSchedulerSetupAssistant
+    visibility: DefaultOn
+  - tab: standard-ListEmail
+    visibility: DefaultOn
+  - tab: standard-Location
+    visibility: DefaultOn
+  - tab: standard-LocationGroup
+    visibility: DefaultOn
+  - tab: standard-Macro
+    visibility: DefaultOn
+  - tab: standard-MessagingEndUser
+    visibility: DefaultOn
+  - tab: standard-MessagingSession
+    visibility: DefaultOn
+  - tab: standard-MobileHome
+    visibility: DefaultOn
+  - tab: standard-OperatingHours
+    visibility: DefaultOn
+  - tab: standard-Opportunity
+    visibility: DefaultOn
+  - tab: standard-Order
+    visibility: DefaultOn
+  - tab: standard-OrgMetric
+    visibility: DefaultOn
+  - tab: standard-OtherUserProfile
+    visibility: DefaultOn
+  - tab: standard-PartyConsent
+    visibility: DefaultOn
+  - tab: standard-Payment
+    visibility: DefaultOn
+  - tab: standard-PaymentAuthAdjustment
+    visibility: DefaultOn
+  - tab: standard-PaymentAuthorization
+    visibility: DefaultOn
+  - tab: standard-PaymentGateway
+    visibility: DefaultOn
+  - tab: standard-PaymentGatewayLog
+    visibility: DefaultOn
+  - tab: standard-PaymentLineInvoice
+    visibility: DefaultOn
+  - tab: standard-Pricebook2
+    visibility: DefaultOn
+  - tab: standard-Problem
+    visibility: DefaultOn
+  - tab: standard-ProcessException
+    visibility: DefaultOn
+  - tab: standard-ProcessInstanceWorkitem
+    visibility: DefaultOn
+  - tab: standard-Product2
+    visibility: DefaultOn
+  - tab: standard-ProfilePlatformFeed
+    visibility: DefaultOn
+  - tab: standard-ProfilePlatformOverview
+    visibility: DefaultOn
+  - tab: standard-PromotionSegment
+    visibility: DefaultOn
+  - tab: standard-PromotionsWorkspace
+    visibility: DefaultOn
+  - tab: standard-Recommendation
+    visibility: DefaultOn
+  - tab: standard-Refund
+    visibility: DefaultOn
+  - tab: standard-RefundLinePayment
+    visibility: DefaultOn
+  - tab: standard-RescheduleAppointments
+    visibility: DefaultOn
+  - tab: standard-ReturnOrder
+    visibility: DefaultOn
+  - tab: standard-ScheduleAppointments
+    visibility: DefaultOn
+  - tab: standard-Scorecard
+    visibility: DefaultOn
+  - tab: standard-SecurityCenterNotification
+    visibility: DefaultOn
+  - tab: standard-SecurityCenterPolicies
+    visibility: DefaultOn
+  - tab: standard-Seller
+    visibility: DefaultOn
+  - tab: standard-ServiceAppointment
+    visibility: DefaultOn
+  - tab: standard-ServiceContract
+    visibility: DefaultOn
+  - tab: standard-ServiceResource
+    visibility: DefaultOn
+  - tab: standard-ServiceTerritory
+    visibility: DefaultOn
+  - tab: standard-Shift
+    visibility: DefaultOn
+  - tab: standard-Sites
+    visibility: DefaultOn
+  - tab: standard-Solution
+    visibility: DefaultOn
+  - tab: standard-StreamingChannel
+    visibility: DefaultOn
+  - tab: standard-Task
+    visibility: DefaultOn
+  - tab: standard-Today
+    visibility: DefaultOn
+  - tab: standard-UserProfile
+    visibility: DefaultOn
+  - tab: standard-UserProvisioningRequest
+    visibility: Hidden
+  - tab: standard-VoiceCall
+    visibility: DefaultOn
+  - tab: standard-WorkOrder
+    visibility: DefaultOn
+  - tab: standard-WorkPlan
+    visibility: DefaultOn
+  - tab: standard-WorkPlanTemplate
+    visibility: DefaultOn
+  - tab: standard-WorkStepTemplate
+    visibility: DefaultOn
+  - tab: standard-WorkType
+    visibility: DefaultOn
+  - tab: standard-WorkTypeGroup
+    visibility: DefaultOn
+  - tab: standard-Workspace
+    visibility: DefaultOn
+  - tab: standard-home
+    visibility: DefaultOn
+  - tab: standard-report
+    visibility: DefaultOff

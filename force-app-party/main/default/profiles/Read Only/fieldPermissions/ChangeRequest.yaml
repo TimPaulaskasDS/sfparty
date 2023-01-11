@@ -1,0 +1,44 @@
+object: ChangeRequest
+fieldPermissions:
+  - field: BusinessJustification
+    editable: true
+    readable: true
+  - field: BusinessReason
+    editable: true
+    readable: true
+  - field: Category
+    editable: true
+    readable: true
+  - field: ChangeType
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: EstimatedEndTime
+    editable: true
+    readable: true
+  - field: EstimatedStartTime
+    editable: true
+    readable: true
+  - field: FinalReviewDateTime
+    editable: true
+    readable: true
+  - field: FinalReviewNotes
+    editable: true
+    readable: true
+  - field: RelatedIssueAutonumberMaster
+    editable: true
+    readable: true
+  - field: RelatedItemAutonumberMaster
+    editable: true
+    readable: true
+  - field: RemediationPlan
+    editable: true
+    readable: true
+  - field: ReviewerId
+    editable: true
+    readable: true
+  - field: RiskImpactAnalysis
+    editable: true
+    readable: true

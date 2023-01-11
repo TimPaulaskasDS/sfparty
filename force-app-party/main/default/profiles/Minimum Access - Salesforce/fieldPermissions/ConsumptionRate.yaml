@@ -1,0 +1,8 @@
+object: ConsumptionRate
+fieldPermissions:
+  - field: Description
+    editable: false
+    readable: false
+  - field: UpperBound
+    editable: false
+    readable: false

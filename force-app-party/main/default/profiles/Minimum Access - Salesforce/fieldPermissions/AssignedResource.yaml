@@ -1,0 +1,11 @@
+object: AssignedResource
+fieldPermissions:
+  - field: EventId
+    editable: false
+    readable: false
+  - field: IsRequiredResource
+    editable: false
+    readable: false
+  - field: Role
+    editable: false
+    readable: false

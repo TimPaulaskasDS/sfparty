@@ -1,0 +1,603 @@
+userPermissions:
+  - name: AICreateInsightObjects
+    enabled: false
+  - name: AIViewInsightObjects
+    enabled: false
+  - name: AccessCMC
+    enabled: false
+  - name: AccessContentBuilder
+    enabled: false
+  - name: AccessToServiceProcess
+    enabled: false
+  - name: AccountSwitcherUser
+    enabled: false
+  - name: ActivateContract
+    enabled: false
+  - name: ActivateOrder
+    enabled: false
+  - name: ActivitiesAccess
+    enabled: true
+  - name: AddAnalyticsRemoteConnections
+    enabled: false
+  - name: AddDirectMessageMembers
+    enabled: false
+  - name: AddWaveNotificationRecipients
+    enabled: false
+  - name: AllowEmailIC
+    enabled: false
+  - name: AllowLightningLogin
+    enabled: false
+  - name: AllowUniversalSearch
+    enabled: false
+  - name: AllowViewEditConvertedLeads
+    enabled: false
+  - name: AllowViewKnowledge
+    enabled: true
+  - name: ApexRestServices
+    enabled: true
+  - name: ApiEnabled
+    enabled: true
+  - name: AppointmentBookingUserAccess
+    enabled: false
+  - name: AssignPermissionSets
+    enabled: false
+  - name: AssignTopics
+    enabled: true
+  - name: AuthorApex
+    enabled: false
+  - name: AutomaticActivityCapture
+    enabled: false
+  - name: B2BMarketingAnalyticsUser
+    enabled: false
+  - name: BotManageBots
+    enabled: false
+  - name: BotManageBotsTrainingData
+    enabled: false
+  - name: BulkApiHardDelete
+    enabled: false
+  - name: BulkMacrosAllowed
+    enabled: false
+  - name: BypassMFAForUiLogins
+    enabled: false
+  - name: CampaignInfluence2
+    enabled: false
+  - name: CanAccessCE
+    enabled: false
+  - name: CanApproveFeedPost
+    enabled: false
+  - name: CanEditDataPrepRecipe
+    enabled: false
+  - name: CanEditPrompts
+    enabled: false
+  - name: CanInsertFeedSystemFields
+    enabled: false
+  - name: CanManageMaps
+    enabled: false
+  - name: CanToggleCallRecordings
+    enabled: false
+  - name: CanUseNewDashboardBuilder
+    enabled: false
+  - name: CanVerifyComment
+    enabled: false
+  - name: ChangeDashboardColors
+    enabled: false
+  - name: ChatterComposeUiCodesnippet
+    enabled: false
+  - name: ChatterEditOwnPost
+    enabled: false
+  - name: ChatterEditOwnRecordPost
+    enabled: false
+  - name: ChatterFileLink
+    enabled: false
+  - name: ChatterInternalUser
+    enabled: true
+  - name: ChatterInviteExternalUsers
+    enabled: true
+  - name: ChatterOwnGroups
+    enabled: true
+  - name: ClientSecretRotation
+    enabled: false
+  - name: CloseConversations
+    enabled: false
+  - name: ConfigCustomRecs
+    enabled: false
+  - name: ConfigureLiveMessage
+    enabled: false
+  - name: ConfigureScopedAccessGroup
+    enabled: false
+  - name: ConnectOrgToEnvironmentHub
+    enabled: false
+  - name: ConsentApiUpdate
+    enabled: false
+  - name: ContentAdministrator
+    enabled: false
+  - name: ContentHubUser
+    enabled: false
+  - name: ContentWorkspaces
+    enabled: false
+  - name: ConvertLeads
+    enabled: true
+  - name: CreateCustomizeDashboards
+    enabled: false
+  - name: CreateCustomizeFilters
+    enabled: true
+  - name: CreateCustomizeReports
+    enabled: true
+  - name: CreateDashboardFolders
+    enabled: false
+  - name: CreateLtngTempFolder
+    enabled: false
+  - name: CreateLtngTempInPub
+    enabled: false
+  - name: CreatePackaging
+    enabled: false
+  - name: CreateReportFolders
+    enabled: false
+  - name: CreateReportInLightning
+    enabled: false
+  - name: CreateTopics
+    enabled: true
+  - name: CreateWorkspaces
+    enabled: false
+  - name: CustomMobileAppsAccess
+    enabled: false
+  - name: CustomSidebarOnAllPages
+    enabled: false
+  - name: CustomizeApplication
+    enabled: false
+  - name: DataExport
+    enabled: false
+  - name: DelegatedTwoFactor
+    enabled: false
+  - name: DeleteActivatedContract
+    enabled: false
+  - name: DeleteTopics
+    enabled: false
+  - name: DistributeFromPersWksp
+    enabled: true
+  - name: EditActivatedOrders
+    enabled: false
+  - name: EditBillingInfo
+    enabled: false
+  - name: EditBrandTemplates
+    enabled: false
+  - name: EditCaseComments
+    enabled: false
+  - name: EditEvent
+    enabled: true
+  - name: EditHtmlTemplates
+    enabled: false
+  - name: EditKnowledge
+    enabled: false
+  - name: EditMyDashboards
+    enabled: false
+  - name: EditMyReports
+    enabled: false
+  - name: EditOppLineItemUnitPrice
+    enabled: true
+  - name: EditPublicDocuments
+    enabled: false
+  - name: EditPublicFilters
+    enabled: false
+  - name: EditPublicTemplates
+    enabled: false
+  - name: EditReadonlyFields
+    enabled: false
+  - name: EditRepricing
+    enabled: false
+  - name: EditTask
+    enabled: true
+  - name: EditTopics
+    enabled: true
+  - name: EmailAdministration
+    enabled: true
+  - name: EmailMass
+    enabled: true
+  - name: EmailSingle
+    enabled: true
+  - name: EmailTemplateManagement
+    enabled: true
+  - name: EnableBCTransactionPolling
+    enabled: false
+  - name: EnableCommunityAppLauncher
+    enabled: false
+  - name: EnableIPFSUpload
+    enabled: false
+  - name: EnableNotifications
+    enabled: true
+  - name: ExportReport
+    enabled: true
+  - name: FSCArcGraphCommunityUser
+    enabled: false
+  - name: FSCComprehensiveUserAccess
+    enabled: false
+  - name: FeedPinning
+    enabled: false
+  - name: FlowUFLRequired
+    enabled: true
+  - name: ForceTwoFactor
+    enabled: false
+  - name: GiveRecognitionBadge
+    enabled: false
+  - name: GovernNetworks
+    enabled: false
+  - name: HasUnlimitedNBAExecutions
+    enabled: false
+  - name: HeadlessCMSAccess
+    enabled: false
+  - name: HideReadByList
+    enabled: false
+  - name: IdentityConnect
+    enabled: false
+  - name: IdentityEnabled
+    enabled: false
+  - name: ImportCustomObjects
+    enabled: false
+  - name: ImportLeads
+    enabled: false
+  - name: ImportPersonal
+    enabled: true
+  - name: InsightsAppAdmin
+    enabled: false
+  - name: InsightsAppDashboardEditor
+    enabled: false
+  - name: InsightsAppEltEditor
+    enabled: false
+  - name: InsightsAppUploadUser
+    enabled: false
+  - name: InsightsAppUser
+    enabled: false
+  - name: InsightsCreateApplication
+    enabled: false
+  - name: InstallPackaging
+    enabled: false
+  - name: IsContactCenterAdmin
+    enabled: false
+  - name: IsContactCenterAgent
+    enabled: false
+  - name: IsContactCenterSupervisor
+    enabled: false
+  - name: IsotopeAccess
+    enabled: false
+  - name: IsotopeCToCUser
+    enabled: false
+  - name: IsotopeLEX
+    enabled: false
+  - name: LMEndMessagingSessionUserPerm
+    enabled: false
+  - name: LMOutboundMessagingUserPerm
+    enabled: false
+  - name: LearningManager
+    enabled: false
+  - name: LifecycleManagementAPIUser
+    enabled: false
+  - name: LightningConsoleAllowedForUser
+    enabled: true
+  - name: LightningExperienceUser
+    enabled: false
+  - name: LightningSchedulerUserAccess
+    enabled: false
+  - name: ListEmailSend
+    enabled: true
+  - name: LiveMessageAgent
+    enabled: false
+  - name: LtngPromoReserved01UserPerm
+    enabled: false
+  - name: ManageAnalyticSnapshots
+    enabled: false
+  - name: ManageAuthProviders
+    enabled: false
+  - name: ManageBusinessHourHolidays
+    enabled: false
+  - name: ManageC360AConnections
+    enabled: false
+  - name: ManageCMS
+    enabled: false
+  - name: ManageCallCenters
+    enabled: false
+  - name: ManageCases
+    enabled: true
+  - name: ManageCategories
+    enabled: false
+  - name: ManageCertificates
+    enabled: false
+  - name: ManageChatterMessages
+    enabled: false
+  - name: ManageContentPermissions
+    enabled: false
+  - name: ManageContentProperties
+    enabled: false
+  - name: ManageContentTypes
+    enabled: false
+  - name: ManageCustomPermissions
+    enabled: false
+  - name: ManageCustomReportTypes
+    enabled: false
+  - name: ManageDashbdsInPubFolders
+    enabled: false
+  - name: ManageDataCategories
+    enabled: false
+  - name: ManageDataIntegrations
+    enabled: false
+  - name: ManageDynamicDashboards
+    enabled: false
+  - name: ManageEmailClientConfig
+    enabled: false
+  - name: ManageEncryptionKeys
+    enabled: true
+  - name: ManageEntitlements
+    enabled: false
+  - name: ManageExchangeConfig
+    enabled: false
+  - name: ManageExternalConnections
+    enabled: false
+  - name: ManageHealthCheck
+    enabled: false
+  - name: ManageHubConnections
+    enabled: false
+  - name: ManageInteraction
+    enabled: false
+  - name: ManageInternalUsers
+    enabled: false
+  - name: ManageIpAddresses
+    enabled: false
+  - name: ManageKnowledge
+    enabled: false
+  - name: ManageKnowledgeImportExport
+    enabled: false
+  - name: ManageLeads
+    enabled: false
+  - name: ManageLearningReporting
+    enabled: false
+  - name: ManageLoginAccessPolicies
+    enabled: false
+  - name: ManageMobile
+    enabled: false
+  - name: ManageNetworks
+    enabled: false
+  - name: ManageOrchInstsAndWorkItems
+    enabled: false
+  - name: ManagePasswordPolicies
+    enabled: false
+  - name: ManageProfilesPermissionsets
+    enabled: false
+  - name: ManagePropositions
+    enabled: false
+  - name: ManagePvtRptsAndDashbds
+    enabled: false
+  - name: ManageRecommendationStrategies
+    enabled: false
+  - name: ManageReleaseUpdates
+    enabled: false
+  - name: ManageRemoteAccess
+    enabled: false
+  - name: ManageReportsInPubFolders
+    enabled: false
+  - name: ManageRoles
+    enabled: false
+  - name: ManageScopedAccessGroup
+    enabled: false
+  - name: ManageSearchPromotionRules
+    enabled: false
+  - name: ManageSecurityCommandCenter
+    enabled: false
+  - name: ManageSessionPermissionSets
+    enabled: false
+  - name: ManageSharing
+    enabled: false
+  - name: ManageSolutions
+    enabled: true
+  - name: ManageSubscriptions
+    enabled: false
+  - name: ManageSurveys
+    enabled: false
+  - name: ManageSynonyms
+    enabled: false
+  - name: ManageTemplatedApp
+    enabled: false
+  - name: ManageTwoFactor
+    enabled: false
+  - name: ManageUnlistedGroups
+    enabled: false
+  - name: ManageUsers
+    enabled: false
+  - name: MassInlineEdit
+    enabled: false
+  - name: MergeTopics
+    enabled: false
+  - name: ModerateChatter
+    enabled: false
+  - name: ModerateNetworkUsers
+    enabled: false
+  - name: ModifyAllData
+    enabled: false
+  - name: ModifyDataClassification
+    enabled: false
+  - name: ModifyMetadata
+    enabled: false
+  - name: MultiStepSchedulingUser
+    enabled: false
+  - name: NativeWebviewScrolling
+    enabled: false
+  - name: NewReportBuilder
+    enabled: false
+  - name: OmnichannelInventorySync
+    enabled: false
+  - name: Packaging2
+    enabled: false
+  - name: Packaging2Delete
+    enabled: false
+  - name: PasswordNeverExpires
+    enabled: false
+  - name: PaymentsAPIUser
+    enabled: false
+  - name: PreventClassicExperience
+    enabled: false
+  - name: PrivacyDataAccess
+    enabled: false
+  - name: PublishPackaging
+    enabled: false
+  - name: QueryAllFiles
+    enabled: false
+  - name: QuipMetricsAccess
+    enabled: false
+  - name: QuipUserEngagementMetrics
+    enabled: false
+  - name: RecordVisibilityAPI
+    enabled: false
+  - name: RemoteMediaVirtualDesktop
+    enabled: false
+  - name: RemoveDirectMessageMembers
+    enabled: false
+  - name: ResetPasswords
+    enabled: false
+  - name: RunFlow
+    enabled: false
+  - name: RunReports
+    enabled: true
+  - name: SalesConsole
+    enabled: false
+  - name: SandboxTestingInCommunityApp
+    enabled: false
+  - name: ScheduleReports
+    enabled: false
+  - name: SchedulingFacilityManager
+    enabled: false
+  - name: SchedulingLineAmbassador
+    enabled: false
+  - name: SelectFilesFromSalesforce
+    enabled: true
+  - name: SendAnnouncementEmails
+    enabled: false
+  - name: SendCustomNotifications
+    enabled: false
+  - name: SendSitRequests
+    enabled: true
+  - name: ShareInternalArticles
+    enabled: false
+  - name: ShowCompanyNameAsUserBadge
+    enabled: true
+  - name: SkipIdentityConfirmation
+    enabled: false
+  - name: SolutionImport
+    enabled: false
+  - name: StdAutomaticActivityCapture
+    enabled: false
+  - name: SubmitMacrosAllowed
+    enabled: true
+  - name: SubscribeDashboardRolesGrps
+    enabled: false
+  - name: SubscribeDashboardToOtherUsers
+    enabled: false
+  - name: SubscribeReportRolesGrps
+    enabled: false
+  - name: SubscribeReportToOtherUsers
+    enabled: false
+  - name: SubscribeReportsRunAsUser
+    enabled: false
+  - name: SubscribeToLightningDashboards
+    enabled: false
+  - name: SubscribeToLightningReports
+    enabled: true
+  - name: TraceXdsQueries
+    enabled: false
+  - name: TransactionSecurityExempt
+    enabled: false
+  - name: TransactionalEmailSend
+    enabled: true
+  - name: TransferAnyCase
+    enabled: true
+  - name: TransferAnyEntity
+    enabled: false
+  - name: TransferAnyLead
+    enabled: false
+  - name: TwoFactorApi
+    enabled: false
+  - name: UseAddOrderItemSummaryAPIs
+    enabled: false
+  - name: UseAssistantDialog
+    enabled: false
+  - name: UseMySearch
+    enabled: false
+  - name: UseOmnichannelInventoryAPIs
+    enabled: false
+  - name: UseQuerySuggestions
+    enabled: false
+  - name: UseRepricing
+    enabled: false
+  - name: UseReturnOrder
+    enabled: false
+  - name: UseReturnOrderAPIs
+    enabled: false
+  - name: UseSubscriptionEmails
+    enabled: false
+  - name: UseTeamReassignWizards
+    enabled: false
+  - name: UseTemplatedApp
+    enabled: false
+  - name: UseWebLink
+    enabled: true
+  - name: ViewAllActivities
+    enabled: false
+  - name: ViewAllCustomSettings
+    enabled: false
+  - name: ViewAllData
+    enabled: false
+  - name: ViewAllForeignKeyNames
+    enabled: false
+  - name: ViewAllProfiles
+    enabled: false
+  - name: ViewAllUsers
+    enabled: false
+  - name: ViewAnomalyEvents
+    enabled: false
+  - name: ViewContent
+    enabled: false
+  - name: ViewDataAssessment
+    enabled: false
+  - name: ViewDataCategories
+    enabled: false
+  - name: ViewDataLeakageEvents
+    enabled: false
+  - name: ViewDeveloperName
+    enabled: false
+  - name: ViewEncryptedData
+    enabled: false
+  - name: ViewEventLogFiles
+    enabled: true
+  - name: ViewHealthCheck
+    enabled: false
+  - name: ViewHelpLink
+    enabled: true
+  - name: ViewMLModels
+    enabled: false
+  - name: ViewMyTeamsDashboards
+    enabled: false
+  - name: ViewOnlyEmbeddedAppUser
+    enabled: false
+  - name: ViewPlatformEvents
+    enabled: false
+  - name: ViewPrivateStaticResources
+    enabled: false
+  - name: ViewPublicDashboards
+    enabled: false
+  - name: ViewPublicReports
+    enabled: false
+  - name: ViewRestrictionAndScopingRules
+    enabled: false
+  - name: ViewRoles
+    enabled: true
+  - name: ViewSecurityCommandCenter
+    enabled: false
+  - name: ViewSetup
+    enabled: true
+  - name: ViewUserPII
+    enabled: false
+  - name: WaveManagePrivateAssetsUser
+    enabled: false
+  - name: WaveTabularDownload
+    enabled: false
+  - name: WorkCalibrationUser
+    enabled: false
+  - name: WorkDotComUserPerm
+    enabled: false

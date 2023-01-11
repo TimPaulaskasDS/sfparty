@@ -1,0 +1,14 @@
+object: ServiceTerritoryMember
+fieldPermissions:
+  - field: Address
+    editable: false
+    readable: false
+  - field: EffectiveEndDate
+    editable: false
+    readable: false
+  - field: OperatingHoursId
+    editable: false
+    readable: false
+  - field: Role
+    editable: false
+    readable: false

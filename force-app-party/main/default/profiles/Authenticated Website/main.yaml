@@ -1,0 +1,7 @@
+main:
+  name: Authenticated Website
+  fullName: Authenticated Website
+  custom: false
+  userLicense: Authenticated Website
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

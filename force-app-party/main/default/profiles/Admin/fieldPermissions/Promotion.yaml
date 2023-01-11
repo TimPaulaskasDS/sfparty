@@ -1,0 +1,41 @@
+object: Promotion
+fieldPermissions:
+  - field: AreQualItemsExclFromDiscounts
+    editable: false
+    readable: false
+  - field: DiscountOrder
+    editable: false
+    readable: false
+  - field: DiscountRestriction
+    editable: false
+    readable: false
+  - field: DisplayName
+    editable: true
+    readable: true
+  - field: EndDateTime
+    editable: true
+    readable: true
+  - field: IsAutomatic
+    editable: true
+    readable: true
+  - field: IsCommercePromotion
+    editable: true
+    readable: true
+  - field: MaximumUsageCount
+    editable: true
+    readable: true
+  - field: PriorityNumber
+    editable: true
+    readable: true
+  - field: QualifierCriteria
+    editable: true
+    readable: true
+  - field: StartDateTime
+    editable: true
+    readable: true
+  - field: TargetCriteria
+    editable: false
+    readable: false
+  - field: TermsAndConditions
+    editable: true
+    readable: true

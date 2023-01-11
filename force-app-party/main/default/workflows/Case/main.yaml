@@ -1,0 +1,4 @@
+main:
+  name: Case
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

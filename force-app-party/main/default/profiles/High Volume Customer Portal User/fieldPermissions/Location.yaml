@@ -1,0 +1,41 @@
+object: Location
+fieldPermissions:
+  - field: CloseDate
+    editable: false
+    readable: false
+  - field: ConstructionEndDate
+    editable: false
+    readable: false
+  - field: ConstructionStartDate
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: DrivingDirections
+    editable: false
+    readable: false
+  - field: Location
+    editable: false
+    readable: false
+  - field: LocationLevel
+    editable: false
+    readable: false
+  - field: OpenDate
+    editable: false
+    readable: false
+  - field: ParentLocationId
+    editable: false
+    readable: false
+  - field: PossessionDate
+    editable: false
+    readable: false
+  - field: RemodelEndDate
+    editable: false
+    readable: false
+  - field: RemodelStartDate
+    editable: false
+    readable: false
+  - field: TimeZone
+    editable: false
+    readable: false

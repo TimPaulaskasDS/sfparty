@@ -1,0 +1,7 @@
+main:
+  name: Partner Community Login User
+  fullName: Partner Community Login User
+  custom: false
+  userLicense: Partner Community Login
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

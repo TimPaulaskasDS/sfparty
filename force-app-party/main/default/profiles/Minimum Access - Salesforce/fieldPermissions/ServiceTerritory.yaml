@@ -1,0 +1,17 @@
+object: ServiceTerritory
+fieldPermissions:
+  - field: Address
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: IsActive
+    editable: false
+    readable: false
+  - field: TopLevelTerritoryId
+    editable: false
+    readable: false
+  - field: TypicalInTerritoryTravelTime
+    editable: false
+    readable: false

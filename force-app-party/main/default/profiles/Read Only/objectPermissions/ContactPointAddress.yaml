@@ -1,0 +1,8 @@
+object: ContactPointAddress
+objectPermissions:
+  - allowCreate: false
+    allowRead: true
+    allowEdit: false
+    allowDelete: false
+    viewAllRecords: false
+    modifyAllRecords: false

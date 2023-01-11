@@ -1,0 +1,53 @@
+object: Entitlement
+fieldPermissions:
+  - field: AssetId
+    editable: true
+    readable: true
+  - field: BusinessHoursId
+    editable: true
+    readable: true
+  - field: CasesPerEntitlement
+    editable: true
+    readable: true
+  - field: ContractLineItemId
+    editable: true
+    readable: true
+  - field: EndDate
+    editable: true
+    readable: true
+  - field: IsPerIncident
+    editable: true
+    readable: true
+  - field: LocationId
+    editable: true
+    readable: true
+  - field: RemainingCases
+    editable: true
+    readable: true
+  - field: RemainingWorkOrders
+    editable: true
+    readable: true
+  - field: ServiceContractId
+    editable: true
+    readable: true
+  - field: SlaProcessId
+    editable: true
+    readable: true
+  - field: StartDate
+    editable: true
+    readable: true
+  - field: Status
+    editable: true
+    readable: true
+  - field: StatusIndicator
+    editable: true
+    readable: true
+  - field: SvcApptBookingWindowsId
+    editable: true
+    readable: true
+  - field: Type
+    editable: true
+    readable: true
+  - field: WorkOrdersPerEntitlement
+    editable: true
+    readable: true

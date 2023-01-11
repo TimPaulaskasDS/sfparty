@@ -16,6 +16,7 @@ import * as labelDefinition from './meta/CustomLabels.js'
 import * as profileDefinition from './meta/Profiles.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
+import * as git from './lib/gitUtils.js'
 
 const processStartTime = process.hrtime.bigint()
 
@@ -34,6 +35,12 @@ global.icons = {
     "fail": '❗',
     "working": '⏳',
     "party": '🎉',
+}
+
+global.displayError = (error, quit = false) => {
+    global.logger.error(error)
+    console.info(error)
+    if (quit) process.exit(1)
 }
 
 const typeArray = [
@@ -117,6 +124,14 @@ function displayHeader() {
 
 yargs(hideBin(process.argv))
     .alias('h', 'help')
+    .command({
+        command: '[test]',
+        alias: 'test',
+        handler: (argv) => {
+            // THIS IS A PLACE TO TEST NEW CODE
+            global.logger.info(chalk.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
+        }
+    })
     .command({
         command: '[split]',
         alias: 'split',
@@ -215,13 +230,13 @@ process.on('SIGINT', function () {
     callAmount++;
 })
 
-function splitHandler(argv) {
+function splitHandler(argv, startTime) {
     const split = processSplit(types[0], argv)
     split.then((resolve) => {
         types.shift() // remove first item from array
         if (types.length > 0) {
             console.log()
-            splitHandler(argv)
+            splitHandler(argv, startTime)
         } else {
             if (argv.type === undefined || argv.type.split(',').length > 1) {
                 let message = `Split completed in `

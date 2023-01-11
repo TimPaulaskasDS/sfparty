@@ -1,0 +1,53 @@
+object: ContactPointPhone
+fieldPermissions:
+  - field: ActiveFromDate
+    editable: false
+    readable: false
+  - field: AreaCode
+    editable: false
+    readable: false
+  - field: BestTimeToContactEndTime
+    editable: false
+    readable: false
+  - field: BestTimeToContactStartTime
+    editable: false
+    readable: false
+  - field: BestTimeToContactTimezone
+    editable: false
+    readable: false
+  - field: ExtensionNumber
+    editable: false
+    readable: false
+  - field: FormattedInternationalPhoneNumber
+    editable: false
+    readable: false
+  - field: FormattedNationalPhoneNumber
+    editable: false
+    readable: false
+  - field: IsBusinessPhone
+    editable: false
+    readable: false
+  - field: IsFaxCapable
+    editable: false
+    readable: false
+  - field: IsPersonalPhone
+    editable: false
+    readable: false
+  - field: IsPrimary
+    editable: false
+    readable: false
+  - field: IsSmsCapable
+    editable: false
+    readable: false
+  - field: ParentId
+    editable: false
+    readable: false
+  - field: PhoneType
+    editable: false
+    readable: false
+  - field: PreferenceRank
+    editable: true
+    readable: true
+  - field: UsageType
+    editable: true
+    readable: true

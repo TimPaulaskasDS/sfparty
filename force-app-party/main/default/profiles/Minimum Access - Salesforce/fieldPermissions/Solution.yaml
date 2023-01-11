@@ -1,0 +1,11 @@
+object: Solution
+fieldPermissions:
+  - field: IsPublished
+    editable: false
+    readable: false
+  - field: IsPublishedInPublicKb
+    editable: false
+    readable: false
+  - field: SolutionNote
+    editable: false
+    readable: false

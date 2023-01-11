@@ -1,0 +1,23 @@
+userPermissions:
+  - name: AccessCMC
+    enabled: true
+  - name: CreateCustomizeReports
+    enabled: true
+  - name: CreateReportInLightning
+    enabled: true
+  - name: EnableCommunityAppLauncher
+    enabled: true
+  - name: GovernNetworks
+    enabled: true
+  - name: IsotopeLEX
+    enabled: true
+  - name: LightningExperienceUser
+    enabled: true
+  - name: ManageNetworks
+    enabled: true
+  - name: ModerateNetworkUsers
+    enabled: true
+  - name: RunReports
+    enabled: true
+  - name: SandboxTestingInCommunityApp
+    enabled: true

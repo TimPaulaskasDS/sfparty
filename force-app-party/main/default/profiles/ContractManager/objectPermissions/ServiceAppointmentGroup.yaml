@@ -1,0 +1,8 @@
+object: ServiceAppointmentGroup
+objectPermissions:
+  - allowCreate: false
+    allowRead: false
+    allowEdit: false
+    allowDelete: false
+    viewAllRecords: false
+    modifyAllRecords: false

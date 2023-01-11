@@ -1,0 +1,5 @@
+object: CommSubscriptionConsent
+fieldPermissions:
+  - field: EffectiveToDate
+    editable: false
+    readable: false
