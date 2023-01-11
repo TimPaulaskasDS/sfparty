@@ -1,0 +1,14 @@
+object: WorkStepTemplate
+fieldPermissions:
+  - field: ActionDefinition
+    editable: true
+    readable: true
+  - field: ActionType
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: IsActive
+    editable: true
+    readable: true

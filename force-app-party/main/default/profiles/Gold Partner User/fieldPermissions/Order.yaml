@@ -1,0 +1,62 @@
+object: Order
+fieldPermissions:
+  - field: ActivatedById
+    editable: false
+    readable: true
+  - field: ActivatedDate
+    editable: false
+    readable: true
+  - field: BillToContactId
+    editable: true
+    readable: true
+  - field: BillingAddress
+    editable: true
+    readable: true
+  - field: CompanyAuthorizedById
+    editable: true
+    readable: true
+  - field: CompanyAuthorizedDate
+    editable: true
+    readable: true
+  - field: ContractEndDate
+    editable: false
+    readable: true
+  - field: ContractName
+    editable: false
+    readable: true
+  - field: CustomerAuthorizedById
+    editable: true
+    readable: true
+  - field: CustomerAuthorizedDate
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: Name
+    editable: true
+    readable: true
+  - field: OpportunityId
+    editable: false
+    readable: false
+  - field: OrderReferenceNumber
+    editable: true
+    readable: true
+  - field: PoDate
+    editable: true
+    readable: true
+  - field: PoNumber
+    editable: true
+    readable: true
+  - field: ShipToContactId
+    editable: true
+    readable: true
+  - field: ShippingAddress
+    editable: true
+    readable: true
+  - field: TotalAmount
+    editable: false
+    readable: true
+  - field: Type
+    editable: true
+    readable: true

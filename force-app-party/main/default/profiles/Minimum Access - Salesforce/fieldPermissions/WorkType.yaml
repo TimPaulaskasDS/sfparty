@@ -1,0 +1,32 @@
+object: WorkType
+fieldPermissions:
+  - field: BlockTimeAfterAppointment
+    editable: false
+    readable: false
+  - field: BlockTimeAfterUnit
+    editable: false
+    readable: false
+  - field: BlockTimeBeforeAppointment
+    editable: false
+    readable: false
+  - field: BlockTimeBeforeUnit
+    editable: false
+    readable: false
+  - field: DefaultAppointmentType
+    editable: false
+    readable: false
+  - field: OperatingHoursId
+    editable: false
+    readable: false
+  - field: TimeFrameEndUnit
+    editable: false
+    readable: false
+  - field: TimeFrameStartUnit
+    editable: false
+    readable: false
+  - field: TimeframeEnd
+    editable: false
+    readable: false
+  - field: TimeframeStart
+    editable: false
+    readable: false

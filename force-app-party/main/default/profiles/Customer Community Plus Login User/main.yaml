@@ -1,0 +1,7 @@
+main:
+  name: Customer Community Plus Login User
+  fullName: Customer Community Plus Login User
+  custom: false
+  userLicense: Customer Community Plus Login
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

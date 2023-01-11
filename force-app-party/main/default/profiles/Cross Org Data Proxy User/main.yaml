@@ -1,0 +1,7 @@
+main:
+  name: Cross Org Data Proxy User
+  fullName: Cross Org Data Proxy User
+  custom: false
+  userLicense: XOrg Proxy User
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

@@ -1,0 +1,101 @@
+object: Case
+fieldPermissions:
+  - field: AccountId
+    editable: false
+    readable: true
+  - field: AssetId
+    editable: true
+    readable: true
+  - field: BusinessHoursId
+    editable: false
+    readable: false
+  - field: ClosedDate
+    editable: false
+    readable: true
+  - field: ClosedOnCreate
+    editable: false
+    readable: false
+  - field: ContactId
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: EngineeringReqNumber__c
+    editable: false
+    readable: false
+  - field: EntitlementId
+    editable: false
+    readable: false
+  - field: IsClosedOnCreate
+    editable: false
+    readable: false
+  - field: IsEscalated
+    editable: false
+    readable: true
+  - field: IsStopped
+    editable: false
+    readable: false
+  - field: MilestoneStatus
+    editable: false
+    readable: false
+  - field: MilestoneStatusIcon
+    editable: false
+    readable: false
+  - field: Origin
+    editable: true
+    readable: true
+  - field: ParentId
+    editable: false
+    readable: false
+  - field: PotentialLiability__c
+    editable: true
+    readable: true
+  - field: Priority
+    editable: true
+    readable: true
+  - field: ProductId
+    editable: false
+    readable: false
+  - field: Product__c
+    editable: true
+    readable: true
+  - field: Reason
+    editable: true
+    readable: true
+  - field: SLAViolation__c
+    editable: true
+    readable: true
+  - field: ServiceContractId
+    editable: false
+    readable: false
+  - field: SlaExitDate
+    editable: false
+    readable: false
+  - field: SlaStartDate
+    editable: false
+    readable: false
+  - field: SourceId
+    editable: true
+    readable: true
+  - field: StopStartDate
+    editable: false
+    readable: false
+  - field: Subject
+    editable: true
+    readable: true
+  - field: SuppliedCompany
+    editable: false
+    readable: true
+  - field: SuppliedEmail
+    editable: false
+    readable: true
+  - field: SuppliedName
+    editable: false
+    readable: true
+  - field: SuppliedPhone
+    editable: false
+    readable: true
+  - field: Type
+    editable: true
+    readable: true

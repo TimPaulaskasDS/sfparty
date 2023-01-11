@@ -1,0 +1,41 @@
+object: ContractLineItem
+fieldPermissions:
+  - field: AssetId
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: Discount
+    editable: true
+    readable: true
+  - field: EndDate
+    editable: true
+    readable: true
+  - field: ListPrice
+    editable: true
+    readable: true
+  - field: LocationId
+    editable: true
+    readable: true
+  - field: ParentContractLineItemId
+    editable: true
+    readable: true
+  - field: RootContractLineItemId
+    editable: true
+    readable: true
+  - field: StartDate
+    editable: true
+    readable: true
+  - field: Status
+    editable: true
+    readable: true
+  - field: StatusIndicator
+    editable: true
+    readable: true
+  - field: Subtotal
+    editable: true
+    readable: true
+  - field: TotalPrice
+    editable: true
+    readable: true

@@ -1,0 +1,71 @@
+object: Incident
+fieldPermissions:
+  - field: BusinessHoursId
+    editable: true
+    readable: true
+  - field: Category
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: DetectedDateTime
+    editable: true
+    readable: true
+  - field: EndDateTime
+    editable: true
+    readable: true
+  - field: EntitlementId
+    editable: true
+    readable: true
+  - field: IsClosed
+    editable: true
+    readable: true
+  - field: IsMajorIncident
+    editable: true
+    readable: true
+  - field: IsStopped
+    editable: true
+    readable: true
+  - field: MilestoneStatus
+    editable: true
+    readable: true
+  - field: ParentIncidentId
+    editable: true
+    readable: true
+  - field: PriorityOverrideReason
+    editable: true
+    readable: true
+  - field: RelatedItemAutonumberMaster
+    editable: true
+    readable: true
+  - field: ReportedMethod
+    editable: true
+    readable: true
+  - field: ResolutionDateTime
+    editable: true
+    readable: true
+  - field: ResolutionSummary
+    editable: true
+    readable: true
+  - field: ResolvedById
+    editable: true
+    readable: true
+  - field: SlaExitDate
+    editable: true
+    readable: true
+  - field: SlaStartDate
+    editable: true
+    readable: true
+  - field: StartDateTime
+    editable: true
+    readable: true
+  - field: StopStartDate
+    editable: true
+    readable: true
+  - field: SubCategory
+    editable: true
+    readable: true
+  - field: Type
+    editable: true
+    readable: true

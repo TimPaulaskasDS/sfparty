@@ -1,0 +1,17 @@
+object: OrderItem
+fieldPermissions:
+  - field: Description
+    editable: true
+    readable: true
+  - field: EndDate
+    editable: true
+    readable: true
+  - field: ListPrice
+    editable: false
+    readable: true
+  - field: ProductCode
+    editable: false
+    readable: true
+  - field: ServiceDate
+    editable: true
+    readable: true

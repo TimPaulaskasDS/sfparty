@@ -1,0 +1,11 @@
+object: WorkPlan
+fieldPermissions:
+  - field: Description
+    editable: true
+    readable: true
+  - field: WorkOrderLineItemId
+    editable: true
+    readable: true
+  - field: WorkPlanTemplateId
+    editable: true
+    readable: true

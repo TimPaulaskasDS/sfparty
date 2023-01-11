@@ -1,0 +1,131 @@
+layoutAssignments:
+  - layout: Account-Account %28Support%29 Layout
+  - layout: AlternativePaymentMethod-Alternative Payment Method Layout
+  - layout: ApiAnomalyEventStore-API Anomaly Event Store Layout
+  - layout: AppointmentInvitation-Appointment Invitation Layout
+  - layout: Asset-Asset Layout
+  - layout: AssetAction-Asset Action Layout
+  - layout: AssetActionSource-Asset Action Source Layout
+  - layout: AssetRelationship-Asset Relationship Layout
+  - layout: AssetStatePeriod-Asset State Period Layout
+  - layout: AssignedResource-Assigned Resource Layout
+  - layout: AuthorizationForm-Authorization Form Layout
+  - layout: AuthorizationFormConsent-Authorization Form Consent Layout
+  - layout: AuthorizationFormDataUse-Authorization Form Data Use Layout
+  - layout: AuthorizationFormText-Authorization Form Text Layout
+  - layout: BusinessBrand-Business Brand Layout
+  - layout: Campaign-Campaign Layout
+  - layout: CampaignMember-Campaign Member Page Layout
+  - layout: CardPaymentMethod-Card Payment Method Layout
+  - layout: CartCheckoutSession-Cart Checkout Session Layout
+  - layout: CartDeliveryGroup-Cart Delivery Group Layout
+  - layout: CartItem-Cart Item Layout
+  - layout: CartTax-Cart Tax Layout
+  - layout: CartValidationOutput-Cart Validation Output Layout
+  - layout: Case-Case %28Support%29 Layout
+  - layout: CaseClose-Close Case Layout
+  - layout: CaseMilestone-Case Milestone Layout
+  - layout: CommunityMemberLayout-Community Member Layout
+  - layout: ConsumptionRate-Consumption Rate Layout
+  - layout: ConsumptionSchedule-Consumption Schedule Layout
+  - layout: Contact-Contact %28Support%29 Layout
+  - layout: ContactPointAddress-Contact Point Address Layout
+  - layout: ContactPointEmail-Contact Point Email Layout
+  - layout: ContactPointPhone-Contact Point Phone Layout
+  - layout: ContactPointTypeConsent-Contact Point Type Consent Layout
+  - layout: ContentVersion-Content Version Layout
+  - layout: Contract-Contract Layout
+  - layout: ContractLineItem-Contract Line Item Layout
+  - layout: CredentialStuffingEventStore-Credential Stuffing Event Store Layout
+  - layout: CreditMemo-Credit Memo Layout
+  - layout: CreditMemoInvApplication-Credit Memo Invoice Application Layout
+  - layout: CreditMemoLine-Credit Memo Line Layout
+  - layout: Customer-Customer Layout
+  - layout: DandBCompany-D%26B Company Layout
+  - layout: DataUseLegalBasis-Data Use Legal Basis Layout
+  - layout: DataUsePurpose-Data Use Purpose Layout
+  - layout: DigitalWallet-Digital Wallet Layout
+  - layout: DuplicateRecordSet-Duplicate Record Set Layout
+  - layout: EmailMessage-Email Message Layout
+  - layout: EngagementChannelType-Engagement Channel Type Layout
+  - layout: Entitlement-Entitlement Layout
+  - layout: EntityMilestone-Object Milestone Layout
+  - layout: Event-Event Layout
+  - layout: FeedItem-Feed Item Layout
+  - layout: FinanceBalanceSnapshot-Finance Balance Snapshot Layout
+  - layout: FinanceTransaction-Finance Transaction Layout
+  - layout: Global-Global Layout
+  - layout: Idea-Idea Layout
+  - layout: Individual-Individual Layout
+  - layout: Invoice-Invoice Layout
+  - layout: InvoiceLine-Invoice Line Layout
+  - layout: Lead-Lead %28Support%29 Layout
+  - layout: LegalEntity-Legal Entity Layout
+  - layout: Macro-Macro Layout
+  - layout: OperatingHours-Operating Hours Layout
+  - layout: Opportunity-Opportunity %28Support%29 Layout
+  - layout: OpportunityLineItem-Opportunity Product Layout
+  - layout: Order-Order Layout
+  - layout: OrderItem-Order Product Layout
+  - layout: Payment-Payment Layout
+  - layout: PaymentAuthAdjustment-Payment Authorization Adjustment Layout
+  - layout: PaymentAuthorization-Payment Authorization Layout
+  - layout: PaymentGateway-Payment Gateway Layout
+  - layout: PaymentGatewayLog-Payment Gateway Log Layout
+  - layout: PaymentGroup-Payment Group Layout
+  - layout: PaymentLineInvoice-Payment Line Invoice Layout
+  - layout: Pricebook2-Price Book Layout
+  - layout: PricebookEntry-Price Book Entry Layout
+  - layout: ProcessException-Process Exception Layout
+  - layout: Product2-Product Layout
+  - layout: ProductConsumptionSchedule-Product Consumption Schedule Layout
+  - layout: QuickText-Quick Text Layout
+  - layout: Refund-Refund Layout
+  - layout: RefundLinePayment-Refund Line Payment Layout
+  - layout: ReportAnomalyEventStore-Report Anomaly Event Store Layout
+  - layout: ResourceAbsence-Resource Absence Layout
+  - layout: ResourcePreference-Resource Preference Layout
+  - layout: ReturnOrder-Return Order Layout
+  - layout: ReturnOrderItemAdjustment-Return Order Item Adjustment Layout
+  - layout: ReturnOrderItemTax-Return Order Item Tax Layout
+  - layout: ReturnOrderLineItem-Return Order Line Item Layout
+  - layout: Scorecard-Scorecard Layout
+  - layout: ScorecardAssociation-Scorecard Association Layout
+  - layout: ScorecardMetric-Scorecard Metric Layout
+  - layout: Seller-Seller Layout
+  - layout: ServiceAppointment-Service Appointment Layout
+  - layout: ServiceContract-Service Contract Layout
+  - layout: ServiceResource-Service Resource Layout
+  - layout: ServiceResourceSkill-Service Resource Skill Layout
+  - layout: ServiceTerritory-Service Territory Layout
+  - layout: ServiceTerritoryMember-Service Territory Member Layout
+  - layout: SessionHijackingEventStore-Session Hijacking Event Store Layout
+  - layout: Shift-Shift Layout
+  - layout: >-
+      ShiftWorkTopic-%5F%5FMISSING LABEL%5F%5F PropertyFile - val ShiftWorkTopic
+      not found in section StandardLayouts
+  - layout: SkillRequirement-Skill Requirement Layout
+  - layout: SocialPersona-Social Persona Layout
+  - layout: Solution-Solution Layout
+  - layout: Task-Task Layout
+  - layout: ThreatDetectionFeedback-Threat Detection Feedback Layout
+  - layout: TimeSlot-Time Slot Layout
+  - layout: User-User Layout
+  - layout: UserAlt-User Profile Layout
+  - layout: UserProvAccount-User Provisioning Account Layout
+  - layout: UserProvisioningLog-User Provisioning Log Layout
+  - layout: UserProvisioningRequest-User Provisioning Request Layout
+  - layout: WebCart-Cart Layout
+  - layout: WebCartAdjustmentBasis-Cart Adjustment Basis Layout
+  - layout: WebCartAdjustmentGroup-Cart Adjustment Group Layout
+  - layout: WebStore-Store Layout
+  - layout: WorkOrder-Work Order Layout
+  - layout: WorkOrderLineItem-Work Order Line Item Layout
+  - layout: WorkPlan-Work Plan Layout
+  - layout: WorkPlanTemplate-Work Plan Template Layout
+  - layout: WorkPlanTemplateEntry-Work Plan Template Entry Layout
+  - layout: WorkStep-Work Step Layout
+  - layout: WorkStepTemplate-Work Step Template Layout
+  - layout: WorkType-Work Type Layout
+  - layout: WorkTypeGroup-Work Type Group Layout
+  - layout: WorkTypeGroupMember-Work Type Group Member Layout

@@ -1,0 +1,7 @@
+main:
+  name: Chatter External User
+  fullName: Chatter External User
+  custom: false
+  userLicense: Chatter External
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

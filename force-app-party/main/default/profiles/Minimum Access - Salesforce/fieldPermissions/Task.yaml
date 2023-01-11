@@ -1,0 +1,17 @@
+object: Task
+fieldPermissions:
+  - field: ActivityDate
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: Type
+    editable: false
+    readable: false
+  - field: WhatId
+    editable: false
+    readable: false
+  - field: WhoId
+    editable: false
+    readable: false

@@ -1,0 +1,32 @@
+object: Problem
+fieldPermissions:
+  - field: Category
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: ParentProblemId
+    editable: true
+    readable: true
+  - field: PriorityOverrideReason
+    editable: true
+    readable: true
+  - field: RelatedItemAutonumberMaster
+    editable: true
+    readable: true
+  - field: ResolutionDateTime
+    editable: true
+    readable: true
+  - field: ResolutionSummary
+    editable: true
+    readable: true
+  - field: ResolvedById
+    editable: true
+    readable: true
+  - field: RootCauseSummary
+    editable: true
+    readable: true
+  - field: SubCategory
+    editable: true
+    readable: true

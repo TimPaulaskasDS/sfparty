@@ -1,0 +1,8 @@
+object: ResourceAbsence
+fieldPermissions:
+  - field: Address
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true

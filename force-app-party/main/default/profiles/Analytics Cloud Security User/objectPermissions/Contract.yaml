@@ -1,0 +1,8 @@
+object: Contract
+objectPermissions:
+  - allowCreate: false
+    allowRead: true
+    allowEdit: false
+    allowDelete: false
+    viewAllRecords: true
+    modifyAllRecords: false

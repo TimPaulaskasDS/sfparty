@@ -1,0 +1,20 @@
+object: Event
+fieldPermissions:
+  - field: Description
+    editable: true
+    readable: true
+  - field: IsAllDayEvent
+    editable: true
+    readable: true
+  - field: Location
+    editable: true
+    readable: true
+  - field: Type
+    editable: false
+    readable: false
+  - field: WhatId
+    editable: true
+    readable: true
+  - field: WhoId
+    editable: true
+    readable: true

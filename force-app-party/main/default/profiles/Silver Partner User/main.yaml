@@ -1,0 +1,7 @@
+main:
+  name: Silver Partner User
+  fullName: Silver Partner User
+  custom: false
+  userLicense: Silver Partner
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

@@ -1,0 +1,7 @@
+main:
+  name: External Identity User
+  fullName: External Identity User
+  custom: false
+  userLicense: External Identity
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

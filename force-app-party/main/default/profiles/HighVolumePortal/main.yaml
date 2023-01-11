@@ -1,0 +1,7 @@
+main:
+  name: HighVolumePortal
+  fullName: HighVolumePortal
+  custom: false
+  userLicense: High Volume Customer Portal
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

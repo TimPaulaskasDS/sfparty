@@ -1,0 +1,207 @@
+tabVisibilities:
+  - tab: standard-Account
+    visibility: Hidden
+  - tab: standard-AlternativePaymentMethod
+    visibility: Hidden
+  - tab: standard-AppLauncher
+    visibility: Hidden
+  - tab: standard-AppointmentInvitation
+    visibility: Hidden
+  - tab: standard-Asset
+    visibility: Hidden
+  - tab: standard-AssetAction
+    visibility: Hidden
+  - tab: standard-AssetActionSource
+    visibility: Hidden
+  - tab: standard-AssetStatePeriod
+    visibility: Hidden
+  - tab: standard-AsyncOperationLog
+    visibility: Hidden
+  - tab: standard-AuthorizationForm
+    visibility: Hidden
+  - tab: standard-AuthorizationFormConsent
+    visibility: Hidden
+  - tab: standard-AuthorizationFormDataUse
+    visibility: Hidden
+  - tab: standard-AuthorizationFormText
+    visibility: Hidden
+  - tab: standard-BusinessBrand
+    visibility: Hidden
+  - tab: standard-Campaign
+    visibility: Hidden
+  - tab: standard-CardPaymentMethod
+    visibility: Hidden
+  - tab: standard-Case
+    visibility: Hidden
+  - tab: standard-Chatter
+    visibility: Hidden
+  - tab: standard-CollaborationGroup
+    visibility: Hidden
+  - tab: standard-CommSubscription
+    visibility: Hidden
+  - tab: standard-CommSubscriptionChannelType
+    visibility: Hidden
+  - tab: standard-CommSubscriptionConsent
+    visibility: Hidden
+  - tab: standard-CommSubscriptionTiming
+    visibility: Hidden
+  - tab: standard-ConsumptionSchedule
+    visibility: Hidden
+  - tab: standard-Contact
+    visibility: Hidden
+  - tab: standard-ContactPointConsent
+    visibility: Hidden
+  - tab: standard-ContactPointTypeConsent
+    visibility: Hidden
+  - tab: standard-ContactRequest
+    visibility: Hidden
+  - tab: standard-ContentSearch
+    visibility: Hidden
+  - tab: standard-ContentSubscriptions
+    visibility: Hidden
+  - tab: standard-Contract
+    visibility: Hidden
+  - tab: standard-ContractLineItem
+    visibility: Hidden
+  - tab: standard-Coupon
+    visibility: Hidden
+  - tab: standard-CreditMemo
+    visibility: Hidden
+  - tab: standard-Customer
+    visibility: Hidden
+  - tab: standard-DandBCompany
+    visibility: Hidden
+  - tab: standard-Dashboard
+    visibility: Hidden
+  - tab: standard-DataUseLegalBasis
+    visibility: Hidden
+  - tab: standard-DataUsePurpose
+    visibility: Hidden
+  - tab: standard-DigitalWallet
+    visibility: Hidden
+  - tab: standard-Document
+    visibility: Hidden
+  - tab: standard-DuplicateRecordSet
+    visibility: Hidden
+  - tab: standard-EngagementChannelType
+    visibility: Hidden
+  - tab: standard-Entitlement
+    visibility: Hidden
+  - tab: standard-File
+    visibility: Hidden
+  - tab: standard-FinanceBalanceSnapshot
+    visibility: Hidden
+  - tab: standard-FinanceTransaction
+    visibility: Hidden
+  - tab: standard-Forecasting3
+    visibility: Hidden
+  - tab: standard-Idea
+    visibility: Hidden
+  - tab: standard-Image
+    visibility: Hidden
+  - tab: standard-Individual
+    visibility: Hidden
+  - tab: standard-Invoice
+    visibility: Hidden
+  - tab: standard-JigsawSearch
+    visibility: Hidden
+  - tab: standard-Lead
+    visibility: Hidden
+  - tab: standard-LegalEntity
+    visibility: Hidden
+  - tab: standard-ListEmail
+    visibility: Hidden
+  - tab: standard-Location
+    visibility: Hidden
+  - tab: standard-LocationGroup
+    visibility: Hidden
+  - tab: standard-Macro
+    visibility: Hidden
+  - tab: standard-OperatingHours
+    visibility: Hidden
+  - tab: standard-Opportunity
+    visibility: Hidden
+  - tab: standard-Order
+    visibility: Hidden
+  - tab: standard-OtherUserProfile
+    visibility: Hidden
+  - tab: standard-PartyConsent
+    visibility: Hidden
+  - tab: standard-Payment
+    visibility: Hidden
+  - tab: standard-PaymentAuthAdjustment
+    visibility: Hidden
+  - tab: standard-PaymentAuthorization
+    visibility: Hidden
+  - tab: standard-PaymentGateway
+    visibility: Hidden
+  - tab: standard-PaymentGatewayLog
+    visibility: Hidden
+  - tab: standard-PaymentLineInvoice
+    visibility: Hidden
+  - tab: standard-Pricebook2
+    visibility: Hidden
+  - tab: standard-ProcessException
+    visibility: Hidden
+  - tab: standard-Product2
+    visibility: Hidden
+  - tab: standard-ProfilePlatformFeed
+    visibility: Hidden
+  - tab: standard-ProfilePlatformOverview
+    visibility: Hidden
+  - tab: standard-PromotionSegment
+    visibility: Hidden
+  - tab: standard-Recommendation
+    visibility: Hidden
+  - tab: standard-Refund
+    visibility: Hidden
+  - tab: standard-RefundLinePayment
+    visibility: Hidden
+  - tab: standard-RescheduleAppointments
+    visibility: Hidden
+  - tab: standard-ReturnOrder
+    visibility: Hidden
+  - tab: standard-ScheduleAppointments
+    visibility: Hidden
+  - tab: standard-Scorecard
+    visibility: Hidden
+  - tab: standard-Seller
+    visibility: Hidden
+  - tab: standard-ServiceAppointment
+    visibility: Hidden
+  - tab: standard-ServiceContract
+    visibility: Hidden
+  - tab: standard-ServiceResource
+    visibility: Hidden
+  - tab: standard-ServiceTerritory
+    visibility: Hidden
+  - tab: standard-Shift
+    visibility: Hidden
+  - tab: standard-Sites
+    visibility: Hidden
+  - tab: standard-Solution
+    visibility: Hidden
+  - tab: standard-StreamingChannel
+    visibility: Hidden
+  - tab: standard-UserProfile
+    visibility: Hidden
+  - tab: standard-UserProvisioningRequest
+    visibility: Hidden
+  - tab: standard-WorkOrder
+    visibility: Hidden
+  - tab: standard-WorkPlan
+    visibility: Hidden
+  - tab: standard-WorkPlanTemplate
+    visibility: Hidden
+  - tab: standard-WorkStepTemplate
+    visibility: Hidden
+  - tab: standard-WorkType
+    visibility: Hidden
+  - tab: standard-WorkTypeGroup
+    visibility: Hidden
+  - tab: standard-Workspace
+    visibility: Hidden
+  - tab: standard-home
+    visibility: Hidden
+  - tab: standard-report
+    visibility: Hidden

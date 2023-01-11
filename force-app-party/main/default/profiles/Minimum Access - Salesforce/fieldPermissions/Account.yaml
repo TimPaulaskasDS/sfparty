@@ -1,0 +1,107 @@
+object: Account
+fieldPermissions:
+  - field: AccountNumber
+    editable: false
+    readable: false
+  - field: AccountSource
+    editable: false
+    readable: false
+  - field: Active__c
+    editable: false
+    readable: false
+  - field: AnnualRevenue
+    editable: false
+    readable: false
+  - field: BillingAddress
+    editable: false
+    readable: false
+  - field: CleanStatus
+    editable: false
+    readable: false
+  - field: CustomerPriority__c
+    editable: false
+    readable: false
+  - field: DandbCompanyId
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: DunsNumber
+    editable: false
+    readable: false
+  - field: Fax
+    editable: false
+    readable: false
+  - field: Industry
+    editable: false
+    readable: false
+  - field: Jigsaw
+    editable: false
+    readable: false
+  - field: NaicsCode
+    editable: false
+    readable: false
+  - field: NaicsDesc
+    editable: false
+    readable: false
+  - field: NumberOfEmployees
+    editable: false
+    readable: false
+  - field: NumberofLocations__c
+    editable: false
+    readable: false
+  - field: OperatingHoursId
+    editable: false
+    readable: false
+  - field: Ownership
+    editable: false
+    readable: false
+  - field: ParentId
+    editable: false
+    readable: false
+  - field: Phone
+    editable: false
+    readable: false
+  - field: Rating
+    editable: false
+    readable: false
+  - field: SLAExpirationDate__c
+    editable: false
+    readable: false
+  - field: SLASerialNumber__c
+    editable: false
+    readable: false
+  - field: SLA__c
+    editable: false
+    readable: false
+  - field: ShippingAddress
+    editable: false
+    readable: false
+  - field: Sic
+    editable: false
+    readable: false
+  - field: SicDesc
+    editable: false
+    readable: false
+  - field: Site
+    editable: false
+    readable: false
+  - field: TickerSymbol
+    editable: false
+    readable: false
+  - field: Tradestyle
+    editable: false
+    readable: false
+  - field: Type
+    editable: false
+    readable: false
+  - field: UpsellOpportunity__c
+    editable: false
+    readable: false
+  - field: Website
+    editable: false
+    readable: false
+  - field: YearStarted
+    editable: false
+    readable: false

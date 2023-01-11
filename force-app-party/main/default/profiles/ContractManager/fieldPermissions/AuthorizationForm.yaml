@@ -1,0 +1,17 @@
+object: AuthorizationForm
+fieldPermissions:
+  - field: DefaultAuthFormTextId
+    editable: true
+    readable: true
+  - field: EffectiveFromDate
+    editable: true
+    readable: true
+  - field: EffectiveToDate
+    editable: true
+    readable: true
+  - field: IsSignatureRequired
+    editable: true
+    readable: true
+  - field: RevisionNumber
+    editable: true
+    readable: true

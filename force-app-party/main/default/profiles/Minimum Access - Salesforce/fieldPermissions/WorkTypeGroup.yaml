@@ -1,0 +1,8 @@
+object: WorkTypeGroup
+fieldPermissions:
+  - field: AdditionalInformation
+    editable: false
+    readable: false
+  - field: IsActive
+    editable: false
+    readable: false

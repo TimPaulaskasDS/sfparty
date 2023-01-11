@@ -1,0 +1,68 @@
+object: ServiceContract
+fieldPermissions:
+  - field: AccountId
+    editable: true
+    readable: true
+  - field: ActivationDate
+    editable: true
+    readable: true
+  - field: AdditionalDiscount
+    editable: true
+    readable: true
+  - field: ApprovalStatus
+    editable: true
+    readable: true
+  - field: BillingAddress
+    editable: true
+    readable: true
+  - field: ContactId
+    editable: true
+    readable: true
+  - field: Description
+    editable: true
+    readable: true
+  - field: Discount
+    editable: true
+    readable: true
+  - field: EndDate
+    editable: true
+    readable: true
+  - field: GrandTotal
+    editable: true
+    readable: true
+  - field: ParentServiceContractId
+    editable: true
+    readable: true
+  - field: RootServiceContractId
+    editable: true
+    readable: true
+  - field: ShippingAddress
+    editable: true
+    readable: true
+  - field: ShippingHandling
+    editable: true
+    readable: true
+  - field: SpecialTerms
+    editable: true
+    readable: true
+  - field: StartDate
+    editable: true
+    readable: true
+  - field: Status
+    editable: true
+    readable: true
+  - field: StatusIndicator
+    editable: true
+    readable: true
+  - field: Subtotal
+    editable: true
+    readable: true
+  - field: Tax
+    editable: true
+    readable: true
+  - field: Term
+    editable: true
+    readable: true
+  - field: TotalPrice
+    editable: true
+    readable: true

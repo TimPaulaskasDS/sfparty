@@ -1,0 +1,53 @@
+object: Contract
+fieldPermissions:
+  - field: ActivatedById
+    editable: false
+    readable: false
+  - field: ActivatedDate
+    editable: false
+    readable: false
+  - field: BillingAddress
+    editable: false
+    readable: false
+  - field: CompanySignedDate
+    editable: false
+    readable: false
+  - field: CompanySignedId
+    editable: false
+    readable: false
+  - field: ContractTerm
+    editable: false
+    readable: false
+  - field: CustomerSignedDate
+    editable: false
+    readable: false
+  - field: CustomerSignedId
+    editable: false
+    readable: false
+  - field: CustomerSignedTitle
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: EndDate
+    editable: false
+    readable: false
+  - field: Name
+    editable: false
+    readable: false
+  - field: OwnerExpirationNotice
+    editable: false
+    readable: false
+  - field: Pricebook2Id
+    editable: false
+    readable: false
+  - field: ShippingAddress
+    editable: false
+    readable: false
+  - field: SpecialTerms
+    editable: false
+    readable: false
+  - field: StartDate
+    editable: false
+    readable: false

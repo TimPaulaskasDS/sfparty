@@ -1,0 +1,80 @@
+object: ServiceAppointment
+fieldPermissions:
+  - field: AccountId
+    editable: false
+    readable: false
+  - field: ActualDuration
+    editable: false
+    readable: false
+  - field: ActualEndTime
+    editable: false
+    readable: false
+  - field: ActualStartTime
+    editable: false
+    readable: false
+  - field: AdditionalInformation
+    editable: false
+    readable: false
+  - field: Address
+    editable: false
+    readable: false
+  - field: AppointmentInvitationId
+    editable: true
+    readable: true
+  - field: AppointmentType
+    editable: false
+    readable: false
+  - field: ApptBookingInfoUrl
+    editable: true
+    readable: true
+  - field: ArrivalWindowEndTime
+    editable: false
+    readable: false
+  - field: ArrivalWindowStartTime
+    editable: false
+    readable: false
+  - field: CancellationReason
+    editable: false
+    readable: false
+  - field: Comments
+    editable: false
+    readable: false
+  - field: ContactId
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: Email
+    editable: false
+    readable: false
+  - field: IsAnonymousBooking
+    editable: true
+    readable: true
+  - field: IsOffsiteAppointment
+    editable: true
+    readable: true
+  - field: Phone
+    editable: false
+    readable: false
+  - field: SchedEndTime
+    editable: false
+    readable: false
+  - field: SchedStartTime
+    editable: false
+    readable: false
+  - field: ServiceNote
+    editable: false
+    readable: false
+  - field: ServiceTerritoryId
+    editable: false
+    readable: false
+  - field: StatusCategory
+    editable: false
+    readable: false
+  - field: Subject
+    editable: false
+    readable: false
+  - field: WorkTypeId
+    editable: false
+    readable: false

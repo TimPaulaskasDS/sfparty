@@ -1,0 +1,7 @@
+main:
+  name: Minimum Access - Salesforce
+  fullName: Minimum Access - Salesforce
+  custom: false
+  userLicense: Salesforce
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

@@ -1,0 +1,7 @@
+main:
+  name: Identity User
+  fullName: Identity User
+  custom: false
+  userLicense: Identity
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

@@ -1,0 +1,64 @@
+layoutAssignments:
+  - layout: AlternativePaymentMethod-Alternative Payment Method Layout
+  - layout: ApiAnomalyEventStore-API Anomaly Event Store Layout
+  - layout: AppointmentInvitation-Appointment Invitation Layout
+  - layout: AssetAction-Asset Action Layout
+  - layout: AssetActionSource-Asset Action Source Layout
+  - layout: AssetRelationship-Asset Relationship Layout
+  - layout: AssetStatePeriod-Asset State Period Layout
+  - layout: AuthorizationForm-Authorization Form Layout
+  - layout: AuthorizationFormConsent-Authorization Form Consent Layout
+  - layout: AuthorizationFormDataUse-Authorization Form Data Use Layout
+  - layout: AuthorizationFormText-Authorization Form Text Layout
+  - layout: BusinessBrand-Business Brand Layout
+  - layout: CartCheckoutSession-Cart Checkout Session Layout
+  - layout: CartDeliveryGroup-Cart Delivery Group Layout
+  - layout: CartItem-Cart Item Layout
+  - layout: CartTax-Cart Tax Layout
+  - layout: CartValidationOutput-Cart Validation Output Layout
+  - layout: CaseMilestone-Case Milestone Layout
+  - layout: ContactPointTypeConsent-Contact Point Type Consent Layout
+  - layout: ContractLineItem-Contract Line Item Layout
+  - layout: CredentialStuffingEventStore-Credential Stuffing Event Store Layout
+  - layout: CreditMemoInvApplication-Credit Memo Invoice Application Layout
+  - layout: Customer-Customer Layout
+  - layout: DataUseLegalBasis-Data Use Legal Basis Layout
+  - layout: DataUsePurpose-Data Use Purpose Layout
+  - layout: EmailMessage-Email Message Layout
+  - layout: EngagementChannelType-Engagement Channel Type Layout
+  - layout: Entitlement-Entitlement Layout
+  - layout: EntityMilestone-Object Milestone Layout
+  - layout: FeedItem-Feed Item Layout
+  - layout: FinanceBalanceSnapshot-Finance Balance Snapshot Layout
+  - layout: FinanceTransaction-Finance Transaction Layout
+  - layout: LegalEntity-Legal Entity Layout
+  - layout: PaymentAuthAdjustment-Payment Authorization Adjustment Layout
+  - layout: ProcessException-Process Exception Layout
+  - layout: ReportAnomalyEventStore-Report Anomaly Event Store Layout
+  - layout: ReturnOrder-Return Order Layout
+  - layout: ReturnOrderItemAdjustment-Return Order Item Adjustment Layout
+  - layout: ReturnOrderItemTax-Return Order Item Tax Layout
+  - layout: ReturnOrderLineItem-Return Order Line Item Layout
+  - layout: Seller-Seller Layout
+  - layout: ServiceContract-Service Contract Layout
+  - layout: SessionHijackingEventStore-Session Hijacking Event Store Layout
+  - layout: Shift-Shift Layout
+  - layout: >-
+      ShiftWorkTopic-%5F%5FMISSING LABEL%5F%5F PropertyFile - val ShiftWorkTopic
+      not found in section StandardLayouts
+  - layout: ThreatDetectionFeedback-Threat Detection Feedback Layout
+  - layout: UserAlt-User Profile Layout
+  - layout: UserProvAccount-User Provisioning Account Layout
+  - layout: UserProvisioningLog-User Provisioning Log Layout
+  - layout: UserProvisioningRequest-User Provisioning Request Layout
+  - layout: WebCart-Cart Layout
+  - layout: WebCartAdjustmentBasis-Cart Adjustment Basis Layout
+  - layout: WebCartAdjustmentGroup-Cart Adjustment Group Layout
+  - layout: WebStore-Store Layout
+  - layout: WorkOrder-Work Order Layout
+  - layout: WorkOrderLineItem-Work Order Line Item Layout
+  - layout: WorkPlan-Work Plan Layout
+  - layout: WorkPlanTemplate-Work Plan Template Layout
+  - layout: WorkPlanTemplateEntry-Work Plan Template Entry Layout
+  - layout: WorkStep-Work Step Layout
+  - layout: WorkStepTemplate-Work Step Template Layout

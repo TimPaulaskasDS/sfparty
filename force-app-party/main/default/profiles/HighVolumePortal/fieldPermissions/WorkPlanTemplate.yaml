@@ -1,0 +1,11 @@
+object: WorkPlanTemplate
+fieldPermissions:
+  - field: Description
+    editable: true
+    readable: true
+  - field: IsActive
+    editable: true
+    readable: true
+  - field: RelativeExecutionOrder
+    editable: true
+    readable: true

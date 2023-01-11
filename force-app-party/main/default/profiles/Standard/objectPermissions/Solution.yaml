@@ -1,0 +1,8 @@
+object: Solution
+objectPermissions:
+  - allowCreate: true
+    allowRead: true
+    allowEdit: false
+    allowDelete: false
+    viewAllRecords: false
+    modifyAllRecords: false

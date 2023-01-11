@@ -1,0 +1,26 @@
+object: Product2
+fieldPermissions:
+  - field: Description
+    editable: true
+    readable: true
+  - field: DisplayUrl
+    editable: true
+    readable: true
+  - field: ExternalDataSourceId
+    editable: true
+    readable: true
+  - field: ExternalId
+    editable: true
+    readable: true
+  - field: Family
+    editable: true
+    readable: true
+  - field: ProductCode
+    editable: true
+    readable: true
+  - field: QuantityUnitOfMeasure
+    editable: true
+    readable: true
+  - field: StockKeepingUnit
+    editable: true
+    readable: true

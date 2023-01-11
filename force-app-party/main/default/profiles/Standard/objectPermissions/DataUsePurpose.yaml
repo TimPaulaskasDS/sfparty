@@ -1,0 +1,8 @@
+object: DataUsePurpose
+objectPermissions:
+  - allowCreate: false
+    allowRead: true
+    allowEdit: true
+    allowDelete: true
+    viewAllRecords: false
+    modifyAllRecords: false

@@ -1,0 +1,7 @@
+main:
+  name: Gold Partner User
+  fullName: Gold Partner User
+  custom: false
+  userLicense: Gold Partner
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

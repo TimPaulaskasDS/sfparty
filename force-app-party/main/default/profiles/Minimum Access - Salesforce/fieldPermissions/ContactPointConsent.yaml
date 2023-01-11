@@ -1,0 +1,20 @@
+object: ContactPointConsent
+fieldPermissions:
+  - field: ContactPointTypeConsentId
+    editable: false
+    readable: false
+  - field: DataUsePurposeId
+    editable: false
+    readable: false
+  - field: DoubleConsentCaptureDate
+    editable: false
+    readable: false
+  - field: EffectiveFrom
+    editable: false
+    readable: false
+  - field: EffectiveTo
+    editable: false
+    readable: false
+  - field: EngagementChannelTypeId
+    editable: false
+    readable: false

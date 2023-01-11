@@ -1,0 +1,14 @@
+object: AuthorizationFormText
+fieldPermissions:
+  - field: ContentDocumentId
+    editable: true
+    readable: true
+  - field: FullAuthorizationFormUrl
+    editable: true
+    readable: true
+  - field: Locale
+    editable: true
+    readable: true
+  - field: SummaryAuthFormText
+    editable: true
+    readable: true

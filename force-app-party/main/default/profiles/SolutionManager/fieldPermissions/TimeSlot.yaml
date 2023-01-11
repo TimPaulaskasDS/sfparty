@@ -1,0 +1,8 @@
+object: TimeSlot
+fieldPermissions:
+  - field: MaxAppointments
+    editable: false
+    readable: false
+  - field: WorkTypeGroupId
+    editable: false
+    readable: false

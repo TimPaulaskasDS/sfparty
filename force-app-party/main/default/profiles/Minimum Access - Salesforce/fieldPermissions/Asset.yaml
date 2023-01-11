@@ -1,0 +1,107 @@
+object: Asset
+fieldPermissions:
+  - field: AccountId
+    editable: false
+    readable: false
+  - field: AssetLevel
+    editable: true
+    readable: true
+  - field: AssetProvidedById
+    editable: true
+    readable: true
+  - field: AssetServicedById
+    editable: true
+    readable: true
+  - field: ConsequenceOfFailure
+    editable: false
+    readable: false
+  - field: ContactId
+    editable: false
+    readable: false
+  - field: CurrentAmount
+    editable: true
+    readable: true
+  - field: CurrentLifecycleEndDate
+    editable: true
+    readable: true
+  - field: CurrentMrr
+    editable: true
+    readable: true
+  - field: CurrentQuantity
+    editable: true
+    readable: true
+  - field: Description
+    editable: false
+    readable: false
+  - field: DigitalAssetStatus
+    editable: false
+    readable: false
+  - field: ExternalIdentifier
+    editable: false
+    readable: false
+  - field: HasLifecycleManagement
+    editable: true
+    readable: true
+  - field: InstallDate
+    editable: false
+    readable: false
+  - field: IsCompetitorProduct
+    editable: false
+    readable: false
+  - field: IsInternal
+    editable: true
+    readable: true
+  - field: LifecycleEndDate
+    editable: true
+    readable: true
+  - field: LifecycleStartDate
+    editable: true
+    readable: true
+  - field: LocationId
+    editable: false
+    readable: false
+  - field: ManufactureDate
+    editable: false
+    readable: false
+  - field: Price
+    editable: false
+    readable: false
+  - field: Product2Id
+    editable: false
+    readable: false
+  - field: ProductCode
+    editable: true
+    readable: true
+  - field: ProductDescription
+    editable: false
+    readable: false
+  - field: ProductFamily
+    editable: false
+    readable: false
+  - field: PurchaseDate
+    editable: false
+    readable: false
+  - field: Quantity
+    editable: false
+    readable: false
+  - field: SerialNumber
+    editable: false
+    readable: false
+  - field: Status
+    editable: false
+    readable: false
+  - field: StatusReason
+    editable: false
+    readable: false
+  - field: StockKeepingUnit
+    editable: false
+    readable: false
+  - field: TotalLifecycleAmount
+    editable: true
+    readable: true
+  - field: UsageEndDate
+    editable: false
+    readable: false
+  - field: Uuid
+    editable: false
+    readable: false

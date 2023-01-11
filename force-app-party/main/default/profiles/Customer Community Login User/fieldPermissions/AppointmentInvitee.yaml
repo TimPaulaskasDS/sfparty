@@ -1,0 +1,8 @@
+object: AppointmentInvitee
+fieldPermissions:
+  - field: IsRequiredResource
+    editable: true
+    readable: true
+  - field: ParticipantServiceResourceId
+    editable: true
+    readable: true

@@ -1,0 +1,14 @@
+object: ConsumptionSchedule
+fieldPermissions:
+  - field: Description
+    editable: false
+    readable: false
+  - field: IsActive
+    editable: false
+    readable: false
+  - field: MatchingAttribute
+    editable: false
+    readable: false
+  - field: UnitOfMeasure
+    editable: false
+    readable: false

@@ -1,0 +1,5 @@
+object: ProblemRelatedItem
+fieldPermissions:
+  - field: Comment
+    editable: true
+    readable: true

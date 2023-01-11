@@ -1,0 +1,7 @@
+main:
+  name: External Apps Login User
+  fullName: External Apps Login User
+  custom: false
+  userLicense: External Apps Login
+  $:
+    xmlns: https://soap.sforce.com/2006/04/metadata

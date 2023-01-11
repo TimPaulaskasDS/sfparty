@@ -1,0 +1,41 @@
+object: ContactPointEmail
+fieldPermissions:
+  - field: ActiveFromDate
+    editable: false
+    readable: false
+  - field: ActiveToDate
+    editable: false
+    readable: false
+  - field: BestTimeToContactEndTime
+    editable: false
+    readable: false
+  - field: BestTimeToContactStartTime
+    editable: false
+    readable: false
+  - field: BestTimeToContactTimezone
+    editable: false
+    readable: false
+  - field: EmailDomain
+    editable: false
+    readable: false
+  - field: EmailLatestBounceDateTime
+    editable: false
+    readable: false
+  - field: EmailLatestBounceReasonText
+    editable: false
+    readable: false
+  - field: EmailMailBox
+    editable: false
+    readable: false
+  - field: IsPrimary
+    editable: false
+    readable: false
+  - field: ParentId
+    editable: false
+    readable: false
+  - field: PreferenceRank
+    editable: true
+    readable: true
+  - field: UsageType
+    editable: true
+    readable: true

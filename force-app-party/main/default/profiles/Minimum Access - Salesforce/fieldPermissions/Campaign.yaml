@@ -1,0 +1,98 @@
+object: Campaign
+fieldPermissions:
+  - field: ActualCost
+    editable: false
+    readable: false
+  - field: AmountAllOpportunities
+    editable: false
+    readable: false
+  - field: AmountWonOpportunities
+    editable: false
+    readable: false
+  - field: BudgetedCost
+    editable: false
+    readable: false
+  - field: Description
+    editable: false
+    readable: false
+  - field: EndDate
+    editable: false
+    readable: false
+  - field: ExpectedResponse
+    editable: false
+    readable: false
+  - field: ExpectedRevenue
+    editable: false
+    readable: false
+  - field: HierarchyActualCost
+    editable: false
+    readable: false
+  - field: HierarchyAmountAllOpportunities
+    editable: false
+    readable: false
+  - field: HierarchyAmountWonOpportunities
+    editable: false
+    readable: false
+  - field: HierarchyBudgetedCost
+    editable: false
+    readable: false
+  - field: HierarchyExpectedRevenue
+    editable: false
+    readable: false
+  - field: HierarchyNumberOfContacts
+    editable: false
+    readable: false
+  - field: HierarchyNumberOfConvertedLeads
+    editable: false
+    readable: false
+  - field: HierarchyNumberOfLeads
+    editable: false
+    readable: false
+  - field: HierarchyNumberOfOpportunities
+    editable: false
+    readable: false
+  - field: HierarchyNumberOfResponses
+    editable: false
+    readable: false
+  - field: HierarchyNumberOfWonOpportunities
+    editable: false
+    readable: false
+  - field: HierarchyNumberSent
+    editable: false
+    readable: false
+  - field: IsActive
+    editable: false
+    readable: false
+  - field: NumberOfContacts
+    editable: false
+    readable: false
+  - field: NumberOfConvertedLeads
+    editable: false
+    readable: false
+  - field: NumberOfLeads
+    editable: false
+    readable: false
+  - field: NumberOfOpportunities
+    editable: false
+    readable: false
+  - field: NumberOfResponses
+    editable: false
+    readable: false
+  - field: NumberOfWonOpportunities
+    editable: false
+    readable: false
+  - field: NumberSent
+    editable: false
+    readable: false
+  - field: ParentId
+    editable: false
+    readable: false
+  - field: StartDate
+    editable: false
+    readable: false
+  - field: Status
+    editable: false
+    readable: false
+  - field: Type
+    editable: false
+    readable: false

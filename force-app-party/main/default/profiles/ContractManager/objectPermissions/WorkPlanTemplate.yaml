@@ -1,0 +1,8 @@
+object: WorkPlanTemplate
+objectPermissions:
+  - allowCreate: true
+    allowRead: true
+    allowEdit: true
+    allowDelete: false
+    viewAllRecords: true
+    modifyAllRecords: false
