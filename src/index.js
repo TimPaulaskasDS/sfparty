@@ -230,13 +230,13 @@ process.on('SIGINT', function () {
     callAmount++;
 })
 
-function splitHandler(argv) {
+function splitHandler(argv, startTime) {
     const split = processSplit(types[0], argv)
     split.then((resolve) => {
         types.shift() // remove first item from array
         if (types.length > 0) {
             console.log()
-            splitHandler(argv)
+            splitHandler(argv, startTime)
         } else {
             if (argv.type === undefined || argv.type.split(',').length > 1) {
                 let message = `Split completed in `
