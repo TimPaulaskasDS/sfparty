@@ -219,12 +219,10 @@ package-lock.json
 .vscode/
 .sfdx/
 .sf/
-examples/
 force-app/main/default/labels/**
 force-app/main/default/permissionsets/**
 force-app/main/default/profiles/**
 force-app/main/default/workflows/**
-**-party/**
 test/**
 .vscode/settings.json
 .vscode/launch.json
