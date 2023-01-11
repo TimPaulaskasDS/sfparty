@@ -37,6 +37,12 @@ global.icons = {
     "party": '🎉',
 }
 
+global.displayError = (error, quit = false) => {
+    global.logger.error(error)
+    console.info(error)
+    if (quit) process.exit(1)
+}
+
 const typeArray = [
     'label',
     'profile',
@@ -122,7 +128,8 @@ yargs(hideBin(process.argv))
         command: '[test]',
         alias: 'test',
         handler: (argv) => {
-            git.diff('HEAD~15', 'HEAD')
+            // THIS IS A PLACE TO TEST NEW CODE
+            global.logger.info(chalk.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
         }
     })
     .command({

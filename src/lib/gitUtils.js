@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process'
-import { resolve } from 'node:path'
 
 const status = {
     A: 'add',
@@ -12,79 +11,108 @@ const status = {
     X: 'unknown',
 }
 
-export function diff(commitFrom = undefined, commitTo = undefined) {
+export function test(commitFrom, commitTo) {
 
     const dir = "/Users/tim.paulaskas/git-repos/SalesforceCI"
-    if (commitFrom === undefined) commitFrom = "HEAD~1"
-    if (commitTo === undefined) commitTo = "HEAD"
 
-    let log = logCommits(dir)
-    log.then((data, error) => {
-        console.log(data)
-    })
-    let files =  getFileStateChanges(commitFrom, commitTo, dir)
-    files.then((data, error) => {
-        console.log(data)
-    })
+    let commit = lastCommit(dir)
+    commit
+        .then((data, error) => {
+            console.log(data)
+        })
+        .catch((error) => {
+            global.displayError(error, true)
+        })
+    let files = getFileStateChanges(dir, commitFrom, commitTo)
+    files
+        .then((data, error) => {
+            console.log(data)
+        })
+        .catch((error) => {
+            global.displayError(error, true)
+        })
 }
 
-function getFileStateChanges(commitFrom, commitTo, dir) {
+function getFileStateChanges(dir, commitFrom = 'HEAD~1', commitTo = 'HEAD') {
     return new Promise((resolve, reject) => {
         const files = []
         const gitDiff = spawn('git', ['diff', '--name-status', '--oneline', '--relative', `${commitFrom}..${commitTo}`], { cwd: dir })
         gitDiff.stdout.on("data", data => {
-            const gitData = data.toString().split('\n')
-            gitData.forEach(gitRow => {
-                const file = gitRow.split('\t')
-                try {
+            try {
+                const gitData = data.toString().split('\n')
+                gitData.forEach(gitRow => {
+                    const file = gitRow.split('\t')
                     if (file.slice(-1) !== '') {
                         files.push({
                             type: status[(file[0] === file.slice(-1)) ? 'A' : Array.from(file[0])[0]],
                             path: file.slice(-1)[0],
-                        })                               
+                        })
                     }
-                } catch (error) {
-                    throw error
-                }
-            })
+                })                   
+            } catch (error) {
+                reject(error)
+            }
         })
-    
         gitDiff.stderr.on("data", data => {
-            const errorMessage = data.toString().split('\n')[0]
-            global.logger.error(`git diff: ${errorMessage}`)
+            const errorMessage = 'git diff: ' + data.toString().split('\n')[0]
             reject(errorMessage)
         })
-    
         gitDiff.on('error', (error) => {
-            console.log(`error: ${error.message}`)
+            if (error.message.indexOf('ENOENT')) {
+                error.message = 'git not installed or no entry found in path'
+            }
+            reject(error)
         })
-    
         gitDiff.on("close", code => {
             resolve(files)
-        })    
+        })
     })
 }
 
-function logCommits(dir, commitFrom = 'HEAD^', commitTo = 'HEAD') {
+function log(dir, commitFrom = 'HEAD^', commitTo = 'HEAD') {
     return new Promise((resolve, reject) => {
         const commits = []
         const gitLog = spawn('git', ['log', '--format=format:%H', `${commitFrom}..${commitTo}`], { cwd: dir })
         gitLog.stdout.on("data", data => {
             commits.push(data.toString().split('\n')[0])
         })
-    
         gitLog.stderr.on("data", data => {
             const errorMessage = data.toString().split('\n')[0]
             global.logger.error(`git log: ${errorMessage}`)
             reject(errorMessage)
         })
-    
         gitLog.on('error', (error) => {
-            console.log(`error: ${error.message}`)
+            if (error.message.indexOf('ENOENT')) {
+                error.message = 'git not installed or no entry found in path'
+            }
+            reject(error)
         })
-    
         gitLog.on("close", code => {
             resolve(commits)
-        })    
+        })
+    })
+}
+
+function lastCommit(dir) {
+    return new Promise((resolve, reject) => {
+        const commits = []
+        const gitLog = spawn('git', ['log', '--format=format:%H', '-1'], { cwd: dir })
+        gitLog.stdout.on("data", data => {
+            commits.push(data.toString().split('\n')[0])
+        })
+        gitLog.stderr.on("data", data => {
+            const errorMessage = data.toString().split('\n')[0]
+            global.logger.error(`git log: ${errorMessage}`)
+            reject(errorMessage)
+        })
+        gitLog.on('error', (error) => {
+            if (error.message.indexOf('ENOENT')) {
+                error.message = 'git not installed or no entry found in path'
+            }
+            reject(error)
+        })
+        gitLog.on("close", code => {
+            resolve((commits.length > 0) ? commits[0] : undefined)
+        })
     })
 }
