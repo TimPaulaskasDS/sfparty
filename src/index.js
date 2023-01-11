@@ -16,6 +16,7 @@ import * as labelDefinition from './meta/CustomLabels.js'
 import * as profileDefinition from './meta/Profiles.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
+import * as git from './lib/gitUtils.js'
 
 const processStartTime = process.hrtime.bigint()
 
@@ -117,6 +118,13 @@ function displayHeader() {
 
 yargs(hideBin(process.argv))
     .alias('h', 'help')
+    .command({
+        command: '[test]',
+        alias: 'test',
+        handler: (argv) => {
+            git.diff('HEAD~15', 'HEAD')
+        }
+    })
     .command({
         command: '[split]',
         alias: 'split',
