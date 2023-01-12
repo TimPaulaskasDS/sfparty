@@ -280,7 +280,6 @@ function yargCheck(argv, options) {
         if ((typeof name != 'undefined' && name != '')) {
             throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' when using multiple types.'))
         }
-        return true
     } else {
         switch (argv.type) {
             case 'label':
@@ -288,10 +287,9 @@ function yargCheck(argv, options) {
                     throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + '  when using label.'))
                 }
                 break
-            default:
-                return true
         }
     }
+    return true
 }
 
 function displayMessageAndDuration(startTime, message) {
