@@ -43,6 +43,13 @@ function getOptions(type) {
             }
         })
     })
+    if (type == 'combine') {
+        optionObj.git = {
+            demand: false,
+            description: 'process files based on git commits',
+            type: 'string',
+        }
+    }
 
     return optionObj
 }

@@ -203,7 +203,7 @@ export class Combine {
                 return
             }
 
-            let result = fileUtils.readPartFile(fileObj.fullName)
+            let result = fileUtils.readFile(fileObj.fullName)
 
             // if split by object we need to add object back to values
             if (that.metadataDefinition.splitObjects !== undefined && that.metadataDefinition.splitObjects.includes(key)) {

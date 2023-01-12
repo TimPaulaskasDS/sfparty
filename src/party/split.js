@@ -182,7 +182,7 @@ export class Split {
                 }
             })
 
-            fileUtils.savePartFile(mainInfo, fileName, global.format)
+            fileUtils.saveFile(mainInfo, fileName, global.format)
         }
 
         function nextFrame(that) {
@@ -250,7 +250,7 @@ function processFile(that, json, key, baseDir, fileNameOverride) {
         newJSON = {}
         newJSON[key] = json
     }
-    fileUtils.savePartFile(newJSON, fileName, global.format)
+    fileUtils.saveFile(newJSON, fileName, global.format)
 }
 
 function transformJSON(that, result, rootTag) {
