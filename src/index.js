@@ -244,7 +244,7 @@ yargs(hideBin(process.argv))
                             })
                     }
                 }
-
+                resolve(false)
             })
             startProm.then((result) => {
                 global.git.enabled = result
@@ -444,6 +444,9 @@ function combineHandler(argv, startTime) {
                 displayMessageAndDuration(startTime, message)
             }
         }
+    })
+    combine.catch((error) => {
+        throw error
     })
 
 }
