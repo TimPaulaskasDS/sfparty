@@ -1,5 +1,0 @@
-object: SkillRequirement
-fieldPermissions:
-  - field: SkillLevel
-    editable: true
-    readable: true
