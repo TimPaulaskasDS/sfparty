@@ -1,8 +1,0 @@
-object: BusinessBrand
-fieldPermissions:
-  - field: OrgId
-    editable: true
-    readable: true
-  - field: ParentId
-    editable: true
-    readable: true

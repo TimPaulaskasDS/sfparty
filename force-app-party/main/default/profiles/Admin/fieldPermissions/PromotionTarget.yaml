@@ -1,8 +1,0 @@
-object: PromotionTarget
-fieldPermissions:
-  - field: ExternalTarget
-    editable: false
-    readable: false
-  - field: IsMinItemCountRequired
-    editable: false
-    readable: false

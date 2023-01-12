@@ -1,5 +1,0 @@
-object: SocialPersona
-fieldPermissions:
-  - field: SourceApp
-    editable: true
-    readable: true
