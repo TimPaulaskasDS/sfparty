@@ -102,9 +102,21 @@ export class Combine {
                 that.#json[key] = undefined
             })
 
-            getXML(that)
-
-            saveXML(that)
+            let success = getXML(that)
+            if (success) {
+                saveXML(that)
+            } else {
+                logUpdate(that.#spinnerMessage
+                    .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
+                    .replace('[%2]', `. ${chalk.redBright('source not found - removing XML file')}`)
+                    .replace('[%3]', ``)
+                    .replace('[%4]', `${global.icons.delete} `)
+                    .replace('[%5]', that.#fileName.shortName)
+                )
+                logUpdate.done()
+                deleteFile(that.#fileName.fullName)
+                resolve('deleted')
+            }
             resolve(true)
         })
 
@@ -118,35 +130,47 @@ export class Combine {
             that.#startTime = process.hrtime.bigint()
             that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${chalk.yellowBright('[%5]')}[%2][%3]`
 
-            that.#types.forEach(key => {
-                // display message
-                logUpdate(that.#spinnerMessage
-                    .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
-                    .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
-                    .replace('[%3]', `${that.#errorMessage}`)
-                    .replace('[%4]', `${global.icons.working} `)
-                    .replace('[%5]', `${that.#fileName.shortName} `)
-                )
+            try {
+                that.#types.forEach(key => {
+                    // display message
+                    logUpdate(that.#spinnerMessage
+                        .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
+                        .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
+                        .replace('[%3]', `${that.#errorMessage}`)
+                        .replace('[%4]', `${global.icons.working} `)
+                        .replace('[%5]', `${that.#fileName.shortName} `)
+                    )
 
 
-                if (that.metadataDefinition.main.includes(key)) {
-                    // TODO process main
-                    const fileObj = {
-                        shortName: 'Main',
-                        fullName: path.join(that.sourceDir, that.metaDir, `main.${global.format}`),
+                    if (that.metadataDefinition.main.includes(key)) {
+                        // TODO process main
+                        const fileObj = {
+                            shortName: 'Main',
+                            fullName: path.join(that.sourceDir, that.metaDir, `main.${global.format}`),
+                        }
+                        let success = processFile(that, key, fileObj, 'main')
+                        if (!success) {
+                            throw new Error('delete XML')
+                        }
+                        if (that.#json.$ === undefined) {
+                            that.#json.$ = { xmlns: 'https://soap.sforce.com/2006/04/metadata' }
+                        }
+                    } else if (that.metadataDefinition.singleFiles.includes(key)) {
+                        processSingleFile(that, key)
+                    } else if (that.metadataDefinition.directories.includes(key)) {
+                        processDirectory(that, key)
+                    } else {
+                        global.logger.warn(`Unexpected metadata type: ${chalk.redBright(key)}`)
                     }
-                    processFile(that, key, fileObj, 'main')
-                    if (that.#json.$ === undefined) {
-                        that.#json.$ = { xmlns: 'https://soap.sforce.com/2006/04/metadata' }
-                    }
-                } else if (that.metadataDefinition.singleFiles.includes(key)) {
-                    processSingleFile(that, key)
-                } else if (that.metadataDefinition.directories.includes(key)) {
-                    processDirectory(that, key)
+                })
+                return true
+            } catch (error) {
+                if (error.message == 'delete XML') {
+                    return false
                 } else {
-                    global.logger.warn(`Unexpected metadata type: ${chalk.redBright(key)}`)
+                    return true
                 }
-            })
+            }
         }
 
         function processSingleFile(that, key) {
@@ -188,6 +212,10 @@ export class Combine {
             return true
         }
 
+        function deleteFile(fileName) {
+            fileUtils.deleteFile(fileName)
+        }
+
         function processFile(that, key, fileObj = undefined, rootKey = undefined) {
             if (
                 fileObj === undefined ||
@@ -200,7 +228,12 @@ export class Combine {
             }
 
             if (!fileUtils.fileExists(fileObj.fullName)) {
-                return
+                // File does not exist
+                // If file is main.yaml, then return false to indicate that the XML file should be deleted
+                if (fileObj.fullName == path.join(that.sourceDir, that.metaDir, `main.${global.format}`)) {
+                    return false
+                }
+                return true
             }
 
             let result = fileUtils.readFile(fileObj.fullName)
@@ -216,7 +249,7 @@ export class Combine {
                     if (Array.isArray(result[key])) {
                         result[key].forEach(arrItem => {
                             that.#json[key].push(arrItem)
-                        })                          
+                        })
                     } else {
                         that.#json[key].push(result[key])
                     }
@@ -233,7 +266,7 @@ export class Combine {
             }
 
             updateFileStats(that, fileObj.fullName, fileUtils.fileInfo(fileObj.fullName).stats)
-            // genericXML(that, key, fileObj.fullName)
+            return true
         }
 
         function hydrateObject(that, json, key, fileObj) {

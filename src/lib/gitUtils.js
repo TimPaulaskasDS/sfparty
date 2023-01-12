@@ -47,8 +47,11 @@ export function diff(dir, gitRef) {
             const gitData = gitString.split(os.EOL)
             let leftOver = ''
             gitData.forEach((gitRow, index) => {
-                if (index < count || lastIndex + 1 == gitString) {
+                if (gitRow.indexOf('\t') !== -1 &&(index < count || lastIndex + 1 == gitString)) {
                     const file = gitRow.split('\t')
+                    if (file.slice(-1)[0] == 'uthorizationFormConsent.yaml') {
+                        let test = true
+                    }
                     if (file.slice(-1) !== '') {
                         files.push({
                             type: status[(file[0] === file.slice(-1)) ? 'A' : Array.from(file[0])[0]],
@@ -76,16 +79,18 @@ export function diff(dir, gitRef) {
             reject(error)
         })
         gitDiff.on("close", code => {
-            const gitData = data.toString().split(os.EOL)
-            gitData.forEach(gitRow => {
-                const file = gitRow.split('\t')
-                if (file.slice(-1) !== '') {
-                    files.push({
-                        type: status[(file[0] === file.slice(-1)) ? 'A' : Array.from(file[0])[0]],
-                        path: file.slice(-1)[0],
-                    })
-                }
-            })
+            if (data !== '') {
+                const gitData = data.toString().split(os.EOL)
+                gitData.forEach(gitRow => {
+                    const file = gitRow.split('\t')
+                    if (file.slice(-1) !== '') {
+                        files.push({
+                            type: status[(file[0] === file.slice(-1)) ? 'A' : Array.from(file[0])[0]],
+                            path: file.slice(-1)[0],
+                        })
+                    }
+                })    
+            }
 
             resolve(files)
         })

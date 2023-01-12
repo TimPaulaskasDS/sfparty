@@ -68,7 +68,7 @@ export function deleteFile(filePath) {
     if (!fileExists(filePath)) {
         return false
     } else {
-        return unlinkSync(filePath, { recursive: false, force: true });
+        return fs.unlinkSync(filePath, { recursive: false, force: true });
     }
 }
 

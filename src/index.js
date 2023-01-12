@@ -17,6 +17,7 @@ import * as profileDefinition from './meta/Profiles.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
 import * as git from './lib/gitUtils.js'
+import logUpdate from 'log-update'
 
 const processStartTime = process.hrtime.bigint()
 
@@ -35,6 +36,7 @@ global.icons = {
     "fail": '❗',
     "working": '⏳',
     "party": '🎉',
+    "delete": '❌💀❌',
 }
 
 global.displayError = (error, quit = false) => {
@@ -243,8 +245,9 @@ yargs(hideBin(process.argv))
                                 reject(error)
                             })
                     }
+                } else {
+                    resolve(false)
                 }
-                resolve(false)
             })
             startProm.then((result) => {
                 global.git.enabled = result
@@ -484,7 +487,7 @@ function processCombine(typeItem, argv) {
 
 
         if (type == global.metaTypes.label.type) {
-            if (!global.git.enabled || [...new Set([...global.metaTypes.label.add.directories, ...global.metaTypes.label.remove.directories])].includes(global.metaTypes.label.definition.root)) {
+            if (!global.git.enabled || [...new Set([...global.metaTypes[typeItem].add.directories, ...global.metaTypes[typeItem].remove.directories])].includes(global.metaTypes[typeItem].definition.root)) {
                 processList.push(global.metaTypes.label.definition.root)
             }
         } else if (!all) {
@@ -496,25 +499,24 @@ function processCombine(typeItem, argv) {
             processList.push(name)
         } else {
             if (global.git.enabled) {
-                processList = [...new Set([...global.metaTypes.label.add.directories, ...global.metaTypes.label.remove.directories])]
+                processList = [...new Set([...global.metaTypes[typeItem].add.directories, ...global.metaTypes[typeItem].remove.directories])]
             } else {
                 processList = fileUtils.getDirectories(sourceDir)
             }
         }
 
         processed.total = processList.length
+        console.log(`${ chalk.bgBlackBright(processed.total) } ${ typeItem } file(s) to process`)
 
         // Abort if there are no files to process
         if (processed.total == 0) {
-            console.log(`${ chalk.bgBlackBright('0') } ${ typeItem } files to process`)
             resolve(true)
             return
         }
 
+        console.log()
         console.log(`${ chalk.bgBlackBright('Source path:') } ${ sourceDir }`)
         console.log(`${ chalk.bgBlackBright('Target path:') } ${ targetDir }`)
-        console.log()
-        console.log(`Combining a total of ${ processed.total } file(s)`)
         console.log()
 
         const promList = []
@@ -536,7 +538,7 @@ function processCombine(typeItem, argv) {
 
         Promise.allSettled(promList).then((results) => {
             let successes = 0
-            let errors = 0
+            let errors = processed.errors++
             results.forEach(result => {
                 if (result.value == true) {
                     successes++
@@ -573,10 +575,6 @@ function gitFiles(data) {
                     }
                 }
             }
-        }
-        const found = typeArray.some(r => item.path.split(path.sep).includes(r))
-        if (found.length > 0) {
-            let data1 = item.path
         }
     })
 }
