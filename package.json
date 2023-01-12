@@ -1,6 +1,6 @@
 {
   "name": "@ds-sfdc/sfparty",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Salesforce metadata XML splitter for CI/CD",
   "type": "module",
   "repository": {
