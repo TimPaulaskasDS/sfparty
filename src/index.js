@@ -50,26 +50,63 @@ const typeArray = [
     'workflow',
 ]
 
-const metaTypes = {
+global.git = {
+    enabled: false,
+    last: undefined,
+    latest: undefined
+}
+
+global.metaTypes = {
     label: {
         type: labelDefinition.metadataDefinition.filetype,
         definition: labelDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
     },
     profile: {
         type: profileDefinition.metadataDefinition.filetype,
         definition: profileDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
     },
     permset: {
         type: permsetDefinition.metadataDefinition.filetype,
         definition: permsetDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
     },
     workflow: {
         type: workflowDefinition.metadataDefinition.filetype,
         definition: workflowDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
     },
 }
 
+function getKey(directory) {
+    let key = undefined
+    Object.keys(global.metaTypes).forEach(type => {
+        if (global.metaTypes[type].definition.directory == directory) {
+            key = type
+        }
+    })
+    return key
+}
+
+function getDirectories() {
+    const types = []
+    Object.keys(global.metaTypes).forEach(type => {
+        try {
+            types.push(global.metaTypes[type].definition.directory)           
+        } catch (error) {
+            throw error
+        }
+    })
+    return types
+}
+
 let types = []
+const packageDir = getRootPath()
 
 function getRootPath(packageDir) {
     let rootPath = fileUtils.find('sfdx-project.json')
@@ -161,7 +198,60 @@ yargs(hideBin(process.argv))
         },
         handler: (argv) => {
             global.format = argv.format
-            combineHandler(argv, processStartTime)
+            const startProm = new Promise((resolve, reject) => {
+                if (argv.git !== undefined) {
+                    let gitRef = argv.git.trim()
+                    if (argv.git === '') {
+                        const commit = git.lastCommit(global.__basedir, "-1")
+                        commit
+                            .then((data, error) => {
+                                global.git.latest = data.latest
+                                global.git.last = data.last
+                                if (data.last === undefined) {
+                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.bgMagentaBright('not active:')} no prior commit - processing all`)
+                                    resolve(false)
+                                } else {
+                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(data.last) + '..' + chalk.bgBlackBright(data.latest)}`)
+                                    console.log()
+                                    const diff = git.diff(global.__basedir, `${data.last}..${data.latest}`)
+                                    diff
+                                        .then((data, error) => {
+                                            gitFiles(data)
+                                            resolve(true)
+                                        })
+                                        .catch((error) => {
+                                            global.logger.error(error)
+                                            reject(error)
+                                        })                                }
+                            })
+                            .catch((error) => {
+                                global.logger.error(error)
+                                throw error
+                            })
+                    } else {
+                        console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(gitRef)}`)
+                        console.log()
+                        const diff = git.diff(global.__basedir, gitRef)
+                        diff
+                            .then((data, error) => {
+                                gitFiles(data)
+                                resolve(true)
+                            })
+                            .catch((error) => {
+                                global.logger.error(error)
+                                reject(error)
+                            })
+                    }
+                }
+
+            })
+            startProm.then((result) => {
+                global.git.enabled = result
+                combineHandler(argv, processStartTime)
+            })
+            startProm.catch((error) => {
+                global.displayError(error, true)
+            })
         }
     })
     .demandCommand(1, errorMessage)
@@ -261,7 +351,7 @@ function processSplit(typeItem, argv) {
         }
 
         const fileList = []
-        const typeObj = metaTypes[typeItem]
+        const typeObj = global.metaTypes[typeItem]
         const type = typeObj.type
         const metaExtension = `.${type}-meta.xml`
 
@@ -269,10 +359,9 @@ function processSplit(typeItem, argv) {
         let targetDir = argv.target || ''
         let name = argv.name
         let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
-        let packageDir = getRootPath(sourceDir)
 
-        if (type == metaTypes.label.type) {
-            name = metaTypes.label.definition.root
+        if (type == global.metaTypes.label.type) {
+            name = global.metaTypes.label.definition.root
         }
         sourceDir = path.join(global.__basedir, packageDir, 'main', 'default', typeObj.definition.directory)
         if (targetDir == '') {
@@ -303,6 +392,8 @@ function processSplit(typeItem, argv) {
 
         processed.total = fileList.length
 
+        if (processed.total == 0) resolve(true)
+        
         console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
         console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
         console.log()
@@ -346,6 +437,9 @@ function combineHandler(argv, startTime) {
             console.log()
             combineHandler(argv, startTime)
         } else {
+            if (global.git.latest !== undefined) {
+                git.updateLastCommit(global.__basedir, global.git.latest)
+            }
             if (argv.type === undefined || argv.type.split(',').length > 1) {
                 let message = `Split completed in `
                 displayMessageAndDuration(startTime, message)
@@ -370,14 +464,13 @@ function processCombine(typeItem, argv) {
         }
 
         let processList = []
-        const typeObj = metaTypes[typeItem]
+        const typeObj = global.metaTypes[typeItem]
         const type = typeObj.type
 
         let sourceDir = argv.source || ''
         let targetDir = argv.target || ''
         let name = argv.name
         let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
-        let packageDir = getRootPath(sourceDir)
 
         sourceDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
         if (targetDir == '') {
@@ -386,12 +479,12 @@ function processCombine(typeItem, argv) {
             targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
         }
 
-        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
-        console.log()
+ 
 
-        if (type == metaTypes.label.type) {
-            processList.push(metaTypes.label.definition.root)
+        if (type == global.metaTypes.label.type) {
+            if (!global.git.enabled || global.metaTypes.label.add.directories.includes(global.metaTypes.label.definition.root)) {
+                processList.push(global.metaTypes.label.definition.root)
+            }
         } else if (!all) {
             let metaDirPath = path.join(sourceDir, name)
             if (!fileUtils.directoryExists(metaDirPath)) {
@@ -400,10 +493,25 @@ function processCombine(typeItem, argv) {
             }
             processList.push(name)
         } else {
-            processList = fileUtils.getDirectories(sourceDir)
+            if (global.git.enabled) {
+                processList = global.metaTypes[typeItem].add.directories
+            } else {
+                processList = fileUtils.getDirectories(sourceDir)
+            }
         }
 
         processed.total = processList.length
+
+        // Abort if there are no files to process
+        if (processed.total == 0) {
+            console.log(`${chalk.bgBlackBright('0')} ${typeItem} files to process`)
+            resolve(true)
+            return
+        }
+
+        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+        console.log()
         console.log(`Combining a total of ${processed.total} file(s)`)
         console.log()
 
@@ -438,5 +546,32 @@ function processCombine(typeItem, argv) {
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
+    })
+}
+
+function gitFiles(data) {
+    data.forEach(item => {
+        if (item.path.indexOf(packageDir + '-party' + path.sep) == 0) {
+            const pathArray = item.path.split(path.sep)
+            if (pathArray.length > 3) {
+                if (getDirectories().includes(pathArray[3])) {
+                    switch (git.action[item.type]) {
+                        case 'add':
+                            global.metaTypes[getKey(pathArray[3])].add.files.push(item.path)
+                            if (!global.metaTypes[getKey(pathArray[3])].add.directories.includes(pathArray[4])) {
+                                global.metaTypes[getKey(pathArray[3])].add.directories.push(pathArray[4])
+                            }
+                            break
+                        case 'delete':
+                            global.metaTypes[getKey(pathArray[3])].remove.files.push(item.path)
+                            break
+                    }
+                }
+            }
+        }
+        const found = typeArray.some(r => item.path.split(path.sep).includes(r))
+        if (found.length > 0) {
+            let data1 = item.path
+        }
     })
 }

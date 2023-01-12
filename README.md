@@ -26,6 +26,7 @@ sfparty combine
 ### Options
 
 ```
+  -t, --type     type(s) of metadata to process
   -n, --name     name of metadata file  
   -s, --source   package directory path specified in sfdx-project.json  
   -t, --target   target path to directory to create yaml/json files  
@@ -52,6 +53,11 @@ sfparty split --type=profile --name="My Profile"
 sfparty split --type=workflow
 sfparty split --type=workflow --name="Workflow"
 ```
+### Multiple Types
+```bash
+sfparty split --type="workflow,label"
+```
+
 ### Source Directory
 The source directory will use your default package folder as specified in the sfdx-project.json file, and therefore must be executed from your Salesforce project directory. It will create the main/default folders if they do not exist.
 

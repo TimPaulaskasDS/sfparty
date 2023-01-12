@@ -83,7 +83,7 @@ export function fileInfo(filePath) {
     }
 }
 
-export function savePartFile(json, fileName, format) {
+export function saveFile(json, fileName, format = path.extname(fileName).replace('.', '')) {
     try {
         switch (format) {
             case 'json':
@@ -102,7 +102,7 @@ export function savePartFile(json, fileName, format) {
     }
 }
 
-export function readPartFile(fileName) {
+export function readFile(fileName) {
     try {
         let result = undefined
         const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
