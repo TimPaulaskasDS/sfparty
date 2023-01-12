@@ -27,7 +27,7 @@ global.logger = winston.createLogger({
     transports: [
         new winston.transports.Console(),
     ],
-});
+})
 
 global.icons = {
     "warn": '🔕',
@@ -97,7 +97,7 @@ function getDirectories() {
     const types = []
     Object.keys(global.metaTypes).forEach(type => {
         try {
-            types.push(global.metaTypes[type].definition.directory)           
+            types.push(global.metaTypes[type].definition.directory)
         } catch (error) {
             throw error
         }
@@ -148,14 +148,14 @@ function displayHeader() {
         horizontal: '─',
         vertical: '│',
     }
-    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
-    let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
+    let versionString = `sfparty v${ pkgObj.default.version }${ (process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : '' }`
+    let titleMessage = `${ global.icons.party } ${ chalk.yellowBright(versionString) } ${ global.icons.party }`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)
     titleMessage = chalk.blackBright(box.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(box.vertical)
-    console.log(`${chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
+    console.log(`${ chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight) }`)
     console.log(titleMessage)
-    console.log(`${chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
+    console.log(`${ chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight) }`)
     console.log()
 }
 
@@ -166,7 +166,7 @@ yargs(hideBin(process.argv))
         alias: 'test',
         handler: (argv) => {
             // THIS IS A PLACE TO TEST NEW CODE
-            global.logger.info(chalk.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
+            global.logger.info(chalk.magentaBright(`${ global.icons.party } TEST ${ global.icons.party }`))
         }
     })
     .command({
@@ -208,12 +208,12 @@ yargs(hideBin(process.argv))
                                 global.git.latest = data.latest
                                 global.git.last = data.last
                                 if (data.last === undefined) {
-                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.bgMagentaBright('not active:')} no prior commit - processing all`)
+                                    console.log(`${ chalk.yellowBright('git mode') } ${ chalk.bgMagentaBright('not active:') } no prior commit - processing all`)
                                     resolve(false)
                                 } else {
-                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(data.last) + '..' + chalk.bgBlackBright(data.latest)}`)
+                                    console.log(`${ chalk.yellowBright('git mode') } ${ chalk.magentaBright('active:') } ${ chalk.bgBlackBright(data.last) + '..' + chalk.bgBlackBright(data.latest) }`)
                                     console.log()
-                                    const diff = git.diff(global.__basedir, `${data.last}..${data.latest}`)
+                                    const diff = git.diff(global.__basedir, `${ data.last }..${ data.latest }`)
                                     diff
                                         .then((data, error) => {
                                             gitFiles(data)
@@ -222,14 +222,15 @@ yargs(hideBin(process.argv))
                                         .catch((error) => {
                                             global.logger.error(error)
                                             reject(error)
-                                        })                                }
+                                        })
+                                }
                             })
                             .catch((error) => {
                                 global.logger.error(error)
                                 throw error
                             })
                     } else {
-                        console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(gitRef)}`)
+                        console.log(`${ chalk.yellowBright('git mode') } ${ chalk.magentaBright('active:') } ${ chalk.bgBlackBright(gitRef) }`)
                         console.log()
                         const diff = git.diff(global.__basedir, gitRef)
                         diff
@@ -271,7 +272,7 @@ function yargCheck(argv, options) {
     types.forEach(type => {
         type = type.trim()
         if (!typeArray.includes(type)) {
-            throw new Error(`Invalid type: ${type}`)
+            throw new Error(`Invalid type: ${ type }`)
         }
     })
 
@@ -295,27 +296,27 @@ function yargCheck(argv, options) {
 function displayMessageAndDuration(startTime, message) {
     const diff = process.hrtime.bigint() - BigInt(startTime)
     let durationMessage
-    let executionTime = convertHrtime(diff);
+    let executionTime = convertHrtime(diff)
     let minutes = Math.floor((executionTime.seconds + Math.round(executionTime.milliseconds / 100000)) / 60)
     let seconds = Math.round((executionTime.seconds + Math.round(executionTime.milliseconds / 100000)) % 60)
     if (minutes == 0 && seconds == 0) {
         durationMessage = message + chalk.magentaBright(`<1s`)
     } else if (minutes > 0) {
-        durationMessage = message + chalk.magentaBright(`${minutes}m ${seconds}s`)
+        durationMessage = message + chalk.magentaBright(`${ minutes }m ${ seconds }s`)
     } else {
-        durationMessage = message + chalk.magentaBright(`${seconds}s`)
+        durationMessage = message + chalk.magentaBright(`${ seconds }s`)
     }
     console.log('\n' + durationMessage)
 }
 
-let callAmount = 0;
+let callAmount = 0
 process.on('SIGINT', function () {
     if (callAmount < 1) {
-        console.log(`✅ Received abort command`);
+        console.log(`✅ Received abort command`)
         process.exit(1)
     }
 
-    callAmount++;
+    callAmount++
 })
 
 function splitHandler(argv, startTime) {
@@ -351,7 +352,7 @@ function processSplit(typeItem, argv) {
         const fileList = []
         const typeObj = global.metaTypes[typeItem]
         const type = typeObj.type
-        const metaExtension = `.${type}-meta.xml`
+        const metaExtension = `.${ type }-meta.xml`
 
         let sourceDir = argv.source || ''
         let targetDir = argv.target || ''
@@ -391,11 +392,11 @@ function processSplit(typeItem, argv) {
         processed.total = fileList.length
 
         if (processed.total == 0) resolve(true)
-        
-        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+
+        console.log(`${ chalk.bgBlackBright('Source path:') } ${ sourceDir }`)
+        console.log(`${ chalk.bgBlackBright('Target path:') } ${ targetDir }`)
         console.log()
-        console.log(`Splitting a total of ${processed.total} file(s)`)
+        console.log(`Splitting a total of ${ processed.total } file(s)`)
         console.log()
 
         const promList = []
@@ -420,7 +421,7 @@ function processSplit(typeItem, argv) {
             })
         })
         Promise.allSettled(promList).then((results) => {
-            let message = `Split ${chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current)} file(s) ${(processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : ''}in `
+            let message = `Split ${ chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current) } file(s) ${ (processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : '' }in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
@@ -477,10 +478,10 @@ function processCombine(typeItem, argv) {
             targetDir = path.join(targetDir, 'main', 'default', typeObj.definition.directory)
         }
 
- 
+
 
         if (type == global.metaTypes.label.type) {
-            if (!global.git.enabled || global.metaTypes.label.add.directories.includes(global.metaTypes.label.definition.root)) {
+            if (!global.git.enabled || [...new Set([...global.metaTypes.label.add.directories, ...global.metaTypes.label.remove.directories])].includes(global.metaTypes.label.definition.root)) {
                 processList.push(global.metaTypes.label.definition.root)
             }
         } else if (!all) {
@@ -492,7 +493,7 @@ function processCombine(typeItem, argv) {
             processList.push(name)
         } else {
             if (global.git.enabled) {
-                processList = global.metaTypes[typeItem].add.directories
+                processList = [...new Set([...global.metaTypes.label.add.directories, ...global.metaTypes.label.remove.directories])]
             } else {
                 processList = fileUtils.getDirectories(sourceDir)
             }
@@ -502,15 +503,15 @@ function processCombine(typeItem, argv) {
 
         // Abort if there are no files to process
         if (processed.total == 0) {
-            console.log(`${chalk.bgBlackBright('0')} ${typeItem} files to process`)
+            console.log(`${ chalk.bgBlackBright('0') } ${ typeItem } files to process`)
             resolve(true)
             return
         }
 
-        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+        console.log(`${ chalk.bgBlackBright('Source path:') } ${ sourceDir }`)
+        console.log(`${ chalk.bgBlackBright('Target path:') } ${ targetDir }`)
         console.log()
-        console.log(`Combining a total of ${processed.total} file(s)`)
+        console.log(`Combining a total of ${ processed.total } file(s)`)
         console.log()
 
         const promList = []
@@ -540,7 +541,7 @@ function processCombine(typeItem, argv) {
                     errors++
                 }
             })
-            let message = `Combined ${chalk.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : ''}in `
+            let message = `Combined ${ chalk.bgBlackBright(successes) } file(s) ${ (errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : '' }in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
@@ -561,7 +562,10 @@ function gitFiles(data) {
                             }
                             break
                         case 'delete':
-                            global.metaTypes[getKey(pathArray[3])].remove.files.push(item.path)
+                            global.metaTypes[getKey(pathArray[3])].remove.files.push(item.path);
+                            if (!global.metaTypes[getKey(pathArray[3])].remove.directories.includes(pathArray[4])) {
+                                global.metaTypes[getKey(pathArray[3])].remove.directories.push(pathArray[4]);
+                            }
                             break
                     }
                 }
