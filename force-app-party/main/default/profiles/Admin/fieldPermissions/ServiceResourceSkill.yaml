@@ -1,0 +1,8 @@
+object: ServiceResourceSkill
+fieldPermissions:
+  - field: EffectiveEndDate
+    editable: true
+    readable: true
+  - field: SkillLevel
+    editable: true
+    readable: true
