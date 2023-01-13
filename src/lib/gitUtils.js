@@ -49,9 +49,6 @@ export function diff(dir, gitRef) {
             gitData.forEach((gitRow, index) => {
                 if (gitRow.indexOf('\t') !== -1 &&(index < count || lastIndex + 1 == gitString)) {
                     const file = gitRow.split('\t')
-                    if (file.slice(-1)[0] == 'uthorizationFormConsent.yaml') {
-                        let test = true
-                    }
                     if (file.slice(-1) !== '') {
                         files.push({
                             type: status[(file[0] === file.slice(-1)) ? 'A' : Array.from(file[0])[0]],

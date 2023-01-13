@@ -260,7 +260,6 @@ export class Combine {
                 try {
                     that.#json[key] = (rootKey !== undefined) ? result[rootKey][key] : result[key]
                 } catch (error) {
-                    let test = { key: key, rootKey: rootKey, json: result }
                     throw error
                 }
             }

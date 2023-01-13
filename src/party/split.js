@@ -305,7 +305,6 @@ function keySort(that, key, json) {
                         return accumulator
                     }, {})
             } catch (error) {
-                let test = key
                 throw error
             }
         }, json)
