@@ -1,8 +1,6 @@
 'use strict'
 
 import path from 'path'
-import fs from 'fs'
-import os from 'os'
 import { readFile } from 'fs'
 import { Parser } from 'xml2js'
 import logUpdate from 'log-update'
@@ -62,8 +60,14 @@ export class Split {
             throw 'The file path cannot be empty'
         }
         this._metaFilePath = value
-        this.#fileName.fullName = fileUtils.fileInfo(value).filename
-        this.#fileName.shortName = fileUtils.fileInfo(value).filename.replace(`.${this.#type}-meta.xml`, '')
+        let fileName = fileUtils.fileInfo(value).filename
+
+        // Use actual file name if found so it matches case sensitivity
+        let foundFile = fileUtils.getFiles(path.dirname(value), fileName)
+        if (foundFile.length > 0) fileName = path.basename(foundFile[0])
+            
+        this.#fileName.shortName = fileName.replace(`.${this.#type}-meta.xml`, '')
+        this.#fileName.fullName = fileName
     }
 
     split() {

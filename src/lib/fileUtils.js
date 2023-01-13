@@ -42,7 +42,7 @@ export function getFiles(dirPath, filter = undefined) {
             if (!filter) {
                 filesList.push(file)
             } else {
-                if (file.endsWith(filter)) {
+                if (file.toLocaleLowerCase().endsWith(filter.toLocaleLowerCase())) {
                     filesList.push(file)
                 }
             }
