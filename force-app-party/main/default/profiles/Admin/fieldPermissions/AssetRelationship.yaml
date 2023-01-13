@@ -1,5 +1,0 @@
-object: AssetRelationship
-fieldPermissions:
-  - field: RelationshipType
-    editable: true
-    readable: true

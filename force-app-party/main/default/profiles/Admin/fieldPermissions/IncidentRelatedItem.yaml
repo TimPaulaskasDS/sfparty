@@ -1,5 +1,0 @@
-object: IncidentRelatedItem
-fieldPermissions:
-  - field: Comment
-    editable: true
-    readable: true

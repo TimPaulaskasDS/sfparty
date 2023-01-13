@@ -1,8 +1,0 @@
-object: DataUseLegalBasis
-fieldPermissions:
-  - field: Description
-    editable: true
-    readable: true
-  - field: Source
-    editable: true
-    readable: true

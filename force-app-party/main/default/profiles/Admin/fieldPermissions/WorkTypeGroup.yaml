@@ -1,8 +1,0 @@
-object: WorkTypeGroup
-fieldPermissions:
-  - field: AdditionalInformation
-    editable: true
-    readable: true
-  - field: IsActive
-    editable: true
-    readable: true
