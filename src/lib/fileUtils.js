@@ -2,6 +2,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as yaml from 'js-yaml'
+import { Parser } from 'xml2js'
 
 export function directoryExists(dirPath) {
     return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()
@@ -57,8 +58,8 @@ export function getFiles(dirPath, filter = undefined) {
 export function getDirectories(dirPath) {
     if (directoryExists(dirPath)) {
         return fs.readdirSync(dirPath, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name)
+            .filter(dirent => dirent.isDirectory())
+            .map(dirent => dirent.name)
     } else {
         return []
     }
@@ -102,20 +103,40 @@ export function saveFile(json, fileName, format = path.extname(fileName).replace
     }
 }
 
-export function readFile(fileName) {
+export function readFile(fileName, convert = true) {
     try {
         let result = undefined
-        const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
-        if (fileName.indexOf('.yaml') != -1) {
-            result = yaml.load(data)
-        } else {
-            result = JSON.parse(data)
+        if (fileExists(fileName)) {
+            const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
+            if (convert && fileName.indexOf('.yaml') != -1) {
+                result = yaml.load(data)
+            } else if (convert && fileName.indexOf('.json') != -1) {
+                result = JSON.parse(data)
+            } else if (convert && fileName.indexOf('.xml') != -1) {
+                // returns a promise
+                result = convertXML(data)
+            } else {
+                result = data
+            }
+            return result
         }
-        return result
     } catch (error) {
         global.logger.error(error)
         throw error
     }
+}
+
+async function convertXML(data) {
+    return new Promise((resolve, reject) => {
+        try {
+            let parser = new Parser()
+            parser.parseString(data, function (err, result) {
+                resolve(result)
+            })
+        } catch (error) {
+            reject(error)
+        }
+    })
 }
 
 export function writeFile(fileName, data, atime = new Date(), mtime = new Date()) {
