@@ -1,5 +1,0 @@
-object: Idea
-recordTypeVisibilities:
-  - default: false
-    recordType: InternalIdeasIdeaRecordType
-    visible: false

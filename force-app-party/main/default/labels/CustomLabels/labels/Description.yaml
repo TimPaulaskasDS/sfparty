@@ -1,6 +1,6 @@
 labels:
   fullName: Description
-  shortDescription: Description
+  shortDescription: Test
   categories: description,sfparty
   protected: true
   language: en_US
