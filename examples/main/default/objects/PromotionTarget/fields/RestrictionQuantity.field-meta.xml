@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RestrictionQuantity</fullName>
+    <inlineHelpText>Enter the number of products that can receive this discount. The default quantity is unlimited.</inlineHelpText>
+    <trackHistory>false</trackHistory>
+</CustomField>

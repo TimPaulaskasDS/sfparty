@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IsSlotPublished</fullName>
+    <inlineHelpText>Indicate whether records in the Shift object are created for the selected Service Territory and Work Type.</inlineHelpText>
+    <trackHistory>false</trackHistory>
+</CustomField>
