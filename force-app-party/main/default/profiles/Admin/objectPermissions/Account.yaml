@@ -1,8 +1,0 @@
-object: Account
-objectPermissions:
-  - allowCreate: true
-    allowRead: true
-    allowEdit: true
-    allowDelete: true
-    viewAllRecords: true
-    modifyAllRecords: true

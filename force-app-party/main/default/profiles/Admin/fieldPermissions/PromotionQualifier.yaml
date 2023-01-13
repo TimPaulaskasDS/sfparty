@@ -1,5 +1,0 @@
-object: PromotionQualifier
-fieldPermissions:
-  - field: ExternalQualifier
-    editable: false
-    readable: false
