@@ -119,6 +119,8 @@ export function readFile(fileName, convert = true) {
                 result = data
             }
             return result
+        } else {
+            return undefined
         }
     } catch (error) {
         global.logger.error(error)
