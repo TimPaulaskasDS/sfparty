@@ -67,7 +67,8 @@ export function diff(dir, gitRef) {
         })
         gitDiff.stderr.on("data", data => {
             const errorMessage = 'git diff: ' + data.toString().split(os.EOL)[0]
-            reject(errorMessage)
+            
+            reject(new Error(errorMessage))
         })
         gitDiff.on('error', (error) => {
             if (error.message.indexOf('ENOENT')) {
