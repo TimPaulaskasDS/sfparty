@@ -1,0 +1,7 @@
+labels:
+  fullName: Test
+  shortDescription: Test
+  categories: test,sfparty
+  protected: true
+  language: en_US
+  value: This is a test label
