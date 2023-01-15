@@ -45,9 +45,26 @@ function getOptions(type) {
     })
     if (type == 'combine') {
         optionObj.git = {
+            alias: 'git',
             demand: false,
             description: 'process files based on git commits',
             type: 'string',
+        }
+
+        optionObj.append = {
+            alias: 'append',
+            demand: false,
+            description: 'append package and destructive package instead of overwriting',
+            type: 'boolean',
+            implies: 'git'
+        }
+
+        optionObj.delta = {
+            alias: 'delta',
+            demand: false,
+            description: 'when possible create delta metadata files for CI/CD deployment',
+            type: 'boolean',
+            implies: 'git'
         }
     }
 
