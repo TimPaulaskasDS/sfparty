@@ -227,3 +227,4 @@ test/**
 .vscode/settings.json
 .vscode/launch.json
 yarn.lock
+manifest/**-party.xml
