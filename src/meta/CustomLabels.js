@@ -19,5 +19,6 @@ export const metadataDefinition = {
     },
     xmlOrder: {
         labels: ['fullName'],
-    }
+    },
+    packageTypeIsDirectory: true
 }

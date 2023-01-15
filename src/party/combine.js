@@ -6,6 +6,7 @@ import cliSpinners from 'cli-spinners'
 import os from 'node:os'
 import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
+import * as packageUtil from '../lib/packageUtil.js'
 
 const spinner = cliSpinners['dots']
 const processed = {
@@ -32,6 +33,8 @@ export class Combine {
         mtime: undefined
     }
     #json = {}
+    #addPkg = undefined
+    #desPkg = undefined
 
     constructor(config) {
         this.metadataDefinition = config.metadataDefinition
@@ -40,6 +43,8 @@ export class Combine {
         this.metaDir = config.metaDir
         this.sequence = config.sequence
         this.total = config.total
+        this.addManifest = config.addManifest || 'manifest/package-party.xml'
+        this.desManifest = config.desManifest || 'manifest/destructiveChanges-party.xml'
     }
 
     get metadataDefinition() {
@@ -102,9 +107,33 @@ export class Combine {
                 that.#json[key] = undefined
             })
 
+            if (global.git.enabled) {
+                that.#addPkg = new packageUtil.Package(that.addManifest)
+                that.#desPkg = new packageUtil.Package(that.desManifest)
+                const prom1 = that.#addPkg.getPackageXML()
+                const prom2 = that.#desPkg.getPackageXML()
+
+                Promise.allSettled([prom1, prom2])
+                    .then((results) => {
+                        const rejected = results.filter(p => p.status === 'rejected')
+                        if (rejected.length > 0) {
+                            reject(rejected[0].value)
+                        } else {
+                            resolve(processStart(that))
+                        }
+                    })
+            } else {
+                resolve(processStart(that))
+            }
+        })
+
+        function processStart(that) {
             let success = getXML(that)
             if (success) {
+                if (!that.metadataDefinition.packageTypeIsDirectory) that.#addPkg.addMember(that.#root, that.#fileName.shortName)
                 saveXML(that)
+                if (global.git.enabled) savePackageXML(that)
+                return true
             } else {
                 logUpdate(that.#spinnerMessage
                     .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
@@ -114,11 +143,17 @@ export class Combine {
                     .replace('[%5]', that.#fileName.shortName)
                 )
                 logUpdate.done()
+                if (!that.metadataDefinition.packageTypeIsDirectory) that.#desPkg.addMember(that.#root, that.#fileName.shortName)
                 deleteFile(that.#fileName.fullName)
-                resolve('deleted')
+                if (global.git.enabled) savePackageXML(that)
+                return 'deleted'
             }
-            resolve(true)
-        })
+        }
+
+        function savePackageXML(that) {
+            that.#addPkg.savePackage()
+            that.#desPkg.savePackage()
+        }
 
         function getXML(that) {
             if (processed.type != that.#root) {
@@ -143,7 +178,6 @@ export class Combine {
 
 
                     if (that.metadataDefinition.main.includes(key)) {
-                        // TODO process main
                         const fileObj = {
                             shortName: 'Main',
                             fullName: path.join(that.sourceDir, that.metaDir, `main.${global.format}`),
@@ -152,6 +186,7 @@ export class Combine {
                         if (!success) {
                             throw new Error('delete XML')
                         }
+
                         if (that.#json.$ === undefined) {
                             that.#json.$ = { xmlns: 'https://soap.sforce.com/2006/04/metadata' }
                         }
@@ -206,6 +241,7 @@ export class Combine {
                         fullName: path.join(that.sourceDir, that.metaDir, key, file),
                     }
                     processFile(that, key, fileObj)
+
                 })
 
             }
@@ -223,8 +259,7 @@ export class Combine {
                 fileObj.shortName === undefined ||
                 fileObj.fullName === undefined
             ) {
-                that.#errorMessage += `\n${global.icons.warn} Invalid file information passed ${chalk.redBright(fileObj)}`
-                return false
+                global.displayError(`${global.icons.warn} Invalid file information passed ${chalk.redBright(fileObj)}`, true)
             }
 
             if (!fileUtils.fileExists(fileObj.fullName)) {
@@ -232,6 +267,10 @@ export class Combine {
                 // If file is main.yaml, then return false to indicate that the XML file should be deleted
                 if (fileObj.fullName == path.join(that.sourceDir, that.metaDir, `main.${global.format}`)) {
                     return false
+                }
+
+                if (that.metadataDefinition.packageTypeIsDirectory) {
+                    that.#desPkg.addMember(that.#root, fileObj.shortName.replace(`.${global.format}`, ''))
                 }
                 return true
             }
@@ -261,6 +300,13 @@ export class Combine {
                     that.#json[key] = (rootKey !== undefined) ? result[rootKey][key] : result[key]
                 } catch (error) {
                     throw error
+                }
+            }
+
+
+            if (that.metadataDefinition.packageTypeIsDirectory) {
+                if (fileObj.fullName !== path.join(that.sourceDir, that.metaDir, `main.${global.format}`)) {
+                    that.#addPkg.addMember(that.#root, fileObj.shortName.replace(`.${global.format}`, ''))
                 }
             }
 

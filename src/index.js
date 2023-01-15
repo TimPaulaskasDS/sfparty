@@ -17,9 +17,10 @@ import * as profileDefinition from './meta/Profiles.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
 import * as git from './lib/gitUtils.js'
-import logUpdate from 'log-update'
 
 const processStartTime = process.hrtime.bigint()
+
+global.__basedir = undefined
 
 global.logger = winston.createLogger({
     levels: winston.config.syslog.levels,
@@ -55,7 +56,9 @@ const typeArray = [
 global.git = {
     enabled: false,
     last: undefined,
-    latest: undefined
+    latest: undefined,
+    append: false,
+    delta: false,
 }
 
 global.metaTypes = {
@@ -150,14 +153,14 @@ function displayHeader() {
         horizontal: '─',
         vertical: '│',
     }
-    let versionString = `sfparty v${ pkgObj.default.version }${ (process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : '' }`
-    let titleMessage = `${ global.icons.party } ${ chalk.yellowBright(versionString) } ${ global.icons.party }`
+    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
+    let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)
     titleMessage = chalk.blackBright(box.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(box.vertical)
-    console.log(`${ chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight) }`)
+    console.log(`${chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
     console.log(titleMessage)
-    console.log(`${ chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight) }`)
+    console.log(`${chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
     console.log()
 }
 
@@ -168,7 +171,7 @@ yargs(hideBin(process.argv))
         alias: 'test',
         handler: (argv) => {
             // THIS IS A PLACE TO TEST NEW CODE
-            global.logger.info(chalk.magentaBright(`${ global.icons.party } TEST ${ global.icons.party }`))
+            global.logger.info(chalk.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
         }
     })
     .command({
@@ -203,6 +206,8 @@ yargs(hideBin(process.argv))
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {
                     let gitRef = argv.git.trim()
+                    global.git.append = argv.append || global.git.append
+                    global.git.delta = argv.delta || global.git.delta
                     if (argv.git === '') {
                         const commit = git.lastCommit(global.__basedir, "-1")
                         commit
@@ -210,12 +215,12 @@ yargs(hideBin(process.argv))
                                 global.git.latest = data.latest
                                 global.git.last = data.last
                                 if (data.last === undefined) {
-                                    console.log(`${ chalk.yellowBright('git mode') } ${ chalk.bgMagentaBright('not active:') } no prior commit - processing all`)
+                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.bgMagentaBright('not active:')} no prior commit - processing all`)
                                     resolve(false)
                                 } else {
-                                    console.log(`${ chalk.yellowBright('git mode') } ${ chalk.magentaBright('active:') } ${ chalk.bgBlackBright(data.last) + '..' + chalk.bgBlackBright(data.latest) }`)
+                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(data.last) + '..' + chalk.bgBlackBright(data.latest)}`)
                                     console.log()
-                                    const diff = git.diff(global.__basedir, `${ data.last }..${ data.latest }`)
+                                    const diff = git.diff(global.__basedir, `${data.last}..${data.latest}`)
                                     diff
                                         .then((data, error) => {
                                             gitFiles(data)
@@ -232,7 +237,7 @@ yargs(hideBin(process.argv))
                                 throw error
                             })
                     } else {
-                        console.log(`${ chalk.yellowBright('git mode') } ${ chalk.magentaBright('active:') } ${ chalk.bgBlackBright(gitRef) }`)
+                        console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(gitRef)}`)
                         console.log()
                         const diff = git.diff(global.__basedir, gitRef)
                         diff
@@ -275,7 +280,7 @@ function yargCheck(argv, options) {
     types.forEach(type => {
         type = type.trim()
         if (!typeArray.includes(type)) {
-            throw new Error(`Invalid type: ${ type }`)
+            throw new Error(`Invalid type: ${type}`)
         }
     })
 
@@ -305,9 +310,9 @@ function displayMessageAndDuration(startTime, message) {
     if (minutes == 0 && seconds == 0) {
         durationMessage = message + chalk.magentaBright(`<1s`)
     } else if (minutes > 0) {
-        durationMessage = message + chalk.magentaBright(`${ minutes }m ${ seconds }s`)
+        durationMessage = message + chalk.magentaBright(`${minutes}m ${seconds}s`)
     } else {
-        durationMessage = message + chalk.magentaBright(`${ seconds }s`)
+        durationMessage = message + chalk.magentaBright(`${seconds}s`)
     }
     console.log('\n' + durationMessage)
 }
@@ -355,7 +360,7 @@ function processSplit(typeItem, argv) {
         const fileList = []
         const typeObj = global.metaTypes[typeItem]
         const type = typeObj.type
-        const metaExtension = `.${ type }-meta.xml`
+        const metaExtension = `.${type}-meta.xml`
 
         let sourceDir = argv.source || ''
         let targetDir = argv.target || ''
@@ -396,10 +401,10 @@ function processSplit(typeItem, argv) {
 
         if (processed.total == 0) resolve(true)
 
-        console.log(`${ chalk.bgBlackBright('Source path:') } ${ sourceDir }`)
-        console.log(`${ chalk.bgBlackBright('Target path:') } ${ targetDir }`)
+        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
         console.log()
-        console.log(`Splitting a total of ${ processed.total } file(s)`)
+        console.log(`Splitting a total of ${processed.total} file(s)`)
         console.log()
 
         const promList = []
@@ -424,7 +429,7 @@ function processSplit(typeItem, argv) {
             })
         })
         Promise.allSettled(promList).then((results) => {
-            let message = `Split ${ chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current) } file(s) ${ (processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : '' }in `
+            let message = `Split ${chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current)} file(s) ${(processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : ''}in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
@@ -506,7 +511,7 @@ function processCombine(typeItem, argv) {
         }
 
         processed.total = processList.length
-        console.log(`${ chalk.bgBlackBright(processed.total) } ${ typeItem } file(s) to process`)
+        console.log(`${chalk.bgBlackBright(processed.total)} ${typeItem} file(s) to process`)
 
         // Abort if there are no files to process
         if (processed.total == 0) {
@@ -515,8 +520,8 @@ function processCombine(typeItem, argv) {
         }
 
         console.log()
-        console.log(`${ chalk.bgBlackBright('Source path:') } ${ sourceDir }`)
-        console.log(`${ chalk.bgBlackBright('Target path:') } ${ targetDir }`)
+        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
         console.log()
 
         const promList = []
@@ -546,7 +551,7 @@ function processCombine(typeItem, argv) {
                     errors++
                 }
             })
-            let message = `Combined ${ chalk.bgBlackBright(successes) } file(s) ${ (errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : '' }in `
+            let message = `Combined ${chalk.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : ''}in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
