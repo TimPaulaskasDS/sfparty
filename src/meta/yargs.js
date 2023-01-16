@@ -69,7 +69,7 @@ function getOptions(type) {
         }
 
         optionObj.package = {
-            alias: 'pkg',
+            alias: 'p',
             demand: false,
             description: 'path to your change package XML file',
             type: 'string',
