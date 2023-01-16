@@ -1,6 +1,7 @@
 import path from 'path'
 import { spawn } from 'node:child_process'
 import * as os from 'node:os'
+import { existsSync } from 'fs'
 import * as fileUtils from './fileUtils.js'
 
 const defaultDefinition = {
@@ -37,6 +38,13 @@ export const action = {
 
 export function diff(dir, gitRef) {
     return new Promise((resolve, reject) => {
+        if (!existsSync(dir)) {
+            reject(new Error(`The directory "${dir}" does not exist`))
+        }
+        if (!existsSync(`${dir}/.git`)) {
+            reject(new Error(`The directory "${dir}" is not a git repository`))
+        }
+
         let data = ''
         const files = []
         const gitDiff = spawn('git', ['diff', '--name-status', '--oneline', '--relative', `${gitRef}`], { cwd: dir })
@@ -48,7 +56,7 @@ export function diff(dir, gitRef) {
             const gitData = gitString.split(os.EOL)
             let leftOver = ''
             gitData.forEach((gitRow, index) => {
-                if (gitRow.indexOf('\t') !== -1 &&(index < count || lastIndex + 1 == gitString)) {
+                if (gitRow.indexOf('\t') !== -1 && (index < count || lastIndex + 1 == gitString)) {
                     const file = gitRow.split('\t')
                     if (file.slice(-1) !== '') {
                         files.push({
@@ -68,7 +76,7 @@ export function diff(dir, gitRef) {
         })
         gitDiff.stderr.on("data", data => {
             const errorMessage = 'git diff: ' + data.toString().split(os.EOL)[0]
-            
+
             reject(new Error(errorMessage))
         })
         gitDiff.on('error', (error) => {
@@ -88,7 +96,7 @@ export function diff(dir, gitRef) {
                             path: file.slice(-1)[0],
                         })
                     }
-                })    
+                })
             }
 
             resolve(files)

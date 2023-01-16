@@ -45,6 +45,19 @@ describe('git Util', () => {
                 expect(err).to.be.an('error')
             }
         })
+
+        it('should return an error if the directory does not exist', function() {
+            git.diff('non-existent-dir', 'HEAD').catch(err => {
+                expect(err.message).to.equal(`The directory "non-existent-dir" does not exist`)
+            })
+        })
+    
+        it('should return an error if the directory is not a git repository', function() {
+            git.diff('~/.', 'HEAD').catch(err => {
+                expect(err.message).to.equal(`The directory "~/." is not a git repository`)
+            })
+        })
+
     })
 
     describe('log function', () => {
@@ -81,6 +94,22 @@ describe('git Util', () => {
     })
 
     describe('lastCommit function', () => {
+        it('should return an error if the file is not in the repository', async () => {
+            try {
+                await git.lastCommit(process.cwd(), 'invalid-index.yaml')
+            } catch (err) {
+                expect(err.message).to.equal('file not found in repository')
+            }
+        })
+    
+        it('should return an error if git is not installed or not in PATH', async () => {
+            try {
+                await git.lastCommit(process.cwd())
+            } catch (err) {
+                expect(err.message).to.equal('git not installed or no entry found in path')
+            }
+        })
+        
         it('should return the last commit hash for a given file', async () => {
             const commitHash = await git.lastCommit(process.cwd())
             expect(commitHash).to.be.an('object')
@@ -88,22 +117,6 @@ describe('git Util', () => {
             expect(commitHash.lastCommit).to.satisfy(val => val === undefined || (val.length === 40 && /^[a-f0-9]+$/.test(val)))
             expect(commitHash.latestCommit).to.satisfy(val =>val === undefined || (val.length === 40 && /^[a-f0-9]+$/.test(val)))
         })
-    })
-
-    it('should return an error if the file is not in the repository', async () => {
-        try {
-            await git.lastCommit(process.cwd(), 'invalid-index.yaml')
-        } catch (err) {
-            expect(err.message).to.equal('file not found in repository')
-        }
-    })
-
-    it('should return an error if git is not installed or not in PATH', async () => {
-        try {
-            await git.lastCommit(process.cwd())
-        } catch (err) {
-            expect(err.message).to.equal('git not installed or no entry found in path')
-        }
     })
 
     describe('updateLastCommit function', () => {
