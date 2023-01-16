@@ -246,7 +246,12 @@ yargs(hideBin(process.argv))
 
 function yargCheck(argv, options) {
     const argvKeys = Object.keys(argv)
-    const invalidKeys = argvKeys.filter(key => !options.string.includes(key) && !['_', '$0'].includes(key))
+    const invalidKeys = argvKeys.filter(key =>
+        !['_', '$0'].includes(key) &&
+        !options.string.includes(key) && 
+        !options.boolean.includes(key) && 
+        !options.array.includes(key)
+        )
 
     if (invalidKeys.length > 0) {
         const invalidKeysWithColor = invalidKeys.map(key => chalk.redBright(key))
@@ -459,6 +464,8 @@ function processCombine(typeItem, argv) {
         let targetDir = argv.target || ''
         let name = argv.name
         let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
+        let addManifest = argv.package
+        let desManifest = argv.destructive
 
         sourceDir = path.join(global.__basedir, packageDir + '-party', 'main', 'default', typeObj.definition.directory)
         if (targetDir == '') {
@@ -511,6 +518,8 @@ function processCombine(typeItem, argv) {
                 metaDir: metaDir,
                 sequence: promList.length + 1,
                 total: processed.total,
+                addManifest: addManifest,
+                desManifest: desManifest,
             })
             const metadataItemProm = metadataItem.combine()
             promList.push(metadataItemProm)
