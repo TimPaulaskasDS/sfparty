@@ -249,7 +249,8 @@ function yargCheck(argv, options) {
     const invalidKeys = argvKeys.filter(key => !options.string.includes(key) && !['_', '$0'].includes(key))
 
     if (invalidKeys.length > 0) {
-        throw new Error(`Invalid options specified: ${invalidKeys.join(', ')}`)
+        const invalidKeysWithColor = invalidKeys.map(key => chalk.redBright(key))
+        throw new Error(`Invalid options specified: ${invalidKeysWithColor.join(', ')}`)
     }
 
     const name = argv.name
