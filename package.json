@@ -24,6 +24,7 @@
   "license": "BSD-3-Clause",
   "dependencies": {
     "chai": "^4.3.7",
+    "chai-as-promised": "^7.1.1",
     "chalk": "^5.2.0",
     "cli-spinners": "^2.7.0",
     "convert-hrtime": "^5.0.0",
