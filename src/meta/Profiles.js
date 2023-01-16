@@ -3,6 +3,7 @@ export const metadataDefinition = {
     directory: 'profiles',
     filetype: 'profile',
     root: 'Profile',
+    alias: 'profile',
     main: [
         'fullName',
         'custom',

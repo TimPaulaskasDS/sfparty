@@ -3,6 +3,7 @@ export const metadataDefinition = {
     directory: 'labels',
     filetype: 'labels',
     root: 'CustomLabels',
+    alias: 'label',
     main: [
         '$',
     ],
@@ -20,5 +21,6 @@ export const metadataDefinition = {
     xmlOrder: {
         labels: ['fullName'],
     },
-    packageTypeIsDirectory: true
+    packageTypeIsDirectory: true,
+    delta: true,
 }
