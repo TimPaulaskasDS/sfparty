@@ -31,6 +31,8 @@
     "convert-hrtime": "^5.0.0",
     "js-yaml": "^4.1.0",
     "log-update": "^5.0.1",
+    "marked": "^4.2.12",
+    "marked-terminal": "^5.1.1",
     "pinst": "^3.0.0",
     "util": "^0.10.3",
     "winston": "^3.8.2",

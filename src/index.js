@@ -9,6 +9,8 @@ import winston from 'winston'
 import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
 import axios from 'axios'
+import { marked } from 'marked'
+import markedTerminal from 'marked-terminal'
 
 import * as fileUtils from './lib/fileUtils.js'
 import * as pkgObj from '../package.json'  assert { type: "json" }
@@ -22,6 +24,11 @@ import * as workflowDefinition from './meta/Workflows.js'
 import * as git from './lib/gitUtils.js'
 
 const processStartTime = process.hrtime.bigint()
+
+marked.setOptions({
+    // Define custom renderer
+    renderer: new markedTerminal
+})
 
 global.__basedir = undefined
 
@@ -108,7 +115,14 @@ let errorMessage = chalk.red('Please specify the action of ' + chalk.whiteBright
 displayHeader() // display header mast
 
 yargs(hideBin(process.argv))
-    .alias('h', 'help')
+    .command({
+        command: 'help',
+        alias: 'h',
+        handler: (argv) => {
+            const data = readFileSync(path.join(process.cwd(), 'README.md'), "utf8")
+            console.log(marked(data))
+        }
+    })
     .command({
         command: '[test]',
         alias: 'test',
@@ -120,6 +134,10 @@ yargs(hideBin(process.argv))
     .command({
         command: '[update]',
         alias: 'update',
+        builder: (yargs) => {
+            yargs
+                .check(yargCheck)
+        },
         handler: (argv) => {
             checkVersion(pkgObj.default.version, true)
         }
@@ -222,11 +240,18 @@ yargs(hideBin(process.argv))
         ['$0 combine --type=permset --all'],
         ['$0 combine --type=permset --name="Permission Set Name"'],
     ])
-    .help()
+    .help(false)
     .argv
     .parse
 
 function yargCheck(argv, options) {
+    const argvKeys = Object.keys(argv)
+    const invalidKeys = argvKeys.filter(key => !options.string.includes(key) && !['_', '$0'].includes(key))
+
+    if (invalidKeys.length > 0) {
+        throw new Error(`Invalid options specified: ${invalidKeys.join(', ')}`)
+    }
+
     const name = argv.name
     types = (argv.type !== undefined) ? argv.type.split(',') : typeArray
     types.forEach(type => {

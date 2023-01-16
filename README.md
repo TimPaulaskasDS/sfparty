@@ -68,8 +68,6 @@ The following options are available when using the combine command:
 -p, --package     path to your change package XML file.
 -x, --destructive path to your destructive change package XML file.
 ```
-
-
 ## Examples
 ### Custom Labels
 ```bash
@@ -138,3 +136,22 @@ If you are using a git hook utility such as `husky`, you can add a post-merge ho
 sfparty combine --git
 ```
 ## CI/CD
+sfparty is meant to be a supplemental addition to your CI/CD process. Your pipeline should already build out a `package.xml` and `destructiveChanges.xml`. When sfparty runs it will do a `git diff` and append changes to the files. You can use a utility like [sfdx-git-delta](https://www.npmjs.com/package/sfdx-git-delta) to build out the package.
+```
+Required:  
+-g, --git         process files based on git commits. This option does not require a value.
+
+Optional:  
+-a, --append      append package and destructive package instead of overwriting.
+-l, --delta       when possible create delta metadata files for CI/CD deployment.
+-p, --package     path to your change package XML file.
+-x, --destructive path to your destructive change package XML file.
+```
+
+### Example
+
+#### Previous Commit to Current
+
+```
+sfparty combine --git=HEAD~1..HEAD --append --delta --package=deploy/package.xml --destructive=deploy/destructiveChanges/destructiveChanges.xml
+```
