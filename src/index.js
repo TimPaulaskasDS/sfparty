@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict'
+import { exec } from 'child_process'
 import { readFileSync } from 'fs'
 import path from 'path'
 import yargs from 'yargs'
@@ -7,6 +8,8 @@ import { hideBin } from 'yargs/helpers'
 import winston from 'winston'
 import chalk from 'chalk'
 import convertHrtime from 'convert-hrtime'
+import axios from 'axios'
+
 import * as fileUtils from './lib/fileUtils.js'
 import * as pkgObj from '../package.json'  assert { type: "json" }
 import * as yargOptions from './meta/yargs.js'
@@ -23,7 +26,15 @@ const processStartTime = process.hrtime.bigint()
 global.__basedir = undefined
 
 global.logger = winston.createLogger({
-    levels: winston.config.syslog.levels,
+    levels: {
+        error: 0,
+        warn: 1,
+        info: 2,
+        http: 3,
+        verbose: 4,
+        debug: 5,
+        silly: 6
+    },
     format: winston.format.cli(),
     defaultMeta: { service: 'sfparty' },
     transports: [
@@ -88,81 +99,13 @@ global.metaTypes = {
     },
 }
 
-function getKey(directory) {
-    let key = undefined
-    Object.keys(global.metaTypes).forEach(type => {
-        if (global.metaTypes[type].definition.directory == directory) {
-            key = type
-        }
-    })
-    return key
-}
-
-function getDirectories() {
-    const types = []
-    Object.keys(global.metaTypes).forEach(type => {
-        try {
-            types.push(global.metaTypes[type].definition.directory)
-        } catch (error) {
-            throw error
-        }
-    })
-    return types
-}
 
 let types = []
 const packageDir = getRootPath()
 
-function getRootPath(packageDir) {
-    let rootPath = fileUtils.find('sfdx-project.json')
-    let defaultDir
-    if (rootPath) {
-        global.__basedir = fileUtils.fileInfo(rootPath).dirname
-        let packageJSON = JSON.parse(readFileSync(rootPath))
-        if (Array.isArray(packageJSON.packageDirectories)) {
-            packageJSON.packageDirectories.every(directory => {
-                if (directory.default || packageJSON.packageDirectories.length == 1) defaultDir = directory.path
-                if (directory == packageDir) {
-                    defaultDir = directory
-                    return false
-                }
-                return true
-            })
-        }
-    } else {
-        global.logger.error('Could not determine base path of Salesforce source directory. No sfdx-project.json found. Please specify a source path or execute from Salesforce project directory.')
-        process.exit(1)
-    }
-    if (packageDir && packageDir != defaultDir) {
-        global.logger.error('Could not find directory in sfdx-project.json. Please specify a package directory path from the sfdx-project.json file.')
-        process.exit(1)
-    }
-
-    return defaultDir
-}
 let errorMessage = chalk.red('Please specify the action of ' + chalk.whiteBright.bgRedBright('split') + ' or ' + chalk.whiteBright.bgRedBright('combine') + '.')
 
 displayHeader() // display header mast
-
-function displayHeader() {
-    const box = {
-        topLeft: '╭',
-        topRight: '╮',
-        bottomLeft: '╰',
-        bottomRight: '╯',
-        horizontal: '─',
-        vertical: '│',
-    }
-    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
-    let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
-    titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
-    titleMessage = titleMessage.padStart(process.stdout.columns)
-    titleMessage = chalk.blackBright(box.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(box.vertical)
-    console.log(`${chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
-    console.log(titleMessage)
-    console.log(`${chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
-    console.log()
-}
 
 yargs(hideBin(process.argv))
     .alias('h', 'help')
@@ -172,6 +115,13 @@ yargs(hideBin(process.argv))
         handler: (argv) => {
             // THIS IS A PLACE TO TEST NEW CODE
             global.logger.info(chalk.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
+        }
+    })
+    .command({
+        command: '[update]',
+        alias: 'update',
+        handler: (argv) => {
+            checkVersion(pkgObj.default.version, true)
         }
     })
     .command({
@@ -186,6 +136,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
+            checkVersion(pkgObj.default.version)
             global.format = argv.format
             splitHandler(argv, processStartTime)
         }
@@ -202,6 +153,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
+            checkVersion(pkgObj.default.version)
             global.format = argv.format
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {
@@ -572,9 +524,9 @@ function gitFiles(data) {
                             }
                             break
                         case 'delete':
-                            global.metaTypes[getKey(pathArray[3])].remove.files.push(path.join(global.__basedir, item.path));
+                            global.metaTypes[getKey(pathArray[3])].remove.files.push(path.join(global.__basedir, item.path))
                             if (!global.metaTypes[getKey(pathArray[3])].remove.directories.includes(pathArray[4])) {
-                                global.metaTypes[getKey(pathArray[3])].remove.directories.push(pathArray[4]);
+                                global.metaTypes[getKey(pathArray[3])].remove.directories.push(pathArray[4])
                             }
                             break
                     }
@@ -582,4 +534,113 @@ function gitFiles(data) {
             }
         }
     })
+}
+
+function getKey(directory) {
+    let key = undefined
+    Object.keys(global.metaTypes).forEach(type => {
+        if (global.metaTypes[type].definition.directory == directory) {
+            key = type
+        }
+    })
+    return key
+}
+
+function getDirectories() {
+    const types = []
+    Object.keys(global.metaTypes).forEach(type => {
+        try {
+            types.push(global.metaTypes[type].definition.directory)
+        } catch (error) {
+            throw error
+        }
+    })
+    return types
+}
+
+function displayHeader() {
+    const box = {
+        topLeft: '╭',
+        topRight: '╮',
+        bottomLeft: '╰',
+        bottomRight: '╯',
+        horizontal: '─',
+        vertical: '│',
+    }
+    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
+    let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
+    titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
+    titleMessage = titleMessage.padStart(process.stdout.columns)
+    titleMessage = chalk.blackBright(box.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(box.vertical)
+    console.log(`${chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
+    console.log(titleMessage)
+    console.log(`${chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
+    console.log()
+}
+
+function getRootPath(packageDir) {
+    let rootPath = fileUtils.find('sfdx-project.json')
+    let defaultDir
+    if (rootPath) {
+        global.__basedir = fileUtils.fileInfo(rootPath).dirname
+        let packageJSON = JSON.parse(readFileSync(rootPath))
+        if (Array.isArray(packageJSON.packageDirectories)) {
+            packageJSON.packageDirectories.every(directory => {
+                if (directory.default || packageJSON.packageDirectories.length == 1) defaultDir = directory.path
+                if (directory == packageDir) {
+                    defaultDir = directory
+                    return false
+                }
+                return true
+            })
+        }
+    } else {
+        global.logger.error('Could not determine base path of Salesforce source directory. No sfdx-project.json found. Please specify a source path or execute from Salesforce project directory.')
+        process.exit(1)
+    }
+    if (packageDir && packageDir != defaultDir) {
+        global.logger.error('Could not find directory in sfdx-project.json. Please specify a package directory path from the sfdx-project.json file.')
+        process.exit(1)
+    }
+
+    return defaultDir
+}
+
+export async function checkVersion(currentVersion, update = false, test = false) {
+    try {
+        const { data } = await axios.get('https://registry.npmjs.org/@ds-sfdc/sfparty')
+        const command = 'npm i -g @ds-sfdc/sfparty@latest'
+        if (currentVersion !== data['dist-tags'].latest) {
+            if (!test) console.log(`${(update) ? global.icons.working : global.icons.fail} A newer version ${chalk.bgCyanBright(data['dist-tags'].latest)} is available.`)
+            if (!update) {
+                if (test) return 'A newer version'
+                console.log(`Please upgrade by running ${chalk.cyanBright('sfparty update')}`)
+            } else {
+                if (!test) console.log(`Updating the application using ${chalk.cyanBright(command)}`)
+                exec('npm -v', (error, stdout, stderr) => {
+                    if (error) {
+                        if (test) 'npm is not installed'
+                        global.logger.error("npm is not installed on this system. Please install npm and run the command again.")
+                        return
+                    } else {
+                        exec(command, (error, stdout, stderr) => {
+                            if (error) {
+                                global.logger.error(error)
+                                return
+                            }
+                            console.log(stdout)
+                            console.log(stderr)
+                        })
+                    }
+                })
+            }
+        } else {
+            if (update) {
+                if (test) return 'You are on the latest version'
+                console.log(`${global.icons.success} You are on the latest version.`)
+            }
+        }
+    } catch (error) {
+        global.logger.error(error)
+    }
 }

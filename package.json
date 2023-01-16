@@ -23,6 +23,7 @@
   "author": "Tim Paulaskas",
   "license": "BSD-3-Clause",
   "dependencies": {
+    "axios": "^1.2.2",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "chalk": "^5.2.0",
@@ -42,7 +43,8 @@
     "husky": "^8.0.3",
     "mocha": "^10.2.0",
     "nodemon": "^2.0.20",
-    "should": "^7.1.0"
+    "should": "^7.1.0",
+    "sinon": "^15.0.1"
   },
   "engines": {
     "node": ">=0.11"
