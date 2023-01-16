@@ -566,13 +566,13 @@ function gitFiles(data) {
                 if (getDirectories().includes(pathArray[3])) {
                     switch (git.action[item.type]) {
                         case 'add':
-                            global.metaTypes[getKey(pathArray[3])].add.files.push(item.path)
+                            global.metaTypes[getKey(pathArray[3])].add.files.push(path.join(global.__basedir, item.path))
                             if (!global.metaTypes[getKey(pathArray[3])].add.directories.includes(pathArray[4])) {
                                 global.metaTypes[getKey(pathArray[3])].add.directories.push(pathArray[4])
                             }
                             break
                         case 'delete':
-                            global.metaTypes[getKey(pathArray[3])].remove.files.push(item.path);
+                            global.metaTypes[getKey(pathArray[3])].remove.files.push(path.join(global.__basedir, item.path));
                             if (!global.metaTypes[getKey(pathArray[3])].remove.directories.includes(pathArray[4])) {
                                 global.metaTypes[getKey(pathArray[3])].remove.directories.push(pathArray[4]);
                             }
