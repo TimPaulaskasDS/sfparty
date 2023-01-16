@@ -2,15 +2,30 @@
 
 [![NPM](https://img.shields.io/npm/v/@ds-sfdc/sfparty.svg?label=@ds-sfdc/sfparty)](https://www.npmjs.com/package/@ds-sfdc/sfparty) [![Downloads/week](https://img.shields.io/npm/dw/@ds-sfdc/sfparty.svg)](https://npmjs.org/package/@ds-sfdc/sfparty) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://github.com/TimPaulaskasDS/sfparty/blob/main/LICENSE.md)
 
-## What is sfparty?
+## Why use sfparty?
 
-For those that are familiar with Salesforce metadata, you know that it uses large XML files. These XML files are difficult to diff, hard to read, and can cause conflicts and corrupted XML when merging. This tool will split Salesforce metadata XML files into YAML parts (or JSON), and combine them back into XML files. A great solution for your CI/CD needs.
+Salesforce metadata is typically stored in large XML files, which can take some effort to work with. These XML files are hard to read, challenging to diff, and can lead to conflicts and corrupted XML when merging. sfparty is a utility that improves the developer and DevOps experience by splitting Salesforce metadata XML files into smaller YAML or JSON parts. This makes it much easier to understand and manage the metadata and eliminates the risk of conflicts and corrupted XML. Additionally, sfparty's ability to combine these parts back into XML files makes it an ideal solution for CI/CD needs. It allows for easy version control and streamlined deployment processes.
 
 ## Install
 
 ```bash
-npm i @ds-sfdc/sfparty
+npm i -g @ds-sfdc/sfparty
 ```
+
+### NPM Installation Issues
+`command not found: sfparty`  
+sfparty is an executable that is meant to be installed globally.
+
+`EACCESS: permission denied`
+There are several options on how to resolve the NPM EACCESS issue.The simplest way if you can is to use `sudo`
+```bash
+sudo npm i -g @ds-sfdc/sfparty
+```
+Depending on your system, you may have some issues installing sfparty using NPM. These are typically file system permission issues. Here are some links to various articles with suggestions on how to resolve the issue.
+
+[Fixing npm permission issue](https://kaustubhtalathi.medium.com/fixing-npm-permission-issue-f3d88a7a4ab4)  
+[Always use sudo to install global packages](https://stackoverflow.com/questions/16151018/how-to-fix-npm-throwing-error-without-sudo#:~:text=always%20use%20sudo%20%2Di%20or,they%20are%20owned%20by%20root)  
+[Use npm config instead of using chown or chmod](https://stackoverflow.com/questions/16151018/how-to-fix-npm-throwing-error-without-sudo/41395398#41395398)
 ## Commands
 
 ### Split
@@ -26,12 +41,35 @@ sfparty combine
 ### Options
 
 ```
-  -t, --type     type(s) of metadata to process
-  -n, --name     name of metadata file  
-  -s, --source   package directory path specified in sfdx-project.json  
-  -t, --target   target path to directory to create yaml/json files  
-  -h, --help     Show help  
+-y, --type     type(s) of metadata to process
+-n, --name     name of metadata file  
+-f, --format   format to use yaml (default) or json
+-s, --source   package directory path specified in sfdx-project.json  
+-t, --target   target path to directory to create yaml/json files  
+-h, --help     Show help  
 ```
+
+### Combine Options
+The following options are available when using the combine command:
+
+#### git
+
+```
+-g, --git      process files based on git commits. This option does not require a value.
+```
+
+
+##### Git Options
+The following options are available when using the combine command:
+
+```
+-a, --append      append package and destructive package instead of overwriting.
+-l, --delta       when possible create delta metadata files for CI/CD deployment.
+-p, --package     path to your change package XML file.
+-x, --destructive path to your destructive change package XML file.
+```
+
+
 ## Examples
 ### Custom Labels
 ```bash
@@ -74,7 +112,7 @@ The source directory will use your default package folder as specified in the sf
     ],
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "53.0"
+    "sourceApiVersion": "56.0"
 }
 ```
 
@@ -88,3 +126,15 @@ The source directory will use your default package folder as specified in the sf
 ```bash
 sfparty split --target="test"
 ```
+
+## Husky Git Hooks
+If you are using a git hook utility such as `husky`, you can add a post-merge hook to automate running the `combine` command whenever you execute a `merge` or `git pull` command.
+### post-merge
+
+```
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+sfparty combine --git
+```
+## CI/CD

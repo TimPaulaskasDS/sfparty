@@ -1,14 +1,14 @@
 const options = {
     type: {
         demand: false,
-        alias: 'type',
+        alias: 'y',
         description: 'type of metadata to $1',
         demandOption: false,
         type: 'string',
     },
     format: {
         demand: true,
-        alias: 'format',
+        alias: 'f',
         default: 'yaml',
         description: 'type of output',
         demandOption: true,
@@ -43,16 +43,17 @@ function getOptions(type) {
             }
         })
     })
+
     if (type == 'combine') {
         optionObj.git = {
-            alias: 'git',
+            alias: 'g',
             demand: false,
             description: 'process files based on git commits',
             type: 'string',
         }
 
         optionObj.append = {
-            alias: 'append',
+            alias: 'a',
             demand: false,
             description: 'append package and destructive package instead of overwriting',
             type: 'boolean',
@@ -60,10 +61,26 @@ function getOptions(type) {
         }
 
         optionObj.delta = {
-            alias: 'delta',
+            alias: 'l',
             demand: false,
             description: 'when possible create delta metadata files for CI/CD deployment',
             type: 'boolean',
+            implies: 'git'
+        }
+
+        optionObj.package = {
+            alias: 'pkg',
+            demand: false,
+            description: 'path to your change package XML file',
+            type: 'string',
+            implies: 'git'
+        }
+
+        optionObj.destructive = {
+            alias: 'x',
+            demand: false,
+            description: 'path to your destructive change package XML file',
+            type: 'string',
             implies: 'git'
         }
     }
