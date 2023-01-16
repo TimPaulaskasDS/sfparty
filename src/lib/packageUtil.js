@@ -34,7 +34,7 @@ export class Package {
             }
         })
 
-        function processJSON(that, json) {   
+        function processJSON(that, json) {
             try {
                 json.Package.version = fileUtils.readFile(path.join(global.__basedir, 'sfdx-project.json')).sourceApiVersion
             } catch (error) {
@@ -62,6 +62,11 @@ export class Package {
             try {
                 if (typeItem.name.toLowerCase() == type.toLowerCase()) {
                     typeJSON = typeItem
+                    if (typeItem.members === undefined) {
+                        delete typeItem.name
+                        typeItem.members = []
+                        typeItem.name = type
+                    }
                     typeItem.members.forEach(memberItem => {
                         if (memberItem.toLowerCase() == member.toLowerCase()) {
                             foundMember = true
@@ -81,6 +86,7 @@ export class Package {
             global.logger.warn(`Found ${chalk.bgBlackBright('*')} in type: ${type}.`)
             return
         }
+
         if (typeJSON !== undefined) {
             typeJSON.members.push(member)
             typeJSON.members.sort()
