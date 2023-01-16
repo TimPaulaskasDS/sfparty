@@ -275,6 +275,13 @@ export class Combine {
                 return true
             }
 
+            // abort function if doing a delta deploy and file is not in git list
+            if (global.git.delta &&
+                !global.metaTypes[that.metadataDefinition.alias].add.files.includes(fileObj.fullName) &&
+                fileObj.fullName !== path.join(that.sourceDir, that.metaDir, `main.${global.format}`)
+            ) {
+                return true
+            }
             let result = fileUtils.readFile(fileObj.fullName)
 
             // if split by object we need to add object back to values
