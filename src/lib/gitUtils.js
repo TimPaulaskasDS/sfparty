@@ -6,6 +6,7 @@ import * as fileUtils from './fileUtils.js'
 const defaultDefinition = {
     git: {
         lastCommit: undefined,
+        latestCommit: undefined,
     },
     local: {
         lastDate: undefined,
@@ -132,15 +133,15 @@ export function latestCommit(dir) {
     })
 }
 
-export function lastCommit(dir) {
+export function lastCommit(dir, fileName = 'index.yaml') {
     return new Promise((resolve, reject) => {
         const folder = path.join(dir, '.sfdx', 'sfparty')
-        const fileName = path.join(folder, 'index.yaml')
+        const filePath = path.join(folder, fileName)
         let last = undefined
         let latest = undefined
         fileUtils.createDirectory(folder)
-        if (fileUtils.fileExists(fileName)) {
-            const data = fileUtils.readFile(fileName)
+        if (fileUtils.fileExists(filePath)) {
+            const data = fileUtils.readFile(filePath)
             if (data.git.lastCommit !== undefined) {
                 last = data.git.lastCommit
             }
@@ -150,8 +151,8 @@ export function lastCommit(dir) {
             .then((data, error) => {
                 latest = data
                 resolve({
-                    last: last,
-                    latest: latest,
+                    lastCommit: last,
+                    latestCommit: latest,
                 })
             })
             .catch((error) => {
@@ -162,6 +163,7 @@ export function lastCommit(dir) {
 }
 
 export function updateLastCommit(dir, latest) {
+    if (typeof latest !== 'string' && typeof latest !== 'undefined') throw new Error(`updateLastCommit received a ${typeof latest} instead of string`)
     if (latest !== undefined) {
         const folder = path.join(dir, '.sfdx', 'sfparty')
         const fileName = path.join(folder, 'index.yaml')

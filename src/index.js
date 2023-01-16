@@ -212,15 +212,15 @@ yargs(hideBin(process.argv))
                         const commit = git.lastCommit(global.__basedir, "-1")
                         commit
                             .then((data, error) => {
-                                global.git.latest = data.latest
-                                global.git.last = data.last
+                                global.git.latest = data.latestCommit
+                                global.git.last = data.lastCommit
                                 if (data.last === undefined) {
                                     console.log(`${chalk.yellowBright('git mode')} ${chalk.bgMagentaBright('not active:')} no prior commit - processing all`)
                                     resolve(false)
                                 } else {
-                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(data.last) + '..' + chalk.bgBlackBright(data.latest)}`)
+                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(data.lastCommit) + '..' + chalk.bgBlackBright(data.latestCommit)}`)
                                     console.log()
-                                    const diff = git.diff(global.__basedir, `${data.last}..${data.latest}`)
+                                    const diff = git.diff(global.__basedir, `${data.lastCommit}..${data.latestCommit}`)
                                     diff
                                         .then((data, error) => {
                                             gitFiles(data)
