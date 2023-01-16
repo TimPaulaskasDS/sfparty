@@ -28,7 +28,7 @@ export class Package {
                         reject(error)
                     })
             } else {
-                let json = packageDefinition.metadataDefinition.emptyPackage
+                let json = JSON.parse(JSON.stringify(packageDefinition.metadataDefinition.emptyPackage))
                 processJSON(that, json)
                 resolve('not found')
             }
@@ -91,7 +91,7 @@ export class Package {
             typeJSON.members.push(member)
             typeJSON.members.sort()
         } else {
-            typeJSON = { ...packageDefinition.metadataDefinition.emptyNode }
+            typeJSON = JSON.parse(JSON.stringify(packageDefinition.metadataDefinition.emptyNode))
             typeJSON.name = type
             typeJSON.members.push(member)
 
