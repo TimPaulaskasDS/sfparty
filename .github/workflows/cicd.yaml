@@ -2,9 +2,9 @@ name: CI/CD
 run-name: ${{ github.actor }} is attempting to merge 🚀
 on:
   push:
-    branches: [ $default-branch ]
+    branches: [ main ]
   pull_request:
-    branches: [ $default-branch ]
+    branches: [ main ]
 
 jobs:
   build:
