@@ -13,7 +13,6 @@ import { marked } from 'marked'
 import markedTerminal from 'marked-terminal'
 
 import * as fileUtils from './lib/fileUtils.js'
-import * as pkgObj from '../package.json'  assert { type: "json" }
 import * as yargOptions from './meta/yargs.js'
 import * as metadataSplit from './party/split.js'
 import * as metadataCombine from './party/combine.js'
@@ -21,8 +20,10 @@ import * as labelDefinition from './meta/CustomLabels.js'
 import * as profileDefinition from './meta/Profiles.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
+import { checkVersion } from './lib/checkVersion.js'
 import * as git from './lib/gitUtils.js'
 
+const pkgObj = fileUtils.readFile('package.json')
 const processStartTime = process.hrtime.bigint()
 
 marked.setOptions({
@@ -139,7 +140,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(pkgObj.default.version, true)
+            checkVersion(axios, exec, pkgObj.version, true)
         }
     })
     .command({
@@ -154,7 +155,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(pkgObj.default.version)
+            checkVersion(axios, exec, pkgObj.version)
             global.format = argv.format
             splitHandler(argv, processStartTime)
         }
@@ -171,7 +172,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(pkgObj.default.version)
+            checkVersion(axios, exec, pkgObj.version)
             global.format = argv.format
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {
@@ -602,7 +603,7 @@ function displayHeader() {
         horizontal: '─',
         vertical: '│',
     }
-    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
+    let versionString = `sfparty v${pkgObj.version}${(process.stdout.columns > pkgObj.description.length + 15) ? ' - ' + pkgObj.description : ''}`
     let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)
@@ -639,43 +640,4 @@ function getRootPath(packageDir) {
     }
 
     return defaultDir
-}
-
-export async function checkVersion(currentVersion, update = false, test = false) {
-    try {
-        const { data } = await axios.get('https://registry.npmjs.org/@ds-sfdc/sfparty')
-        const command = 'npm i -g @ds-sfdc/sfparty@latest'
-        if (currentVersion !== data['dist-tags'].latest) {
-            if (!test) console.log(`${(update) ? global.icons.working : global.icons.fail} A newer version ${chalk.bgCyanBright(data['dist-tags'].latest)} is available.`)
-            if (!update) {
-                if (test) return 'A newer version'
-                console.log(`Please upgrade by running ${chalk.cyanBright('sfparty update')}`)
-            } else {
-                if (!test) console.log(`Updating the application using ${chalk.cyanBright(command)}`)
-                exec('npm -v', (error, stdout, stderr) => {
-                    if (error) {
-                        if (test) 'npm is not installed'
-                        global.logger.error("npm is not installed on this system. Please install npm and run the command again.")
-                        return
-                    } else {
-                        exec(command, (error, stdout, stderr) => {
-                            if (error) {
-                                global.logger.error(error)
-                                return
-                            }
-                            console.log(stdout)
-                            console.log(stderr)
-                        })
-                    }
-                })
-            }
-        } else {
-            if (update) {
-                if (test) return 'You are on the latest version'
-                console.log(`${global.icons.success} You are on the latest version.`)
-            }
-        }
-    } catch (error) {
-        global.logger.error(error)
-    }
 }
