@@ -551,7 +551,7 @@ function gitFiles(data) {
             const pathArray = item.path.split(path.sep)
             if (pathArray.length > 3) {
                 if (getDirectories().includes(pathArray[3])) {
-                    switch (git.action[item.type]) {
+                    switch (item.action) {
                         case 'add':
                             global.metaTypes[getKey(pathArray[3])].add.files.push(path.join(global.__basedir, item.path))
                             if (!global.metaTypes[getKey(pathArray[3])].add.directories.includes(pathArray[4])) {
