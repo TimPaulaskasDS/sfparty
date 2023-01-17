@@ -117,14 +117,14 @@ export function lastCommit(dir, fileName = 'index.yaml', execSyncStub = execSync
     }
 }
 
-export function updateLastCommit(dir, latest) {
+export function updateLastCommit(dir, latest, fileUtilsStub = fileUtils) {
     if (typeof latest !== 'string' && typeof latest !== 'undefined') throw new Error(`updateLastCommit received a ${typeof latest} instead of string`)
     if (latest !== undefined) {
         const folder = path.join(dir, '.sfdx', 'sfparty')
         const fileName = path.join(folder, 'index.yaml')
         let data = undefined
-        if (fileUtils.fileExists(fileName)) {
-            data = fileUtils.readFile(fileName)
+        if (fileUtilsStub.fileExists(fileName)) {
+            data = fileUtilsStub.readFile(fileName)
         }
 
         if (data === undefined) {
@@ -132,6 +132,6 @@ export function updateLastCommit(dir, latest) {
         }
 
         data.git.lastCommit = latest
-        fileUtils.saveFile(data, fileName)
+        fileUtilsStub.saveFile(data, fileName)
     }
 }
