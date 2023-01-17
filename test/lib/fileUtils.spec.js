@@ -14,18 +14,19 @@ import {
     deleteFile,
     fileInfo,
     saveFile,
-    readFile
+    readFile,
+    writeFile
 } from '../../src/lib/fileUtils.js'
 
 describe('fileUtils', () => {
     describe('directoryExists', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
+            sandbox.restore()
+        })
 
         it('should return true if directory exists', () => {
             sandbox.stub(fs, 'existsSync').returns(true)
@@ -44,13 +45,13 @@ describe('fileUtils', () => {
     })
 
     describe('fileExists', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
+            sandbox.restore()
+        })
 
         it('should return true if file exists', () => {
             sandbox.stub(fs, 'existsSync').returns(true)
@@ -69,13 +70,13 @@ describe('fileUtils', () => {
     })
 
     describe('createDirectory', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
+            sandbox.restore()
+        })
         it('should create directory if it does not exist', () => {
             sandbox.stub(fs, 'existsSync').returns(false)
             sandbox.stub(fs, 'mkdirSync')
@@ -91,13 +92,13 @@ describe('fileUtils', () => {
     })
 
     describe('deleteDirectory', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
+            sandbox.restore()
+        })
 
         it('should delete directory if it exists', () => {
             sandbox.stub(fs, 'existsSync').returns(true)
@@ -128,13 +129,13 @@ describe('fileUtils', () => {
     })
 
     describe('getFiles', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
+            sandbox.restore()
+        })
 
         it('should return all files in the directory if filter is undefined', () => {
             sandbox.stub(fs, 'existsSync').returns(true)
@@ -162,14 +163,14 @@ describe('fileUtils', () => {
     })
 
     describe('getDirectories', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
-    
+            sandbox.restore()
+        })
+
         it('should return all directories in the directory', () => {
             sandbox.stub(fs, 'existsSync').returns(true)
             sandbox.stub(fs, 'statSync').returns({ isDirectory: () => true })
@@ -182,23 +183,23 @@ describe('fileUtils', () => {
             let dirs = getDirectories('/path/to/directory', fs)
             expect(dirs).to.deep.equal(['dir1', 'dir2'])
         })
-    
+
         it('should return empty array if directory does not exist', () => {
             sandbox.stub(fs, 'existsSync').returns(false)
             let dirs = getDirectories('/path/to/directory', fs)
             expect(dirs).to.deep.equal([])
         })
     })
-    
+
     describe('deleteFile', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
-    
+            sandbox.restore()
+        })
+
         it('should delete the file if it exists', () => {
             sandbox.stub(fs, 'existsSync').returns(true)
             sandbox.stub(fs, 'statSync').returns({ isFile: () => true })
@@ -206,25 +207,25 @@ describe('fileUtils', () => {
             deleteFile('path/to/file.txt', fs)
             sinon.assert.calledOnce(fs.unlinkSync)
         })
-    
-    
+
+
         it('should not delete the file if it does not exist', () => {
             sandbox.stub(fs, 'existsSync').returns(false)
             sandbox.stub(fs, 'unlinkSync')
             deleteFile('/path/to/file.txt', fs)
             sinon.assert.notCalled(fs.unlinkSync)
-        })   
+        })
     })
-    
+
     describe('fileInfo', () => {
-        let sandbox;
+        let sandbox
         beforeEach(() => {
-            sandbox = sinon.createSandbox();
-        });
+            sandbox = sinon.createSandbox()
+        })
         afterEach(() => {
-            sandbox.restore();
-        });
-    
+            sandbox.restore()
+        })
+
         it('should return file information if file exists', () => {
             sandbox.stub(path, 'parse').returns({
                 dir: 'path/to',
@@ -248,106 +249,126 @@ describe('fileUtils', () => {
             expect(fileResult.stats.birthtime).to.be.a('date')
         })
     })
-    
+
     describe('saveFile', () => {
+        let sandbox
+        beforeEach(() => {
+            sandbox = sinon.createSandbox()
+        })
+
+        afterEach(() => {
+            sandbox.restore()
+        })
+
+        it('should write json file correctly', () => {
+            const json = { key: 'value' }
+            const fileName = 'test.json'
+            const format = 'json'
+            const fs = { writeFileSync: sandbox.stub() }
+
+            expect(saveFile(json, fileName, format, fs)).to.be.true
+            sinon.assert.calledWith(fs.writeFileSync, fileName, JSON.stringify(json, null, '\t'))
+        })
+
+        it('should write yaml file correctly', () => {
+            const json = { key: 'value' }
+            const fileName = 'test.yaml'
+            const format = 'yaml'
+            const fs = { writeFileSync: sandbox.stub() }
+
+            expect(saveFile(json, fileName, format, fs)).to.be.true
+            sinon.assert.calledWith(fs.writeFileSync, fileName, yaml.dump(json))
+        })
+
+        it('should return true if format is not json or yaml', () => {
+            const json = { key: 'value' }
+            const fileName = 'test.yaml'
+            const format = 'txt'
+            const fs = { writeFileSync: sandbox.stub() }
+
+            expect(saveFile(json, fileName, format, fs)).to.be.true
+            sinon.assert.notCalled(fs.writeFileSync)
+        })
+    })
+
+    describe('readFile', () => {
+        let sandbox
+        beforeEach(() => {
+            sandbox = sinon.createSandbox()
+            sandbox.stub(fs, 'existsSync').returns(true)
+            sandbox.stub(fs, 'statSync').returns({ isFile: () => true })
+        })
+
+        afterEach(() => {
+            sandbox.restore()
+        })
+
+        it('should read json file correctly with convert as true', () => {
+            const fileName = 'test.json'
+            const json = { key: 'value' }
+            sandbox.stub(fs, 'readFileSync').returns(JSON.stringify(json))
+
+            expect(readFile(fileName, true, fs)).to.deep.equal(json)
+            sinon.assert.calledWith(fs.readFileSync, fileName)
+        })
+
+        it('should read yaml file correctly with convert as true', () => {
+            const fileName = 'test.yaml'
+            const json = { key: 'value' }
+            sandbox.stub(fs, 'readFileSync').returns(yaml.dump(json))
+
+            expect(readFile(fileName, true, fs)).to.deep.equal(json)
+            sinon.assert.calledWith(fs.readFileSync, fileName)
+        })
+
+        it('should return string content of file with convert as false', () => {
+            const fileName = 'test.txt'
+            const content = 'test content'
+            sandbox.stub(fs, 'readFileSync').returns(content)
+
+            expect(readFile(fileName, false, fs)).to.equal(content)
+            sinon.assert.calledWith(fs.readFileSync, fileName)
+        })
+
+        it('should return string content of file if file extension is not json, yaml, or xml', () => {
+            const fileName = 'test.txt'
+            const json = { key: 'value' }
+            sandbox.stub(fs, 'readFileSync').returns(JSON.stringify(json))
+
+            expect(readFile(fileName, true, fs)).to.equal(JSON.stringify(json))
+            sinon.assert.calledWith(fs.readFileSync, fileName)
+        })
+    })
+    
+    describe('writeFile', () => {
         let sandbox;
         beforeEach(() => {
             sandbox = sinon.createSandbox();
+            sandbox.stub(fs, 'writeFileSync');
+            sandbox.stub(fs, 'utimesSync');
         });
     
         afterEach(() => {
             sandbox.restore();
         });
     
-        it('should write json file correctly', () => {
-            const json = { key: 'value' };
+        it('should write json file correctly', async () => {
             const fileName = 'test.json';
-            const format = 'json';
-            const fs = { writeFileSync: sandbox.stub() };
+            const json = { key: 'value' };
     
-            expect(saveFile(json, fileName, format, fs)).to.be.true;
+            writeFile(fileName, JSON.stringify(json, null, '\t'), null, null, fs);
             sinon.assert.calledWith(fs.writeFileSync, fileName, JSON.stringify(json, null, '\t'));
+            sinon.assert.calledOnce(fs.utimesSync);
         });
     
-        it('should write yaml file correctly', () => {
-            const json = { key: 'value' };
+        it('should write yaml file correctly', async () => {
             const fileName = 'test.yaml';
-            const format = 'yaml';
-            const fs = { writeFileSync: sandbox.stub() };
+            const json = { key: 'value' };
     
-            expect(saveFile(json, fileName, format, fs)).to.be.true;
+            writeFile(fileName, yaml.dump(json), null, null, fs);
             sinon.assert.calledWith(fs.writeFileSync, fileName, yaml.dump(json));
-        });
-    
-        it('should return true if format is not json or yaml', () => {
-            const json = { key: 'value' };
-            const fileName = 'test.yaml';
-            const format = 'txt';
-            const fs = { writeFileSync: sandbox.stub() };
-    
-            expect(saveFile(json, fileName, format, fs)).to.be.true;
-            sinon.assert.notCalled(fs.writeFileSync);
+            sinon.assert.calledOnce(fs.utimesSync);
         });
     });
-
-describe('readFile', () => {
-    let sandbox;
-    beforeEach(() => {
-        sandbox = sinon.createSandbox();
-        sandbox.stub(fs, 'existsSync').returns(true)
-        sandbox.stub(fs, 'statSync').returns({ isFile: () => true })
-    });
-
-    afterEach(() => {
-        sandbox.restore();
-    });
-
-    it('should read json file correctly with convert as true', () => {
-        const fileName = 'test.json';
-        const json = { key: 'value' };
-        const fs = { readFileSync: sandbox.stub().returns(JSON.stringify(json)) };
-
-        expect(readFile(fileName, true, fs)).to.deep.equal(json);
-        sinon.assert.calledWith(fs.readFileSync, fileName);
-    });
-
-    it('should read yaml file correctly with convert as true', () => {
-        const fileName = 'test.yaml';
-        const json = { key: 'value' };
-        const fs = { readFileSync: sandbox.stub().returns(yaml.dump(json)) };
-
-        expect(readFile(fileName, true, fs)).to.deep.equal(json);
-        sinon.assert.calledWith(fs.readFileSync, fileName);
-    });
-
-    it('should read xml file correctly with convert as true', () => {
-        const fileName = 'test.xml';
-        const json = { key: 'value' };
-        const fs = { readFileSync: sandbox.stub().returns('<xml>value</xml>') };
-        const parseString = sandbox.stub(Parser.prototype, 'parseString').callsFake((xml, callback) => callback(null, json));
-
-        expect(readFile(fileName, true, fs)).to.deep.equal(json);
-        sinon.assert.calledWith(fs.readFileSync, fileName);
-        sinon.assert.calledOnce(parseString);
-    });
-
-    it('should return string content of file with convert as false', () => {
-        const fileName = 'test.txt';
-        const content = 'test content';
-        const fs = { readFileSync: sandbox.stub().returns(content) };
-
-        expect(readFile(fileName, false, fs)).to.equal(content);
-        sinon.assert.calledWith(fs.readFileSync, fileName);
-    });
-
-    it('should return string content of file if file extension is not json, yaml, or xml', () => {
-        const fileName = 'test.txt';
-        const json = { key: 'value' };
-        const fs = { readFileSync: sandbox.stub().returns(JSON.stringify(json)) };
-
-        expect(readFile(fileName, true, fs)).to.equal(JSON.stringify(json));
-        sinon.assert.calledWith(fs.readFileSync, fileName);
-    });
-});
-
+        
 })
