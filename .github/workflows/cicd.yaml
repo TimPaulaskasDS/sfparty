@@ -32,7 +32,6 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
-          working-directory: ${{env.working-directory}}
       - run: echo "🧪 Running tests ${{ job.status }}."
       - run: npm test
         working-directory: ${{env.working-directory}}
