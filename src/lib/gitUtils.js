@@ -94,14 +94,14 @@ export function log(dir, gitRef, execSyncStub = execSync) {
     }
 }
 
-export function lastCommit(dir, fileName = 'index.yaml', execSyncStub = execSync, fileUtilsStub = fileUtils) {
+export function lastCommit(dir, fileName = 'index.yaml', existsSyncStub = existsSync, execSyncStub = execSync, fileUtilsStub = fileUtils) {
     try {
         const folder = path.resolve(dir, '.sfdx', 'sfparty')
         const filePath = path.resolve(folder, fileName)
         let lastCommit = undefined
 
         fileUtilsStub.createDirectory(folder)
-        if (existsSync(filePath)) {
+        if (existsSyncStub(filePath)) {
             const data = fileUtilsStub.readFile(filePath)
             if (data.git.lastCommit !== undefined) {
                 lastCommit = data.git.lastCommit
