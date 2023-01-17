@@ -1,7 +1,7 @@
 main:
   name: Customer Portal Manager Standard
-  fullName: Customer Portal Manager Standard
+  fullName: Standard
   custom: false
-  userLicense: Customer Portal Manager Standard
+  userLicense: Salesforce
   $:
     xmlns: https://soap.sforce.com/2006/04/metadata

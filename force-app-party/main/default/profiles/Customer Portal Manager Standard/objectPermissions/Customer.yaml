@@ -1,8 +1,8 @@
 object: Customer
 objectPermissions:
-  - allowCreate: false
-    allowRead: false
-    allowEdit: false
-    allowDelete: false
+  - allowCreate: true
+    allowRead: true
+    allowEdit: true
+    allowDelete: true
     viewAllRecords: false
     modifyAllRecords: false

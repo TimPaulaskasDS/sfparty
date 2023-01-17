@@ -1,8 +1,8 @@
 object: EntitlementContact
 objectPermissions:
-  - allowCreate: true
+  - allowCreate: false
     allowRead: true
-    allowEdit: true
-    allowDelete: true
+    allowEdit: false
+    allowDelete: false
     viewAllRecords: false
     modifyAllRecords: false

@@ -1,8 +1,8 @@
 object: Account
 objectPermissions:
   - allowCreate: false
-    allowRead: true
-    allowEdit: true
+    allowRead: false
+    allowEdit: false
     allowDelete: false
     viewAllRecords: false
     modifyAllRecords: false

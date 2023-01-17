@@ -46,7 +46,7 @@ fieldPermissions:
     editable: true
     readable: true
   - field: ParentId
-    editable: false
+    editable: true
     readable: true
   - field: PotentialLiability__c
     editable: true

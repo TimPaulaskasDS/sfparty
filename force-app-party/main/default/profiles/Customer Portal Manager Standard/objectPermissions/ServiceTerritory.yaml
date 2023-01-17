@@ -1,8 +1,8 @@
 object: ServiceTerritory
 objectPermissions:
-  - allowCreate: true
+  - allowCreate: false
     allowRead: true
-    allowEdit: true
+    allowEdit: false
     allowDelete: false
     viewAllRecords: false
     modifyAllRecords: false

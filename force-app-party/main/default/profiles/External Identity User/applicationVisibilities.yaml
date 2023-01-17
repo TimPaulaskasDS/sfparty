@@ -3,7 +3,7 @@ applicationVisibilities:
     default: false
     visible: true
   - application: standard__AppLauncher
-    default: false
+    default: true
     visible: true
   - application: standard__Chatter
     default: false

@@ -1,6 +1,6 @@
 object: Solution
 objectPermissions:
-  - allowCreate: false
+  - allowCreate: true
     allowRead: true
     allowEdit: false
     allowDelete: false

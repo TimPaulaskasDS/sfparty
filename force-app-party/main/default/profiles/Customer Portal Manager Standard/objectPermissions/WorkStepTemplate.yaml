@@ -1,8 +1,8 @@
 object: WorkStepTemplate
 objectPermissions:
-  - allowCreate: false
-    allowRead: false
-    allowEdit: false
+  - allowCreate: true
+    allowRead: true
+    allowEdit: true
     allowDelete: false
-    viewAllRecords: false
+    viewAllRecords: true
     modifyAllRecords: false

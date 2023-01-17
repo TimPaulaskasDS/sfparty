@@ -1,8 +1,0 @@
-object: SocialPersona
-objectPermissions:
-  - allowCreate: true
-    allowRead: true
-    allowEdit: true
-    allowDelete: false
-    viewAllRecords: false
-    modifyAllRecords: false

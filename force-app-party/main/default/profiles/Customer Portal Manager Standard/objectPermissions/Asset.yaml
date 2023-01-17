@@ -3,6 +3,6 @@ objectPermissions:
   - allowCreate: true
     allowRead: true
     allowEdit: true
-    allowDelete: false
+    allowDelete: true
     viewAllRecords: false
     modifyAllRecords: false

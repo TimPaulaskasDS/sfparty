@@ -2,19 +2,19 @@ tabVisibilities:
   - tab: standard-Account
     visibility: DefaultOn
   - tab: standard-AlternativePaymentMethod
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-AppLauncher
     visibility: DefaultOn
   - tab: standard-AppointmentInvitation
     visibility: DefaultOff
   - tab: standard-Asset
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-AssetAction
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-AssetActionSource
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-AssetStatePeriod
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-AsyncOperationLog
     visibility: DefaultOn
   - tab: standard-AuthorizationForm
@@ -32,7 +32,7 @@ tabVisibilities:
   - tab: standard-Campaign
     visibility: DefaultOn
   - tab: standard-CardPaymentMethod
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Case
     visibility: DefaultOn
   - tab: standard-ChangeRequest
@@ -72,11 +72,11 @@ tabVisibilities:
   - tab: standard-Coupon
     visibility: DefaultOn
   - tab: standard-CreditMemo
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Customer
     visibility: DefaultOn
   - tab: standard-DandBCompany
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Dashboard
     visibility: DefaultOn
   - tab: standard-DataUseLegalBasis
@@ -86,7 +86,7 @@ tabVisibilities:
   - tab: standard-DeleteEvent
     visibility: DefaultOn
   - tab: standard-DigitalWallet
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Document
     visibility: DefaultOn
   - tab: standard-DuplicateRecordSet
@@ -106,9 +106,9 @@ tabVisibilities:
   - tab: standard-File
     visibility: DefaultOn
   - tab: standard-FinanceBalanceSnapshot
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-FinanceTransaction
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-FlowInterview
     visibility: DefaultOn
   - tab: standard-FlowOrchestrationInstance
@@ -128,11 +128,11 @@ tabVisibilities:
   - tab: standard-Invoice
     visibility: DefaultOn
   - tab: standard-JigsawSearch
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Lead
     visibility: DefaultOn
   - tab: standard-LegalEntity
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-LightningBoltHome
     visibility: DefaultOn
   - tab: standard-LightningInstrumentation
@@ -140,7 +140,7 @@ tabVisibilities:
   - tab: standard-LightningQuickText
     visibility: DefaultOff
   - tab: standard-LightningSchedulerSetupAssistant
-    visibility: DefaultOn
+    visibility: Hidden
   - tab: standard-ListEmail
     visibility: DefaultOn
   - tab: standard-Location
@@ -148,7 +148,7 @@ tabVisibilities:
   - tab: standard-LocationGroup
     visibility: DefaultOn
   - tab: standard-Macro
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-MessagingEndUser
     visibility: DefaultOn
   - tab: standard-MessagingSession
@@ -168,23 +168,23 @@ tabVisibilities:
   - tab: standard-PartyConsent
     visibility: DefaultOn
   - tab: standard-Payment
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-PaymentAuthAdjustment
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-PaymentAuthorization
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-PaymentGateway
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-PaymentGatewayLog
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-PaymentLineInvoice
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Pricebook2
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Problem
     visibility: DefaultOn
   - tab: standard-ProcessException
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-ProcessInstanceWorkitem
     visibility: DefaultOn
   - tab: standard-Product2
@@ -200,15 +200,15 @@ tabVisibilities:
   - tab: standard-Recommendation
     visibility: DefaultOn
   - tab: standard-Refund
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-RefundLinePayment
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-RescheduleAppointments
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-ReturnOrder
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-ScheduleAppointments
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Scorecard
     visibility: DefaultOn
   - tab: standard-SecurityCenterNotification
@@ -232,7 +232,7 @@ tabVisibilities:
   - tab: standard-Solution
     visibility: DefaultOn
   - tab: standard-StreamingChannel
-    visibility: DefaultOn
+    visibility: DefaultOff
   - tab: standard-Task
     visibility: DefaultOn
   - tab: standard-Today

@@ -51,13 +51,13 @@ applicationVisibilities:
     default: false
     visible: true
   - application: standard__Sales
-    default: false
+    default: true
     visible: true
   - application: standard__SalesforceCMS
     default: false
     visible: true
   - application: standard__Service
-    default: true
+    default: false
     visible: true
   - application: standard__ServiceConsole
     default: false

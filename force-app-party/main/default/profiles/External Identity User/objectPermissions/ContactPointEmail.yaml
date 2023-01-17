@@ -1,8 +1,8 @@
 object: ContactPointEmail
 objectPermissions:
-  - allowCreate: true
-    allowRead: true
-    allowEdit: true
+  - allowCreate: false
+    allowRead: false
+    allowEdit: false
     allowDelete: false
     viewAllRecords: false
     modifyAllRecords: false

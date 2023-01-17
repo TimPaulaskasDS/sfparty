@@ -1,7 +1,7 @@
 object: DandBCompany
 objectPermissions:
   - allowCreate: false
-    allowRead: false
+    allowRead: true
     allowEdit: false
     allowDelete: false
     viewAllRecords: false

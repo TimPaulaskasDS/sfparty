@@ -1,7 +1,0 @@
-labels:
-  fullName: Description
-  shortDescription: Description
-  categories: description,sfparty
-  protected: true
-  language: en_US
-  value: Salesforce metadata XML splitter for CI/CD

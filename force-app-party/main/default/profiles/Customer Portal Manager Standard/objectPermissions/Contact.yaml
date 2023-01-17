@@ -1,8 +1,8 @@
 object: Contact
 objectPermissions:
-  - allowCreate: false
+  - allowCreate: true
     allowRead: true
-    allowEdit: false
-    allowDelete: false
+    allowEdit: true
+    allowDelete: true
     viewAllRecords: false
     modifyAllRecords: false
