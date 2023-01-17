@@ -107,7 +107,7 @@ export function lastCommit(dir, fileName = 'index.yaml', execSyncStub = execSync
                 lastCommit = data.git.lastCommit
             }
         }
-        const latestCommit = execSyncStub(`git log --format=format:%H -1`, { cwd: dir, encoding: 'utf-8' }).toString().trim()
+        const latestCommit = execSyncStub(`git log --format=format:%H -1`, { cwd: dir, encoding: 'utf-8' })
         return {
             lastCommit: lastCommit,
             latestCommit: latestCommit,
