@@ -21,7 +21,7 @@ beforeEach(() => {
 })
 
 it('should return the last commit and latest commit', () => {
-    const dir = process.cwd()
+    const dir = '.'
     const fileName = 'index.yaml'
     const folder = path.resolve(dir, '.sfdx', 'sfparty')
     const filePath = path.resolve(folder, fileName)
@@ -38,7 +38,7 @@ it('should return the last commit and latest commit', () => {
 })
 
 it('should return the latest commit if no lastCommit is found', () => {
-    const dir = process.cwd()
+    const dir = '.'
     const fileName = 'index.yaml'
     const folder = path.resolve(dir, '.sfdx', 'sfparty')
     const filePath = path.resolve(folder, fileName)
@@ -54,7 +54,7 @@ it('should return the latest commit if no lastCommit is found', () => {
 })
 
 it('should throw an error when fileUtils.readFile is called', () => {
-    const dir = process.cwd()
+    const dir = '.'
     const fileName = 'index.yaml'
     const folder = path.resolve(dir, '.sfdx', 'sfparty')
     const filePath = path.resolve(folder, fileName)
