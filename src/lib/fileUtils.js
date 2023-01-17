@@ -4,42 +4,42 @@ import * as path from 'path'
 import * as yaml from 'js-yaml'
 import { Parser } from 'xml2js'
 
-export function directoryExists(dirPath) {
-    return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()
+export function directoryExists(dirPath, fsTmp = fs) {
+    return fsTmp.existsSync(dirPath) && fsTmp.statSync(dirPath).isDirectory()
 }
 
-export function fileExists(filePath) {
-    return fs.existsSync(filePath) && fs.statSync(filePath).isFile()
+export function fileExists(filePath, fsTmp = fs) {
+    return fsTmp.existsSync(filePath) && fsTmp.statSync(filePath).isFile()
 }
 
-export function createDirectory(dirPath) {
-    if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true })
+export function createDirectory(dirPath, fsTmp = fs) {
+    if (!fsTmp.existsSync(dirPath)) {
+        fsTmp.mkdirSync(dirPath, { recursive: true })
     }
 }
 
-export function deleteDirectory(dirPath, recursive = false) {
-    if (!directoryExists(dirPath)) {
+export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
+    if (!directoryExists(dirPath, fsTmp)) {
         return false
     } else {
-        if (fs.existsSync(dirPath)) {
-            fs.readdirSync(dirPath).forEach(function (file) {
+        if (fsTmp.existsSync(dirPath)) {
+            fsTmp.readdirSync(dirPath).forEach(function (file) {
                 var curPath = path.join(dirPath, file)
-                if (fs.lstatSync(curPath).isDirectory() && recursive) { // recurse
-                    deleteDirectory(curPath, recursive);
+                if (fsTmp.lstatSync(curPath).isDirectory() && recursive) { // recurse
+                    deleteDirectory(curPath, recursive, fsTmp);
                 } else { // delete file
-                    fs.unlinkSync(curPath);
+                    fsTmp.unlinkSync(curPath);
                 }
             })
-            return fs.rmdirSync(dirPath);
+            return fsTmp.rmdirSync(dirPath);
         }
     }
 }
 
-export function getFiles(dirPath, filter = undefined) {
+export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
     const filesList = []
-    if (directoryExists(dirPath)) {
-        fs.readdirSync(dirPath).forEach(file => {
+    if (directoryExists(dirPath, fsTmp)) {
+        fsTmp.readdirSync(dirPath).forEach(file => {
             if (!filter) {
                 filesList.push(file)
             } else {
@@ -55,9 +55,9 @@ export function getFiles(dirPath, filter = undefined) {
     }
 }
 
-export function getDirectories(dirPath) {
-    if (directoryExists(dirPath)) {
-        return fs.readdirSync(dirPath, { withFileTypes: true })
+export function getDirectories(dirPath, fsTmp = fs) {
+    if (directoryExists(dirPath, fsTmp)) {
+        return fsTmp.readdirSync(dirPath, { withFileTypes: true })
             .filter(dirent => dirent.isDirectory())
             .map(dirent => dirent.name)
     } else {
@@ -65,35 +65,35 @@ export function getDirectories(dirPath) {
     }
 }
 
-export function deleteFile(filePath) {
-    if (!fileExists(filePath)) {
+export function deleteFile(filePath, fsTmp = fs) {
+    if (!fileExists(filePath, fsTmp)) {
         return false
     } else {
-        return fs.unlinkSync(filePath, { recursive: false, force: true });
+        return fsTmp.unlinkSync(filePath, { recursive: false, force: true });
     }
 }
 
-export function fileInfo(filePath) {
+export function fileInfo(filePath, fsTmp = fs) {
     return {
         "dirname": path.join(path.dirname(filePath)), //something/folder/example
         "basename": path.basename(filePath, path.extname(filePath)), //example
         "filename": path.basename(filePath), //example.txt
         "extname": path.extname(filePath), //txt
-        "exists": fs.existsSync(filePath), //true if exists or false if not exists
-        "stats": fs.existsSync(filePath) ? fs.statSync(filePath) : undefined //stats object if exists or undefined if not exists
+        "exists": fsTmp.existsSync(filePath), //true if exists or false if not exists
+        "stats": fsTmp.existsSync(filePath) ? fsTmp.statSync(filePath) : undefined //stats object if exists or undefined if not exists
     }
 }
 
-export function saveFile(json, fileName, format = path.extname(fileName).replace('.', '')) {
+export function saveFile(json, fileName, format = path.extname(fileName).replace('.', ''), fsTmp = fs) {
     try {
         switch (format) {
             case 'json':
                 let jsonString = JSON.stringify(json, null, '\t')
-                fs.writeFileSync(fileName, jsonString)
+                fsTmp.writeFileSync(fileName, jsonString)
                 break
             case 'yaml':
                 let doc = yaml.dump(json)
-                fs.writeFileSync(fileName, doc)
+                fsTmp.writeFileSync(fileName, doc)
                 break
         }
         return true
@@ -103,11 +103,11 @@ export function saveFile(json, fileName, format = path.extname(fileName).replace
     }
 }
 
-export function readFile(fileName, convert = true) {
+export function readFile(fileName, convert = true, fsTmp = fs) {
     try {
         let result = undefined
-        if (fileExists(fileName)) {
-            const data = fs.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
+        if (fileExists(fileName, fsTmp)) {
+            const data = fsTmp.readFileSync(fileName, { encoding: 'utf8', flag: 'r' })
             if (convert && fileName.indexOf('.yaml') != -1) {
                 result = yaml.load(data)
             } else if (convert && fileName.indexOf('.json') != -1) {
@@ -141,17 +141,17 @@ async function convertXML(data) {
     })
 }
 
-export function writeFile(fileName, data, atime = new Date(), mtime = new Date()) {
+export function writeFile(fileName, data, atime = new Date(), mtime = new Date(), fsTmp = fs) {
     try {
         // write data to the file
-        fs.writeFileSync(fileName, data)
+        fsTmp.writeFileSync(fileName, data)
 
         // if atime or mtime are undefined, use current date/time
         if (atime === undefined) atime = new Date()
         if (mtime === undefined) mtime = new Date()
 
         // update XML file to match the latest atime and mtime of the files processed
-        fs.utimesSync(fileName, atime, mtime)
+        fsTmp.utimesSync(fileName, atime, mtime)
 
     } catch (error) {
         global.logger.error(error)
@@ -159,7 +159,7 @@ export function writeFile(fileName, data, atime = new Date(), mtime = new Date()
     }
 }
 
-export function find(filename, root) {
+export function find(filename, root, fsTmp = fs) {
     // code Copyright (c) 2014, Ben Gourley
     // https://github.com/bengourley/find-nearest-file
     root = root || process.cwd();
@@ -176,7 +176,7 @@ export function find(filename, root) {
         var file = path.join(directory, filename)
 
         try {
-            if (fs.statSync(file).isFile()) return file
+            if (fsTmp.statSync(file).isFile()) return file
             // stat existed, but isFile() returned false
             return nextLevelUp()
         } catch (e) {

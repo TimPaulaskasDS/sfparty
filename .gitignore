@@ -222,7 +222,6 @@ force-app/main/default/labels/**
 force-app/main/default/permissionsets/**
 force-app/main/default/profiles/**
 force-app/main/default/workflows/**
-test/**
 .vscode/settings.json
 .vscode/launch.json
 yarn.lock
