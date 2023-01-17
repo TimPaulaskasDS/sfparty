@@ -1,14 +1,7 @@
-'use strict';
-import chai from 'chai'
+const sum = (a, b) => {
+    return a + b
+}
 
-var calls = [];
-
-before(function () {
-  calls.push('before');
-});
-
-describe('root', function () {
-  it('should be a valid suite', function () {
-    chai.expect(calls, 'to equal', ['before']);
-  });
-});
+test('adds 1 + 2 to equal 3', () => {
+    expect(sum(1, 2)).toBe(3)
+})

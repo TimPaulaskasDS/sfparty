@@ -49,15 +49,15 @@ const status = {
     },
 }
 
-export function diff(dir, gitRef = 'HEAD', tmpExistsSync = existsSync, tmpExecSync = execSync) {
+export function diff(dir, gitRef = 'HEAD', existsSyncStub = existsSync, execSyncStub = execSync) {
     return new Promise((resolve, reject) => {
-        if (!tmpExistsSync(dir) || !tmpExistsSync(path.join(dir, '.git'))) {
+        if (!existsSyncStub(dir) || !existsSyncStub(path.join(dir, '.git'))) {
             reject(new Error(`The directory "${dir}" is not a git repository`))
         }
 
         let data = ''
         try {
-            data = tmpExecSync(`git diff --name-status --oneline --relative ${gitRef}`, { cwd: dir }).toString()
+            data = execSyncStub(`git diff --name-status --oneline --relative ${gitRef}`, { cwd: dir }).toString()
         } catch (error) {
             reject(error)
         }
@@ -81,9 +81,9 @@ export function diff(dir, gitRef = 'HEAD', tmpExistsSync = existsSync, tmpExecSy
     })
 }
 
-export function log(dir, gitRef, tmpExecSync = execSync) {
+export function log(dir, gitRef, execSyncStub = execSync) {
     try {
-        const gitLog = tmpExecSync(`git log --format=format:%H ${gitRef}`, { cwd: dir, encoding: 'utf-8' });
+        const gitLog = execSyncStub(`git log --format=format:%H ${gitRef}`, { cwd: dir, encoding: 'utf-8' });
         const commits = gitLog.split(os.EOL).filter(commit => commit)
         return commits
     } catch (error) {
@@ -94,20 +94,20 @@ export function log(dir, gitRef, tmpExecSync = execSync) {
     }
 }
 
-export function lastCommit(dir, fileName = 'index.yaml') {
+export function lastCommit(dir, fileName = 'index.yaml', execSyncStub = execSync, fileUtilsStub = fileUtils) {
     try {
         const folder = path.resolve(dir, '.sfdx', 'sfparty')
         const filePath = path.resolve(folder, fileName)
         let lastCommit = undefined
 
-        fileUtils.createDirectory(folder)
+        fileUtilsStub.createDirectory(folder)
         if (existsSync(filePath)) {
-            const data = fileUtils.readFile(filePath)
+            const data = fileUtilsStub.readFile(filePath)
             if (data.git.lastCommit !== undefined) {
                 lastCommit = data.git.lastCommit
             }
         }
-        const latestCommit = execSync(`git log --format=format:%H -1`, { cwd: dir, encoding: 'utf-8' }).toString().trim()
+        const latestCommit = execSyncStub(`git log --format=format:%H -1`, { cwd: dir, encoding: 'utf-8' }).toString().trim()
         return {
             lastCommit: lastCommit,
             latestCommit: latestCommit,

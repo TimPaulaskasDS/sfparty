@@ -12,7 +12,7 @@
   },
   "main": "src/index.js",
   "scripts": {
-    "test": "mocha 'test/**/*.js' --recursive--reporter spec",
+    "test": "jest",
     "postinstall": "husky install",
     "prepack": "pinst --disable",
     "postpack": "pinst --enable"
@@ -39,14 +39,16 @@
     "yargs": "^17.6.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.20.12",
+    "@babel/preset-env": "^7.20.2",
     "@commitlint/cli": "^17.4.0",
     "@commitlint/config-conventional": "^17.4.0",
-    "chai": "^4.3.7",
+    "babel-jest": "^29.3.1",
     "husky": "^8.0.3",
+    "jest": "^29.3.1",
     "mocha": "^10.2.0",
     "nodemon": "^2.0.20",
-    "should": "^7.1.0",
-    "sinon": "^15.0.1"
+    "should": "^7.1.0"
   },
   "engines": {
     "node": ">=0.11"

@@ -2,9 +2,7 @@ import { expect } from 'chai'
 import sinon from 'sinon'
 import fs from 'fs'
 import child_process from 'child_process'
-import os from 'node:os'
-import { diff, log, lastCommit } from '../../src/lib/gitUtils.js'
-import * as fileUtils from '../../src/lib/fileUtils.js'
+import { diff, log } from '../../src/lib/gitUtils.js'
 
 describe('git', () => {
 
