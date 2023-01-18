@@ -5,10 +5,11 @@ import * as fileUtils from './fileUtils.js'
 import * as packageDefinition from '../meta/Package.js'
 
 export class Package {
-    #packageJSON = undefined
+    
 
     constructor(xmlPath) {
         this.xmlPath = xmlPath
+        this.packageJSON = undefined
     }
 
     getPackageXML() {
@@ -40,18 +41,18 @@ export class Package {
             } catch (error) {
                 json.Package.version = packageDefinition.metadataDefinition.fallbackVersion
             }
-            that.#packageJSON = json
+            that.packageJSON = json
             if (json.Package.types !== undefined) transformJSON(json.Package.types)
         }
     }
 
     addMember(type, member) {
         const that = this
-        if (that.#packageJSON === undefined) throw new Error('getPackageXML must be called before adding members')
+        if (that.packageJSON === undefined) throw new Error('getPackageXML must be called before adding members')
         if (type === undefined) throw new Error('An undefined type was received when attempting to add a member')
         if (member === undefined) throw new Error('An undefined member was received when attempting to add a member')
 
-        const packageJSON = that.#packageJSON
+        const packageJSON = that.packageJSON
         let foundMember = false
         let foundAsterisk = false
         let typeJSON = undefined
@@ -83,7 +84,7 @@ export class Package {
         // exit if member already exists
         if (foundMember) return
         if (foundAsterisk) {
-            global.logger.warn(`Found ${chalk.bgBlackBright('*')} in type: ${type}.`)
+            // global.logger.warn(`Found ${chalk.bgBlackBright('*')} in type: ${type}.`)
             return
         }
 
@@ -107,7 +108,7 @@ export class Package {
 
     savePackage() {
         let that = this
-        let json = that.#packageJSON.Package
+        let json = that.packageJSON.Package
         json.$.xmlns = json.$.xmlns.replace('http:', 'https:')
 
         const builder = new xml2js.Builder(
@@ -153,3 +154,5 @@ function xml2json(currentValue) {
     if (currentValue == 'false') currentValue = false
     return currentValue
 }
+
+// Create JEST tests that cover 100% of the code
