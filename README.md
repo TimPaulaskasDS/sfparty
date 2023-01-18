@@ -46,6 +46,7 @@ sfparty combine
 -f, --format   format to use yaml (default) or json
 -s, --source   package directory path specified in sfdx-project.json  
 -t, --target   target path to directory to create yaml/json files  
+-g, --git      process files based on git commits. This option does not require a value.
 -h, --help     Show help  
 ```
 
