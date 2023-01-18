@@ -57,7 +57,7 @@ export function diff(dir, gitRef = 'HEAD', existsSyncStub = existsSync, execSync
 
         let data = ''
         try {
-            data = execSyncStub(`git diff --name-status --oneline --relative ${gitRef}`, { cwd: dir }).toString()
+            data = execSyncStub(`git diff --name-status --oneline --relative ${gitRef}`, { cwd: dir, maxBuffer: 1024 * 1024 * 10 }).toString()
         } catch (error) {
             reject(error)
         }
