@@ -619,7 +619,16 @@ function getRootPath(packageDir) {
     let defaultDir
     if (rootPath) {
         global.__basedir = fileUtils.fileInfo(rootPath).dirname
-        let packageJSON = JSON.parse(readFileSync(rootPath))
+        let packageJSON
+        try {
+            packageJSON = JSON.parse(readFileSync(rootPath))            
+        } catch (error) {
+            if (error.message.indexOf('JSON at position') > 0) {
+                global.displayError('sfdx-project.json has invalid JSON', true)
+            } else {
+                global.displayError(error, true)
+            }
+        }
         if (Array.isArray(packageJSON.packageDirectories)) {
             packageJSON.packageDirectories.every(directory => {
                 if (directory.default || packageJSON.packageDirectories.length == 1) defaultDir = directory.path
