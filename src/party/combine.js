@@ -130,7 +130,9 @@ export class Combine {
         function processStart(that) {
             let success = getXML(that)
             if (success) {
-                if (!that.metadataDefinition.packageTypeIsDirectory) that.#addPkg.addMember(that.#root, that.#fileName.shortName)
+                if (!that.metadataDefinition.packageTypeIsDirectory && global.git.enabled) {
+                    that.#addPkg.addMember(that.#root, that.#fileName.shortName)
+                }
                 saveXML(that)
                 if (global.git.enabled) savePackageXML(that)
                 return true
@@ -143,7 +145,9 @@ export class Combine {
                     .replace('[%5]', that.#fileName.shortName)
                 )
                 logUpdate.done()
-                if (!that.metadataDefinition.packageTypeIsDirectory) that.#desPkg.addMember(that.#root, that.#fileName.shortName)
+                if (!that.metadataDefinition.packageTypeIsDirectory && global.git.enabled) {
+                    that.#desPkg.addMember(that.#root, that.#fileName.shortName)
+                } 
                 deleteFile(that.#fileName.fullName)
                 if (global.git.enabled) savePackageXML(that)
                 return 'deleted'
@@ -270,7 +274,9 @@ export class Combine {
                 }
 
                 if (that.metadataDefinition.packageTypeIsDirectory) {
-                    that.#desPkg.addMember(that.#root, fileObj.shortName.replace(`.${global.format}`, ''))
+                    if (global.git.enabled) {
+                        that.#desPkg.addMember(that.#root, fileObj.shortName.replace(`.${global.format}`, ''))
+                    }
                 }
                 return true
             }
@@ -313,7 +319,9 @@ export class Combine {
 
             if (that.metadataDefinition.packageTypeIsDirectory) {
                 if (fileObj.fullName !== path.join(that.sourceDir, that.metaDir, `main.${global.format}`)) {
-                    that.#addPkg.addMember(that.#root, fileObj.shortName.replace(`.${global.format}`, ''))
+                    if (global.git.enabled) {
+                        that.#addPkg.addMember(that.#root, fileObj.shortName.replace(`.${global.format}`, ''))
+                    }
                 }
             }
 
