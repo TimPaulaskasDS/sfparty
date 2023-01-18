@@ -17,7 +17,7 @@ export class Package {
         return new Promise((resolve, reject) => {
             if (that.xmlPath === undefined) throw new Error('Package not initialized')
 
-            let fileName = path.join(global.__basedir, that.xmlPath)
+            let fileName = path.resolve(that.xmlPath)
             if (fileUtils.fileExists(fileName) && global.git.append) {
                 let data = fileUtils.readFile(fileName)
                 data

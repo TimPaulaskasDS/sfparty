@@ -11,7 +11,7 @@ import convertHrtime from 'convert-hrtime'
 import axios from 'axios'
 import { marked } from 'marked'
 import markedTerminal from 'marked-terminal'
-
+import * as pkgObj from '../package.json'  assert { type: "json" }
 import * as fileUtils from './lib/fileUtils.js'
 import * as yargOptions from './meta/yargs.js'
 import * as metadataSplit from './party/split.js'
@@ -23,7 +23,6 @@ import * as workflowDefinition from './meta/Workflows.js'
 import { checkVersion } from './lib/checkVersion.js'
 import * as git from './lib/gitUtils.js'
 
-const pkgObj = fileUtils.readFile('package.json')
 const processStartTime = process.hrtime.bigint()
 
 marked.setOptions({
@@ -140,7 +139,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, exec, pkgObj.version, true)
+            checkVersion(axios, exec, pkgObj.default.version, true)
         }
     })
     .command({
@@ -155,7 +154,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, exec, pkgObj.version)
+            checkVersion(axios, exec, pkgObj.default.version)
             global.format = argv.format
             splitHandler(argv, processStartTime)
         }
@@ -172,7 +171,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, exec, pkgObj.version)
+            checkVersion(axios, exec, pkgObj.default.version)
             global.format = argv.format
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {
@@ -603,7 +602,7 @@ function displayHeader() {
         horizontal: '─',
         vertical: '│',
     }
-    let versionString = `sfparty v${pkgObj.version}${(process.stdout.columns > pkgObj.description.length + 15) ? ' - ' + pkgObj.description : ''}`
+    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
     let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)
