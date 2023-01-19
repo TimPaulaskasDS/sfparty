@@ -160,7 +160,7 @@ Optional:
 sfparty combine --git=HEAD~1..HEAD --append --delta --package=deploy/package.xml --destructive=deploy/destructiveChanges/destructiveChanges.xml
 ```
 
-The default target is the default package file that is specified in the `sfdx-project.json` file. If you want the files to be created in a different location, you can use the `--target` parameter. sfparty will create the /main/default/* directories accordingly.
+The default target is the package file specified in the `sfdx-project.json` file. You can use the `--target` parameter if you want the files to be created in a different location. sfparty will create the /main/default/* directories accordingly.
 
 ```
 sfparty combine --git=HEAD~1..HEAD --append --delta --package=deploy/package.xml --destructive=deploy/destructiveChanges/destructiveChanges.xml --target=deployDir/force-app
