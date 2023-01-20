@@ -45,7 +45,7 @@ export async function checkVersion(axios, spawnSync, currentVersion, update = fa
                 console.log(`Updating the application using ${clc.cyanBright(command.join(' '))}`)
                 try {
                     const npmVersion = spawnSync('npm', ['-v'])
-                    if (npmVersion.stderr.toString().trim() === 'command not found') {
+                    if (npmVersion.stderr && npmVersion.stderr.toString().trim() === 'command not found') {
                         throw new NpmNotInstalledError("npm is not installed on this system. Please install npm and run the command again.")
                     }
                     const update = spawnSync(command[0], command.slice(1))
@@ -54,11 +54,6 @@ export async function checkVersion(axios, spawnSync, currentVersion, update = fa
                     }
                     console.log("Application updated successfully.")
                 } catch (err) {
-                    if (err instanceof NpmNotInstalledError) {
-                        console.error(err)
-                    } else if (err instanceof UpdateError) {
-                        console.error(err)
-                    }
                     throw err
                 }
             }
@@ -72,7 +67,6 @@ export async function checkVersion(axios, spawnSync, currentVersion, update = fa
         if (error.response && error.response.status === 404) {
             error = new PackageNotFoundError("Package not found on the npm registry")
         }
-        console.error(error)
         throw error
     }
 }
