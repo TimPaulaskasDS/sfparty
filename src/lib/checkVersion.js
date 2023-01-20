@@ -41,7 +41,7 @@ export async function checkVersion(axios, spawnSync, currentVersion, update = fa
                 console.log(`Please upgrade by running ${clc.cyanBright('sfparty update')}`)
                 return 'A newer version'
             } else {
-                let command = 'npm i -g @ds-sfdc/sfparty'.split(' ')
+                let command = 'npm i -g @ds-sfdc/sfparty@latest'.split(' ')
                 console.log(`Updating the application using ${clc.cyanBright(command.join(' '))}`)
                 try {
                     const npmVersion = spawnSync('npm', ['-v'])
