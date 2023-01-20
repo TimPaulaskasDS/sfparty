@@ -21,7 +21,8 @@ export class Package {
                     data
                         .then((json) => {
                             try {
-                                processJSON(that, json)
+                                if (json === undefined || Object.keys(json).length === 0 ) json = packageDefinition.metadataDefinition.emptyPackage
+                                processJSON(that, json, fileUtils)
                                 resolve('existing')                                    
                             } catch (error) {
                                 console.error(error)
@@ -169,19 +170,19 @@ function transformJSON(json) {
     } catch (error) {
         throw error
     }
-}
 
-function xml2json(currentValue) {
-    try {
-        if (Array.isArray(currentValue)) {
-            if (currentValue.length == 1) {
-                currentValue = currentValue[0].toString().trim()
+    function xml2json(currentValue) {
+        try {
+            if (Array.isArray(currentValue)) {
+                if (currentValue.length == 1) {
+                    currentValue = currentValue[0].toString().trim()
+                }
             }
+            if (currentValue == 'true') currentValue = true
+            if (currentValue == 'false') currentValue = false
+            return currentValue            
+        } catch (error) {
+            throw error
         }
-        if (currentValue == 'true') currentValue = true
-        if (currentValue == 'false') currentValue = false
-        return currentValue            
-    } catch (error) {
-        throw error
     }
 }
