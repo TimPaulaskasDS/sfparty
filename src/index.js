@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict'
-import { exec } from 'child_process'
+import { exec, spawnSync } from 'child_process'
 import { readFileSync } from 'fs'
 import path from 'path'
 import yargs from 'yargs'
@@ -139,7 +139,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, exec, pkgObj.default.version, true)
+            checkVersion(axios, spawnSync, pkgObj.default.version, true)
         }
     })
     .command({
@@ -154,7 +154,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, exec, pkgObj.default.version)
+            checkVersion(axios, spawnSync, pkgObj.default.version)
             global.format = argv.format
             splitHandler(argv, processStartTime)
         }
@@ -171,7 +171,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, exec, pkgObj.default.version)
+            checkVersion(axios, spawnSync, pkgObj.default.version)
             global.format = argv.format
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {

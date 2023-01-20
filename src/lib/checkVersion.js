@@ -1,42 +1,78 @@
-export async function checkVersion(axios, exec, currentVersion, update = false) {
+import clc from 'cli-color'
+
+class NpmNotInstalledError extends Error {
+    constructor(message) {
+        super(message)
+        this.name = "NpmNotInstalledError"
+    }
+}
+
+class PackageNotFoundError extends Error {
+    constructor(message) {
+        super(message)
+        this.name = "PackageNotFoundError"
+    }
+}
+
+class UpdateError extends Error {
+    constructor(message) {
+        super(message)
+        this.name = "UpdateError"
+    }
+}
+
+export async function checkVersion(axios, spawnSync, currentVersion, update = false) {
     try {
-        const { data } = await axios.get('https://registry.npmjs.org/@ds-sfdc/sfparty')
-        const command = 'npm i -g @ds-sfdc/sfparty@latest'
+        const { data } = await axios.get('https://registry.npmjs.org/@ds-sfdc/sfparty', {
+            params: {
+                field: 'dist-tags.latest'
+            }
+        })
         if (currentVersion !== data['dist-tags'].latest) {
-            console.log(`${(update) ? global.icons.working : global.icons.fail} A newer version ${chalk.bgCyanBright(data['dist-tags'].latest)} is available.`)
+            let icon
+            const version = clc.bgCyanBright(data['dist-tags'].latest)
+            if (update) {
+                icon = global.icons.working
+            } else {
+                icon = global.icons.fail
+            }
+            console.log(`${icon} A newer version ${version} is available.`)
             if (!update) {
-                console.log(`Please upgrade by running ${chalk.cyanBright('sfparty update')}`)
+                console.log(`Please upgrade by running ${clc.cyanBright('sfparty update')}`)
                 return 'A newer version'
             } else {
-                console.log(`Updating the application using ${chalk.cyanBright(command)}`)
-                exec('npm -v', (error, stdout, stderr) => {
-                    if (error) {
-                         global.logger.error("npm is not installed on this system. Please install npm and run the command again.")
-                        return 'npm is not installed'
-                    } else {
-                        exec(command, (error, stdout, stderr) => {
-                            if (error) {
-                                global.logger.error(error)
-                                reject(error)
-                            } else {
-                                console.log(stdout)
-                                console.log(stderr)
-                                resolve(true)
-                            }
-                        })
+                let command = 'npm i -g @ds-sfdc/sfparty'.split(' ')
+                console.log(`Updating the application using ${clc.cyanBright(command.join(' '))}`)
+                try {
+                    const npmVersion = spawnSync('npm', ['-v'])
+                    if (npmVersion.stderr.toString().trim() === 'command not found') {
+                        throw new NpmNotInstalledError("npm is not installed on this system. Please install npm and run the command again.")
                     }
-                })
+                    const update = spawnSync(command[0], command.slice(1))
+                    if (update.status !== 0) {
+                        throw new UpdateError("Error updating the application.")
+                    }
+                    console.log("Application updated successfully.")
+                } catch (err) {
+                    if (err instanceof NpmNotInstalledError) {
+                        console.error(err)
+                    } else if (err instanceof UpdateError) {
+                        console.error(err)
+                    }
+                    throw err
+                }
             }
         } else {
             if (update) {
                 console.log(`${global.icons.success} You are on the latest version.`)
-                return 'You are on the latest version'
             }
+            return 'You are on the latest version'
         }
     } catch (error) {
-        global.logger.error(error)
+        if (error.response && error.response.status === 404) {
+            error = new PackageNotFoundError("Package not found on the npm registry")
+        }
+        console.error(error)
         throw error
     }
 }
-
-
