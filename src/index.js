@@ -547,8 +547,8 @@ function processCombine(typeItem, argv) {
 
 function gitFiles(data) {
     data.forEach(item => {
-        if (item.path.indexOf(packageDir + '-party' + path.sep) == 0) {
-            const pathArray = item.path.split(path.sep)
+        if (item.path.indexOf(packageDir + '-party/') == 0) {
+            const pathArray = item.path.split('/')
             if (pathArray.length > 3) {
                 if (getDirectories().includes(pathArray[3])) {
                     switch (item.action) {
