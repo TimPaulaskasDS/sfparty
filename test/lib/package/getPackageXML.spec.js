@@ -1,5 +1,39 @@
+
 import * as packageDefinition from '../../../src/meta/Package.js'
 import { Package } from '../../../src/lib/packageUtil.js'
+import * as labelDefinition from '../../../src/meta/CustomLabels.js'
+import * as profileDefinition from '../../../src/meta/Profiles.js'
+import * as permsetDefinition from '../../../src/meta/PermissionSets.js'
+import * as workflowDefinition from '../../../src/meta/Workflows.js'
+
+global.__basedir = '.'
+
+global.metaTypes = {
+    label: {
+        type: labelDefinition.metadataDefinition.filetype,
+        definition: labelDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
+    },
+    profile: {
+        type: profileDefinition.metadataDefinition.filetype,
+        definition: profileDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
+    },
+    permset: {
+        type: permsetDefinition.metadataDefinition.filetype,
+        definition: permsetDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
+    },
+    workflow: {
+        type: workflowDefinition.metadataDefinition.filetype,
+        definition: workflowDefinition.metadataDefinition,
+        add: { files: [], directories: [] },
+        remove: { files: [], directories: [] },
+    },
+}
 
 let pkg;
 const fileUtils = {
@@ -9,7 +43,8 @@ const fileUtils = {
 beforeEach(() => {
     pkg = new Package('xmlPath');
 });
-global.__basedir = '.'
+
+
 afterEach(() => {
     jest.clearAllMocks();
 });
@@ -54,4 +89,35 @@ it('should throw an error if error occurs during processing', async () => {
     fileUtils.fileExists.mockReturnValue(true);
     fileUtils.readFile.mockRejectedValue(new Error('Error'));
     await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError('Error');
+});
+
+it('should catch errors and reject the promise', async () => {
+    fileUtils.fileExists.mockReturnValue(true);
+    fileUtils.readFile.mockRejectedValue(new Error('Test Error'));
+    global.git = { append: true }
+    try {
+        await pkg.getPackageXML(fileUtils);
+    } catch (error) {
+        expect(error.message).toEqual('Test Error');
+    }
+});
+
+it('should default to an empty package if the read file is empty', async () => {
+    fileUtils.fileExists.mockReturnValue(true);
+    fileUtils.readFile.mockResolvedValue('');
+    global.git = { append: true }
+    const result = await pkg.getPackageXML(fileUtils);
+    expect(result).toBe('existing');
+    expect(pkg.packageJSON).toEqual(packageDefinition.metadataDefinition.emptyPackage);
+    expect(fileUtils.fileExists).toHaveBeenCalled();
+    expect(fileUtils.readFile).toHaveBeenCalled();
+});
+
+it('should throw an error if fileUtils.readFile() returns a rejected promise', async () => {
+    fileUtils.fileExists.mockReturnValue(true);
+    fileUtils.readFile.mockRejectedValue(new Error('Test Error'));
+    global.git = { append: true }
+    await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError('Test Error');
+    expect(fileUtils.fileExists).toHaveBeenCalled();
+    expect(fileUtils.readFile).toHaveBeenCalled();
 });

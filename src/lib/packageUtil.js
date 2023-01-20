@@ -25,7 +25,6 @@ export class Package {
                                 processJSON(that, json, fileUtils)
                                 resolve('existing')                                    
                             } catch (error) {
-                                console.error(error)
                                 reject(error)
                             }
                         })
@@ -55,6 +54,20 @@ export class Package {
             }
             that.packageJSON = json
             if (json.Package.types !== undefined) transformJSON(json.Package.types)
+            cleanPackage(that)
+        }
+
+        function cleanPackage(that) {
+            if (that.packageJSON === undefined) throw new Error('getPackageXML must be called before adding members')
+            if (that.packageJSON.Package == undefined) throw new Error('Package initialization failed')
+            if (that.packageJSON.Package.types === undefined) return 'No types found'
+        
+            const typeArray = Object.values(global.metaTypes).map(metaType => metaType.definition.root);
+            that.packageJSON.Package.types.forEach(typeItem => {
+                if (typeArray.includes(typeItem.name)) {
+                    typeItem.members = typeItem.members.filter(member => !member.endsWith(`.${global.format}`))
+                }
+            })
         }
     }
 
