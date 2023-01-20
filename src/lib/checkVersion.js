@@ -1,4 +1,5 @@
 import clc from 'cli-color'
+import semver from 'semver'
 
 class NpmNotInstalledError extends Error {
     constructor(message) {
@@ -21,14 +22,15 @@ class UpdateError extends Error {
     }
 }
 
-export async function checkVersion(axios, spawnSync, currentVersion, update = false) {
+export async function checkVersion({axios, spawnSync, currentVersion, update = false}) {
     try {
         const { data } = await axios.get('https://registry.npmjs.org/@ds-sfdc/sfparty', {
             params: {
                 field: 'dist-tags.latest'
             }
         })
-        if (currentVersion !== data['dist-tags'].latest) {
+        const latestVersion = data['dist-tags'].latest
+        if (semver.gt(latestVersion, currentVersion)) {
             let icon
             const version = clc.bgCyanBright(data['dist-tags'].latest)
             if (update) {

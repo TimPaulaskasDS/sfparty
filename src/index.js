@@ -139,8 +139,16 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, spawnSync, pkgObj.default.version, true)
+            checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version, update: true})
         }
+    })
+    .command({
+        command: '[version]',
+        alias: 'version',
+        builder: (yargs) => {
+            yargs
+                .check(yargCheck)
+        },
     })
     .command({
         command: '[split]',
@@ -154,7 +162,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, spawnSync, pkgObj.default.version)
+            checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version})
             global.format = argv.format
             splitHandler(argv, processStartTime)
         }
@@ -171,7 +179,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion(axios, spawnSync, pkgObj.default.version)
+            checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version})
             global.format = argv.format
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {
@@ -253,6 +261,10 @@ function yargCheck(argv, options) {
         !options.array.includes(key)
         )
 
+    if (!argv._.includes('update')) {
+        checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version, update: false})        
+    }
+    
     if (invalidKeys.length > 0) {
         const invalidKeysWithColor = invalidKeys.map(key => clc.redBright(key))
         throw new Error(`Invalid options specified: ${invalidKeysWithColor.join(', ')}`)
