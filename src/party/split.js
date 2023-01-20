@@ -4,7 +4,7 @@ import path from 'path'
 import { readFile } from 'fs'
 import { Parser } from 'xml2js'
 import logUpdate from 'log-update'
-import chalk from 'chalk'
+import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
 import * as fileUtils from '../lib/fileUtils.js'
@@ -128,7 +128,7 @@ export class Split {
         })
 
         function processJSON(that, json, baseDir) {
-            that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${chalk.yellowBright(that.#fileName.shortName)}[%2][%3]`
+            that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${clc.yellowBright(that.#fileName.shortName)}[%2][%3]`
 
             let targetDir = baseDir
             if (processed.type != that.#root) {
@@ -140,7 +140,7 @@ export class Split {
                 that.sequence = processed.current
                 logUpdate(that.#spinnerMessage
                     .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
-                    .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
+                    .replace('[%2]', `\n${clc.magentaBright(nextFrame(that))} ${key}`)
                     .replace('[%3]', `${that.#errorMessage}`)
                     .replace('[%4]', `${global.icons.working} `)
                 )
@@ -176,7 +176,7 @@ export class Split {
                 that.sequence = processed.current
                 logUpdate(that.#spinnerMessage
                     .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
-                    .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
+                    .replace('[%2]', `\n${clc.magentaBright(nextFrame(that))} ${key}`)
                     .replace('[%3]', `${that.#errorMessage}`)
                     .replace('[%4]', `${global.icons.working} `)
                 )

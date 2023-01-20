@@ -6,7 +6,7 @@ import path from 'path'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 import winston from 'winston'
-import chalk from 'chalk'
+import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
 import axios from 'axios'
 import { marked } from 'marked'
@@ -51,7 +51,7 @@ global.logger = winston.createLogger({
 
 global.icons = {
     "warn": '🔕',
-    "success": chalk.greenBright('✔'),
+    "success": clc.greenBright('✔'),
     "fail": '❗',
     "working": '⏳',
     "party": '🎉',
@@ -110,7 +110,7 @@ global.metaTypes = {
 let types = []
 const packageDir = getRootPath()
 
-let errorMessage = chalk.red('Please specify the action of ' + chalk.whiteBright.bgRedBright('split') + ' or ' + chalk.whiteBright.bgRedBright('combine') + '.')
+let errorMessage = clc.red('Please specify the action of ' + clc.whiteBright.bgRedBright('split') + ' or ' + clc.whiteBright.bgRedBright('combine') + '.')
 
 displayHeader() // display header mast
 
@@ -128,7 +128,7 @@ yargs(hideBin(process.argv))
         alias: 'test',
         handler: (argv) => {
             // THIS IS A PLACE TO TEST NEW CODE
-            global.logger.info(chalk.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
+            global.logger.info(clc.magentaBright(`${global.icons.party} TEST ${global.icons.party}`))
         }
     })
     .command({
@@ -185,10 +185,10 @@ yargs(hideBin(process.argv))
                                 global.git.latest = data.latestCommit
                                 global.git.last = data.lastCommit
                                 if (data.last === undefined) {
-                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.bgMagentaBright('not active:')} no prior commit - processing all`)
+                                    console.log(`${clc.yellowBright('git mode')} ${clc.bgMagentaBright('not active:')} no prior commit - processing all`)
                                     resolve(false)
                                 } else {
-                                    console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(data.lastCommit) + '..' + chalk.bgBlackBright(data.latestCommit)}`)
+                                    console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(data.lastCommit) + '..' + clc.bgBlackBright(data.latestCommit)}`)
                                     console.log()
                                     const diff = git.diff(global.__basedir, `${data.lastCommit}..${data.latestCommit}`)
                                     diff
@@ -207,7 +207,7 @@ yargs(hideBin(process.argv))
                                 throw error
                             })
                     } else {
-                        console.log(`${chalk.yellowBright('git mode')} ${chalk.magentaBright('active:')} ${chalk.bgBlackBright(gitRef)}`)
+                        console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(gitRef)}`)
                         console.log()
                         const diff = git.diff(global.__basedir, gitRef)
                         diff
@@ -254,7 +254,7 @@ function yargCheck(argv, options) {
         )
 
     if (invalidKeys.length > 0) {
-        const invalidKeysWithColor = invalidKeys.map(key => chalk.redBright(key))
+        const invalidKeysWithColor = invalidKeys.map(key => clc.redBright(key))
         throw new Error(`Invalid options specified: ${invalidKeysWithColor.join(', ')}`)
     }
 
@@ -270,13 +270,13 @@ function yargCheck(argv, options) {
     if (types.length > 1) {
         // if using multiple types you cannot specify name
         if ((typeof name != 'undefined' && name != '')) {
-            throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + ' when using multiple types.'))
+            throw new Error(clc.redBright('You cannot specify ' + clc.whiteBright.bgRedBright('--name') + ' when using multiple types.'))
         }
     } else {
         switch (argv.type) {
             case 'label':
                 if ((typeof name != 'undefined' && name != '')) {
-                    throw new Error(chalk.redBright('You cannot specify ' + chalk.whiteBright.bgRedBright('--name') + '  when using label.'))
+                    throw new Error(clc.redBright('You cannot specify ' + clc.whiteBright.bgRedBright('--name') + '  when using label.'))
                 }
                 break
         }
@@ -291,11 +291,11 @@ function displayMessageAndDuration(startTime, message) {
     let minutes = Math.floor((executionTime.seconds + Math.round(executionTime.milliseconds / 100000)) / 60)
     let seconds = Math.round((executionTime.seconds + Math.round(executionTime.milliseconds / 100000)) % 60)
     if (minutes == 0 && seconds == 0) {
-        durationMessage = message + chalk.magentaBright(`<1s`)
+        durationMessage = message + clc.magentaBright(`<1s`)
     } else if (minutes > 0) {
-        durationMessage = message + chalk.magentaBright(`${minutes}m ${seconds}s`)
+        durationMessage = message + clc.magentaBright(`${minutes}m ${seconds}s`)
     } else {
-        durationMessage = message + chalk.magentaBright(`${seconds}s`)
+        durationMessage = message + clc.magentaBright(`${seconds}s`)
     }
     console.log('\n' + durationMessage)
 }
@@ -384,8 +384,8 @@ function processSplit(typeItem, argv) {
 
         if (processed.total == 0) resolve(true)
 
-        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+        console.log(`${clc.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${clc.bgBlackBright('Target path:')} ${targetDir}`)
         console.log()
         console.log(`Splitting a total of ${processed.total} file(s)`)
         console.log()
@@ -412,7 +412,7 @@ function processSplit(typeItem, argv) {
             })
         })
         Promise.allSettled(promList).then((results) => {
-            let message = `Split ${chalk.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current)} file(s) ${(processed.errors > 0) ? 'with ' + chalk.bgBlackBright.red(processed.errors) + ' error(s) ' : ''}in `
+            let message = `Split ${clc.bgBlackBright((processed.current > promList.length) ? promList.length : processed.current)} file(s) ${(processed.errors > 0) ? 'with ' + clc.bgBlackBright.red(processed.errors) + ' error(s) ' : ''}in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
@@ -496,7 +496,7 @@ function processCombine(typeItem, argv) {
         }
 
         processed.total = processList.length
-        console.log(`${chalk.bgBlackBright(processed.total)} ${typeItem} file(s) to process`)
+        console.log(`${clc.bgBlackBright(processed.total)} ${typeItem} file(s) to process`)
 
         // Abort if there are no files to process
         if (processed.total == 0) {
@@ -505,8 +505,8 @@ function processCombine(typeItem, argv) {
         }
 
         console.log()
-        console.log(`${chalk.bgBlackBright('Source path:')} ${sourceDir}`)
-        console.log(`${chalk.bgBlackBright('Target path:')} ${targetDir}`)
+        console.log(`${clc.bgBlackBright('Source path:')} ${sourceDir}`)
+        console.log(`${clc.bgBlackBright('Target path:')} ${targetDir}`)
         console.log()
 
         const promList = []
@@ -538,7 +538,7 @@ function processCombine(typeItem, argv) {
                     errors++
                 }
             })
-            let message = `Combined ${chalk.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + chalk.bgBlackBright(errors) + 'error(s) ' : ''}in `
+            let message = `Combined ${clc.bgBlackBright(successes)} file(s) ${(errors > 0) ? 'with ' + clc.bgBlackBright(errors) + 'error(s) ' : ''}in `
             displayMessageAndDuration(startTime, message)
             resolve(true)
         })
@@ -603,13 +603,13 @@ function displayHeader() {
         vertical: '│',
     }
     let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
-    let titleMessage = `${global.icons.party} ${chalk.yellowBright(versionString)} ${global.icons.party}`
+    let titleMessage = `${global.icons.party} ${clc.yellowBright(versionString)} ${global.icons.party}`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)
-    titleMessage = chalk.blackBright(box.vertical) + '  ' + titleMessage + '      ' + chalk.blackBright(box.vertical)
-    console.log(`${chalk.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
+    titleMessage = clc.blackBright(box.vertical) + '  ' + titleMessage + '      ' + clc.blackBright(box.vertical)
+    console.log(`${clc.blackBright(box.topLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.topRight)}`)
     console.log(titleMessage)
-    console.log(`${chalk.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
+    console.log(`${clc.blackBright(box.bottomLeft + box.horizontal.repeat(process.stdout.columns - 2) + box.bottomRight)}`)
     console.log()
 }
 

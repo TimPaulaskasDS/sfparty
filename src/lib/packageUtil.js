@@ -1,5 +1,4 @@
 import path from 'path'
-import chalk from 'chalk'
 import * as xml2js from 'xml2js'
 import * as fileUtils from './fileUtils.js'
 import * as packageDefinition from '../meta/Package.js'
@@ -84,7 +83,6 @@ export class Package {
         // exit if member already exists
         if (foundMember) return
         if (foundAsterisk) {
-            // global.logger.warn(`Found ${chalk.bgBlackBright('*')} in type: ${type}.`)
             return
         }
 

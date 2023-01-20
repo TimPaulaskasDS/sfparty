@@ -1,6 +1,6 @@
 import path from 'path'
 import logUpdate from 'log-update'
-import chalk from 'chalk'
+import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
 import os from 'node:os'
@@ -139,7 +139,7 @@ export class Combine {
             } else {
                 logUpdate(that.#spinnerMessage
                     .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
-                    .replace('[%2]', `. ${chalk.redBright('source not found - removing XML file')}`)
+                    .replace('[%2]', `. ${clc.redBright('source not found - removing XML file')}`)
                     .replace('[%3]', ``)
                     .replace('[%4]', `${global.icons.delete} `)
                     .replace('[%5]', that.#fileName.shortName)
@@ -167,14 +167,14 @@ export class Combine {
             processed.current++
 
             that.#startTime = process.hrtime.bigint()
-            that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${chalk.yellowBright('[%5]')}[%2][%3]`
+            that.#spinnerMessage = `[%1] of ${that.total} - ${that.#root}: [%4]${clc.yellowBright('[%5]')}[%2][%3]`
 
             try {
                 that.#types.forEach(key => {
                     // display message
                     logUpdate(that.#spinnerMessage
                         .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
-                        .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key}`)
+                        .replace('[%2]', `\n${clc.magentaBright(nextFrame(that))} ${key}`)
                         .replace('[%3]', `${that.#errorMessage}`)
                         .replace('[%4]', `${global.icons.working} `)
                         .replace('[%5]', `${that.#fileName.shortName} `)
@@ -199,7 +199,7 @@ export class Combine {
                     } else if (that.metadataDefinition.directories.includes(key)) {
                         processDirectory(that, key)
                     } else {
-                        global.logger.warn(`Unexpected metadata type: ${chalk.redBright(key)}`)
+                        global.logger.warn(`Unexpected metadata type: ${clc.redBright(key)}`)
                     }
                 })
                 return true
@@ -234,7 +234,7 @@ export class Combine {
                 fileList.forEach((file, index) => {
                     logUpdate(that.#spinnerMessage
                         .replace('[%1]', that.sequence.toString().padStart(that.total.toString().length, ' '))
-                        .replace('[%2]', `\n${chalk.magentaBright(nextFrame(that))} ${key} - ${index + 1} of ${fileList.length} - ${chalk.magentaBright(file)}`)
+                        .replace('[%2]', `\n${clc.magentaBright(nextFrame(that))} ${key} - ${index + 1} of ${fileList.length} - ${clc.magentaBright(file)}`)
                         .replace('[%3]', `${that.#errorMessage}`)
                         .replace('[%4]', `${global.icons.working} `)
                         .replace('[%5]', `${that.#fileName.shortName} `)
@@ -263,7 +263,7 @@ export class Combine {
                 fileObj.shortName === undefined ||
                 fileObj.fullName === undefined
             ) {
-                global.displayError(`${global.icons.warn} Invalid file information passed ${chalk.redBright(fileObj)}`, true)
+                global.displayError(`${global.icons.warn} Invalid file information passed ${clc.redBright(fileObj)}`, true)
             }
 
             if (!fileUtils.fileExists(fileObj.fullName)) {
