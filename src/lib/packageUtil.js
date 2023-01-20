@@ -48,7 +48,8 @@ export class Package {
 
         function processJSON(that, json, fileUtils) {
             try {
-                json.Package.version = fileUtils.readFile(path.join(global.__basedir, 'sfdx-project.json')).sourceApiVersion
+                let data = fileUtils.readFile(path.join(global.__basedir, 'sfdx-project.json'))
+                json.Package.version = data.sourceApiVersion
             } catch (error) {
                 json.Package.version = packageDefinition.metadataDefinition.fallbackVersion
             }
