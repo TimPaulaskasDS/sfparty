@@ -1,6 +1,6 @@
 # @ds-sfdc/sfparty
 
-[![NPM](https://img.shields.io/npm/v/@ds-sfdc/sfparty.svg?label=@ds-sfdc/sfparty)](https://www.npmjs.com/package/@ds-sfdc/sfparty) [![Downloads/week](https://img.shields.io/npm/dw/@ds-sfdc/sfparty.svg)](https://npmjs.org/package/@ds-sfdc/sfparty) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://github.com/TimPaulaskasDS/sfparty/blob/main/LICENSE.md)
+[![NPM](https://img.shields.io/npm/v/@ds-sfdc/sfparty.svg?label=@ds-sfdc/sfparty)](https://www.npmjs.com/package/@ds-sfdc/sfparty) [![Downloads/week](https://img.shields.io/npm/dw/@ds-sfdc/sfparty.svg)](https://npmjs.org/package/@ds-sfdc/sfparty) [![License](https://img.shields.io/badge/License-BSD%203--Clause-brightgreen.svg)](https://github.com/TimPaulaskasDS/sfparty/blob/main/LICENSE.md) ![CI/CD](https://github.com/TimPaulaskasDS/sfparty/actions/workflows/cicd.yaml/badge.svg)
 
 ## Why use sfparty?
 
