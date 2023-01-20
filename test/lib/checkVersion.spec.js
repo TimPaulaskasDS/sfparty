@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { spawnSync } from 'child_process'
 import clc from 'cli-color'
-import { checkVersion } from '../src/lib/checkVersion.js'
+import { checkVersion } from '../../src/lib/checkVersion.js'
 
 global.icons = {
     "success": clc.greenBright('✔'),
