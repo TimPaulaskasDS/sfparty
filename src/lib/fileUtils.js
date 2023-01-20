@@ -133,6 +133,7 @@ async function convertXML(data) {
         try {
             let parser = new Parser()
             parser.parseString(data, function (err, result) {
+                if (err) throw err
                 resolve(result)
             })
         } catch (error) {
