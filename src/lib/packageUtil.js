@@ -1,6 +1,4 @@
 import path from 'path'
-import * as xml2js from 'xml2js'
-import * as fileUtils from './fileUtils.js'
 import * as packageDefinition from '../meta/Package.js'
 
 export class Package {
@@ -11,7 +9,7 @@ export class Package {
         this.packageJSON = undefined
     }
 
-    getPackageXML() {
+    getPackageXML(fileUtils) {
         const that = this
         return new Promise((resolve, reject) => {
             try {
@@ -20,7 +18,6 @@ export class Package {
                 let fileName = path.resolve(that.xmlPath)
                 if (fileUtils.fileExists(fileName) && global.git.append) {
                     let data = fileUtils.readFile(fileName)
-                    let test=true
                     data
                         .then((json) => {
                             try {
@@ -49,7 +46,7 @@ export class Package {
 
         })
 
-        function processJSON(that, json) {
+        function processJSON(that, json, fileUtils) {
             try {
                 json.Package.version = fileUtils.readFile(path.join(global.__basedir, 'sfdx-project.json')).sourceApiVersion
             } catch (error) {
@@ -92,7 +89,6 @@ export class Package {
                     })
                 }
             } catch (error) {
-                global.displayError(error, true)
                 throw error
             }
         })
@@ -125,7 +121,7 @@ export class Package {
         }
     }
 
-    savePackage() {
+    savePackage(xml2js, fileUtils) {
         let that = this
         let json = that.packageJSON.Package
         try {

@@ -110,8 +110,8 @@ export class Combine {
             if (global.git.enabled) {
                 that.#addPkg = new packageUtil.Package(that.addManifest)
                 that.#desPkg = new packageUtil.Package(that.desManifest)
-                const prom1 = that.#addPkg.getPackageXML()
-                const prom2 = that.#desPkg.getPackageXML()
+                const prom1 = that.#addPkg.getPackageXML(fileUtils)
+                const prom2 = that.#desPkg.getPackageXML(fileUtils)
 
                 Promise.allSettled([prom1, prom2])
                     .then((results) => {
@@ -155,8 +155,8 @@ export class Combine {
         }
 
         function savePackageXML(that) {
-            that.#addPkg.savePackage()
-            that.#desPkg.savePackage()
+            that.#addPkg.savePackage(xml2js, fileUtils)
+            that.#desPkg.savePackage(xml2js, fileUtils)
         }
 
         function getXML(that) {
