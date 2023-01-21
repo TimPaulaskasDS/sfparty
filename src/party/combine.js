@@ -3,7 +3,6 @@ import logUpdate from 'log-update'
 import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
-import os from 'node:os'
 import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
 import * as packageUtil from '../lib/packageUtil.js'
@@ -147,7 +146,9 @@ export class Combine {
                 logUpdate.done()
                 if (!that.metadataDefinition.packageTypeIsDirectory && global.git.enabled) {
                     that.#desPkg.addMember(that.#root, that.#fileName.shortName)
-                } 
+                } else {
+                    let test = true
+                }
                 deleteFile(that.#fileName.fullName)
                 if (global.git.enabled) savePackageXML(that)
                 return 'deleted'
