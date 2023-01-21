@@ -53,5 +53,14 @@ export const metadataDefinition = {
         'rules': ['fullName'],
         'outboundMessages': ['fullName'],
         'tasks': ['fullName'],
+    },
+    package: {
+        'alerts': 'WorkflowAlert',
+        'fieldUpdates': 'WorkflowFieldUpdate',
+        'flowActions': 'WorkflowFlowAction',
+        'knowledgePublishes': 'WorkflowKnowledgePublish',
+        'outboundMessages': 'WorkflowOutboundMessage',
+        'rules': 'WorkflowRule',
+        'tasks': '	WorkflowTask',
     }
 }
