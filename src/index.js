@@ -104,10 +104,10 @@ const packageDir = getRootPath()
 
 let errorMessage = clc.red(
 	'Please specify the action of ' +
-		clc.whiteBright.bgRedBright('split') +
-		' or ' +
-		clc.whiteBright.bgRedBright('combine') +
-		'.',
+	clc.whiteBright.bgRedBright('split') +
+	' or ' +
+	clc.whiteBright.bgRedBright('combine') +
+	'.',
 )
 
 displayHeader() // display header mast
@@ -266,11 +266,10 @@ function gitMode({ status, gitRef, lastCommit, latestCommit }) {
 	} else {
 		statusMessage = clc.magentaBright('active:')
 		if (gitRef === undefined) {
-			displayMessage = `${
-				clc.bgBlackBright(lastCommit) +
+			displayMessage = `${clc.bgBlackBright(lastCommit) +
 				'..' +
 				clc.bgBlackBright(latestCommit)
-			}`
+				}`
 		} else {
 			let delimiter = '..'
 
@@ -332,8 +331,8 @@ function yargCheck(argv, options) {
 			throw new Error(
 				clc.redBright(
 					'You cannot specify ' +
-						clc.whiteBright.bgRedBright('--name') +
-						' when using multiple types.',
+					clc.whiteBright.bgRedBright('--name') +
+					' when using multiple types.',
 				),
 			)
 		}
@@ -344,8 +343,8 @@ function yargCheck(argv, options) {
 					throw new Error(
 						clc.redBright(
 							'You cannot specify ' +
-								clc.whiteBright.bgRedBright('--name') +
-								'  when using label.',
+							clc.whiteBright.bgRedBright('--name') +
+							'  when using label.',
 						),
 					)
 				}
@@ -362,12 +361,12 @@ function displayMessageAndDuration(startTime, message) {
 	let minutes = Math.floor(
 		(executionTime.seconds +
 			Math.round(executionTime.milliseconds / 100000)) /
-			60,
+		60,
 	)
 	let seconds = Math.round(
 		(executionTime.seconds +
 			Math.round(executionTime.milliseconds / 100000)) %
-			60,
+		60,
 	)
 	if (minutes == 0 && seconds == 0) {
 		durationMessage = message + clc.magentaBright(`<1s`)
@@ -513,13 +512,12 @@ function processSplit(typeItem, argv) {
 				processed.current > promList.length
 					? promList.length
 					: processed.current,
-			)} file(s) ${
-				processed.errors > 0
+			)} file(s) ${processed.errors > 0
 					? 'with ' +
-					  clc.bgBlackBright.red(processed.errors) +
-					  ' error(s) '
+					clc.bgBlackBright.red(processed.errors) +
+					' error(s) '
 					: ''
-			}in `
+				}in `
 			displayMessageAndDuration(startTime, message)
 			resolve(true)
 		})
@@ -677,11 +675,10 @@ function processCombine(typeItem, argv) {
 					errors++
 				}
 			})
-			let message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
-				errors > 0
+			let message = `Combined ${clc.bgBlackBright(successes)} file(s) ${errors > 0
 					? 'with ' + clc.bgBlackBright(errors) + 'error(s) '
 					: ''
-			}in `
+				}in `
 			displayMessageAndDuration(startTime, message)
 			resolve(true)
 		})
@@ -765,11 +762,10 @@ function displayHeader() {
 		horizontal: '─',
 		vertical: '│',
 	}
-	let versionString = `sfparty v${pkgObj.version}${
-		process.stdout.columns > pkgObj.description.length + 15
+	let versionString = `sfparty v${pkgObj.version}${process.stdout.columns > pkgObj.description.length + 15
 			? ' - ' + pkgObj.description
 			: ''
-	}`
+		}`
 	let titleMessage = `${global.icons.party} ${clc.yellowBright(
 		versionString,
 	)} ${global.icons.party}`
@@ -786,16 +782,16 @@ function displayHeader() {
 	console.log(
 		`${clc.blackBright(
 			box.topLeft +
-				box.horizontal.repeat(process.stdout.columns - 2) +
-				box.topRight,
+			box.horizontal.repeat(process.stdout.columns - 2) +
+			box.topRight,
 		)}`,
 	)
 	console.log(titleMessage)
 	console.log(
 		`${clc.blackBright(
 			box.bottomLeft +
-				box.horizontal.repeat(process.stdout.columns - 2) +
-				box.bottomRight,
+			box.horizontal.repeat(process.stdout.columns - 2) +
+			box.bottomRight,
 		)}`,
 	)
 	console.log()
