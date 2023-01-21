@@ -98,16 +98,19 @@ export class Package {
 			throw new Error(
 				'getPackageXML must be called before adding members',
 			)
-		if (type === undefined || type.trim() == '')
+		if (type === undefined || type.replaceAll('\t', '').trim() == '')
 			throw new Error(
 				'An undefined type was received when attempting to add a member',
 			)
-		if (member === undefined || member.trim() == '')
+		if (member === undefined || member.replaceAll('\t', '').trim() == '')
 			throw new Error(
 				'An undefined member was received when attempting to add a member',
 			)
 		if (member.indexOf(`.${global.format}`) !== -1)
 			throw new Error('Part file received as member is not allowed')
+
+		type = type.replaceAll('\t', '')
+		member = member.replaceAll('\t', '')
 
 		const packageJSON = that.packageJSON
 		let foundMember = false
