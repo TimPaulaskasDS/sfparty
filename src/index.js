@@ -11,7 +11,7 @@ import convertHrtime from 'convert-hrtime'
 import axios from 'axios'
 import { marked } from 'marked'
 import markedTerminal from 'marked-terminal'
-import * as pkgObj from '../package.json'  assert { type: "json" }
+import pkgObj from './lib/pkgObj.cjs'
 import * as fileUtils from './lib/fileUtils.js'
 import * as yargOptions from './meta/yargs.js'
 import * as metadataSplit from './party/split.js'
@@ -139,7 +139,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version, update: true})
+            checkVersion({axios, spawnSync, currentVersion: pkgObj.version, update: true})
         }
     })
     .command({
@@ -162,7 +162,6 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version})
             global.format = argv.format
             splitHandler(argv, processStartTime)
         }
@@ -179,7 +178,6 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version})
             global.format = argv.format
             const startProm = new Promise((resolve, reject) => {
                 if (argv.git !== undefined) {
@@ -193,11 +191,10 @@ yargs(hideBin(process.argv))
                                 global.git.latest = data.latestCommit
                                 global.git.last = data.lastCommit
                                 if (data.last === undefined) {
-                                    console.log(`${clc.yellowBright('git mode')} ${clc.bgMagentaBright('not active:')} no prior commit - processing all`)
+                                    gitMode({status: 'not active'})
                                     resolve(false)
                                 } else {
-                                    console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(data.lastCommit) + '..' + clc.bgBlackBright(data.latestCommit)}`)
-                                    console.log()
+                                    gitMode({status: 'active', lastCommit: data.lastCommit, latestCommit: data.latestCommit})
                                     const diff = git.diff(global.__basedir, `${data.lastCommit}..${data.latestCommit}`)
                                     diff
                                         .then((data, error) => {
@@ -215,8 +212,7 @@ yargs(hideBin(process.argv))
                                 throw error
                             })
                     } else {
-                        console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(gitRef)}`)
-                        console.log()
+                        gitMode({status: 'active', gitRef})
                         const diff = git.diff(global.__basedir, gitRef)
                         diff
                             .then((data, error) => {
@@ -252,6 +248,26 @@ yargs(hideBin(process.argv))
     .argv
     .parse
 
+function gitMode({ status, gitRef, lastCommit, latestCommit }) {
+    let statusMessage
+    let displayMessage
+    if (status == 'not active') {
+        statusMessage = clc.bgMagentaBright('not active:')
+        displayMessage = `no prior commit - processing all`
+    } else {
+        statusMessage = clc.magentaBright('active:')
+        if (gitRef === undefined) {
+            displayMessage = `${clc.bgBlackBright(data.lastCommit) + '..' + clc.bgBlackBright(data.latestCommit)}`
+            console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(data.lastCommit) + '..' + clc.bgBlackBright(data.latestCommit)}`)
+        } else {
+            displayMessage = `${clc.magentaBright('active:')} ${clc.bgBlackBright(gitRef)}`
+            console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(gitRef)}`)
+        }
+    }
+    console.log(`${clc.yellowBright('git mode')} ${status}:)} ${displayMessage}`)
+    console.log()
+}
+
 function yargCheck(argv, options) {
     const argvKeys = Object.keys(argv)
     const invalidKeys = argvKeys.filter(key =>
@@ -262,7 +278,7 @@ function yargCheck(argv, options) {
         )
 
     if (!argv._.includes('update')) {
-        checkVersion({axios, spawnSync, currentVersion: pkgObj.default.version, update: false})        
+        checkVersion({axios, spawnSync, currentVersion: pkgObj.version, update: false})        
     }
     
     if (invalidKeys.length > 0) {
@@ -614,7 +630,7 @@ function displayHeader() {
         horizontal: '─',
         vertical: '│',
     }
-    let versionString = `sfparty v${pkgObj.default.version}${(process.stdout.columns > pkgObj.default.description.length + 15) ? ' - ' + pkgObj.default.description : ''}`
+    let versionString = `sfparty v${pkgObj.version}${(process.stdout.columns > pkgObj.description.length + 15) ? ' - ' + pkgObj.description : ''}`
     let titleMessage = `${global.icons.party} ${clc.yellowBright(versionString)} ${global.icons.party}`
     titleMessage = titleMessage.padEnd((process.stdout.columns / 2) + versionString.length / 1.65)
     titleMessage = titleMessage.padStart(process.stdout.columns)

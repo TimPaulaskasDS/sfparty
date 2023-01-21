@@ -22,7 +22,7 @@ class UpdateError extends Error {
     }
 }
 
-export async function checkVersion({axios, spawnSync, currentVersion, update = false}) {
+export async function checkVersion({ axios, spawnSync, currentVersion, update = false }) {
     try {
         const { data } = await axios.get('https://registry.npmjs.org/@ds-sfdc/sfparty', {
             params: {
@@ -31,13 +31,9 @@ export async function checkVersion({axios, spawnSync, currentVersion, update = f
         })
         const latestVersion = data['dist-tags'].latest
         if (semver.gt(latestVersion, currentVersion)) {
-            let icon
             const version = clc.bgCyanBright(data['dist-tags'].latest)
-            if (update) {
-                icon = global.icons.working
-            } else {
-                icon = global.icons.fail
-            }
+            const icon = (update) ? global.icons.working : global.icons.fail
+            console.log()
             console.log(`${icon} A newer version ${version} is available.`)
             if (!update) {
                 console.log(`Please upgrade by running ${clc.cyanBright('sfparty update')}`)
