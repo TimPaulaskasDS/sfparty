@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict'
-import { exec, spawnSync } from 'child_process'
+import { spawnSync } from 'child_process'
 import { readFileSync } from 'fs'
 import path from 'path'
 import yargs from 'yargs'
@@ -139,7 +139,7 @@ yargs(hideBin(process.argv))
                 .check(yargCheck)
         },
         handler: (argv) => {
-            checkVersion({axios, spawnSync, currentVersion: pkgObj.version, update: true})
+            checkVersion({ axios, spawnSync, currentVersion: pkgObj.version, update: true })
         }
     })
     .command({
@@ -191,10 +191,10 @@ yargs(hideBin(process.argv))
                                 global.git.latest = data.latestCommit
                                 global.git.last = data.lastCommit
                                 if (data.last === undefined) {
-                                    gitMode({status: 'not active'})
+                                    gitMode({ status: 'not active' })
                                     resolve(false)
                                 } else {
-                                    gitMode({status: 'active', lastCommit: data.lastCommit, latestCommit: data.latestCommit})
+                                    gitMode({ status: 'active', lastCommit: data.lastCommit, latestCommit: data.latestCommit })
                                     const diff = git.diff(global.__basedir, `${data.lastCommit}..${data.latestCommit}`)
                                     diff
                                         .then((data, error) => {
@@ -212,7 +212,7 @@ yargs(hideBin(process.argv))
                                 throw error
                             })
                     } else {
-                        gitMode({status: 'active', gitRef})
+                        gitMode({ status: 'active', gitRef })
                         const diff = git.diff(global.__basedir, gitRef)
                         diff
                             .then((data, error) => {
@@ -257,14 +257,20 @@ function gitMode({ status, gitRef, lastCommit, latestCommit }) {
     } else {
         statusMessage = clc.magentaBright('active:')
         if (gitRef === undefined) {
-            displayMessage = `${clc.bgBlackBright(data.lastCommit) + '..' + clc.bgBlackBright(data.latestCommit)}`
-            console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(data.lastCommit) + '..' + clc.bgBlackBright(data.latestCommit)}`)
+            displayMessage = `${clc.bgBlackBright(lastCommit) + '..' + clc.bgBlackBright(latestCommit)}`
         } else {
-            displayMessage = `${clc.magentaBright('active:')} ${clc.bgBlackBright(gitRef)}`
-            console.log(`${clc.yellowBright('git mode')} ${clc.magentaBright('active:')} ${clc.bgBlackBright(gitRef)}`)
+            let delimiter = '..'
+
+            if (/\s/.test(gitRef)) {
+                delimiter = ' '
+            }
+
+            const refArray = gitRef.split(delimiter)
+            const updatedArray = refArray.map(item => clc.bgBlackBright(item))
+            displayMessage = updatedArray.join(delimiter)
         }
     }
-    console.log(`${clc.yellowBright('git mode')} ${status}:)} ${displayMessage}`)
+    console.log(`${clc.yellowBright('git mode')} ${statusMessage} ${displayMessage}`)
     console.log()
 }
 
@@ -272,15 +278,15 @@ function yargCheck(argv, options) {
     const argvKeys = Object.keys(argv)
     const invalidKeys = argvKeys.filter(key =>
         !['_', '$0'].includes(key) &&
-        !options.string.includes(key) && 
-        !options.boolean.includes(key) && 
+        !options.string.includes(key) &&
+        !options.boolean.includes(key) &&
         !options.array.includes(key)
-        )
+    )
 
     if (!argv._.includes('update')) {
-        checkVersion({axios, spawnSync, currentVersion: pkgObj.version, update: false})        
+        checkVersion({ axios, spawnSync, currentVersion: pkgObj.version, update: false })
     }
-    
+
     if (invalidKeys.length > 0) {
         const invalidKeysWithColor = invalidKeys.map(key => clc.redBright(key))
         throw new Error(`Invalid options specified: ${invalidKeysWithColor.join(', ')}`)
@@ -376,7 +382,7 @@ function processSplit(typeItem, argv) {
         let sourceDir = argv.source || ''
         let targetDir = argv.target || ''
         let name = argv.name
-        let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
+        let all = (argv.type === undefined || name === undefined) ? true : argv.all
 
         if (type == global.metaTypes.label.type) {
             name = global.metaTypes.label.definition.root
@@ -491,7 +497,7 @@ function processCombine(typeItem, argv) {
         let sourceDir = argv.source || ''
         let targetDir = argv.target || ''
         let name = argv.name
-        let all = (argv.type === undefined || argv.type.split(',').length > 1) ? true : argv.all
+        let all = (argv.type === undefined || name === undefined) ? true : argv.all
         let addManifest = argv.package
         let desManifest = argv.destructive
 
@@ -648,7 +654,7 @@ function getRootPath(packageDir) {
         global.__basedir = fileUtils.fileInfo(rootPath).dirname
         let packageJSON
         try {
-            packageJSON = JSON.parse(readFileSync(rootPath))            
+            packageJSON = JSON.parse(readFileSync(rootPath))
         } catch (error) {
             if (error.message.indexOf('JSON at position') > 0) {
                 global.displayError('sfdx-project.json has invalid JSON', true)
