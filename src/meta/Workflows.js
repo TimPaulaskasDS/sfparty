@@ -122,6 +122,6 @@ export const metadataDefinition = {
 		knowledgePublishes: 'WorkflowKnowledgePublish',
 		outboundMessages: 'WorkflowOutboundMessage',
 		rules: 'WorkflowRule',
-		tasks: '	WorkflowTask',
+		tasks: 'WorkflowTask',
 	},
 }
