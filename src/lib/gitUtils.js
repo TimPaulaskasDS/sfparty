@@ -49,50 +49,49 @@ const status = {
 	},
 }
 
-export function diff(
-	dir,
-	gitRef = 'HEAD',
-	existsSyncStub = existsSync,
-	execSyncStub = execSync,
-) {
+export function diff(dir, gitRef = 'HEAD', existsSyncStub = existsSync, execSyncStub = execSync) {
 	return new Promise((resolve, reject) => {
-		if (!existsSyncStub(dir) || !existsSyncStub(path.join(dir, '.git'))) {
-			reject(new Error(`The directory "${dir}" is not a git repository`))
-		}
-
-		let data = ''
 		try {
-			data = execSyncStub(
-				`git diff --name-status --oneline --relative ${gitRef} -- *-party/*`,
-				{ cwd: dir, maxBuffer: 1024 * 1024 * 10 },
+			if (!existsSyncStub(dir)) {
+				throw new Error(`The directory "${dir}" does not exist`)
+			}
+			if (!existsSyncStub(path.join(dir, '.git'))) {
+				throw new Error(`The directory "${dir}" is not a git repository`)
+			}
+
+			try {
+				execSyncStub("git --version", { stdio: "ignore" });
+			} catch (e) {
+				throw new Error("Git is not installed on this machine");
+			}
+			let data = execSyncStub(
+				`git diff --name-status --oneline --no-renames --relative ${gitRef} -- *-party/*`,
+				{ cwd: dir, maxBuffer: 1024 * 1024 * 10 }
 			).toString()
+
+			const gitData = data.toString().split(os.EOL)
+			const files = gitData.reduce((acc, gitRow) => {
+				if (gitRow.lastIndexOf('\t') > 0) {
+					const file = gitRow.split('\t')
+					if (file.slice(-1)[0] !== '') {
+						const statusType =
+							status[file[0]]
+						acc.push({
+							type: statusType.type,
+							path: file.slice(-1)[0],
+							action: statusType.action,
+						})
+					}
+				}
+				return acc
+			}, [])
+			resolve(files)
 		} catch (error) {
 			reject(error)
 		}
-
-		const gitData = data.toString().split(os.EOL)
-		const files = gitData.reduce((acc, gitRow) => {
-			if (gitRow.indexOf('\t') > 0) {
-				const file = gitRow.split('\t')
-				if (file.slice(-1) !== '') {
-					const statusType =
-						status[
-							file[0] === file.slice(-1)
-								? 'A'
-								: Array.from(file[0])[0]
-						]
-					acc.push({
-						type: statusType.type,
-						path: file.slice(-1)[0],
-						action: statusType.action,
-					})
-				}
-			}
-			return acc
-		}, [])
-		resolve(files)
 	})
 }
+
 
 export function log(dir, gitRef, execSyncStub = execSync) {
 	try {
