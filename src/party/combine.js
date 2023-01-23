@@ -377,7 +377,12 @@ export class Combine {
 					) {
 						that.#desPkg.addMember(
 							that.metadataDefinition.package[
-								path.dirname(fileObj.fullName).split('/').pop()
+								that.#fileName.shortName +
+									'.' +
+									path
+										.dirname(fileObj.fullName)
+										.split('/')
+										.pop()
 							],
 							fileObj.shortName.replace(`.${global.format}`, ''),
 						)
@@ -456,7 +461,9 @@ export class Combine {
 				) {
 					that.#addPkg.addMember(
 						that.metadataDefinition.package[
-							path.dirname(fileObj.fullName).split('/').pop()
+							that.#fileName.shortName +
+								'.' +
+								path.dirname(fileObj.fullName).split('/').pop()
 						],
 						fileObj.shortName.replace(`.${global.format}`, ''),
 					)
