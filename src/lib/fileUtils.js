@@ -4,12 +4,12 @@ import * as path from 'path'
 import * as yaml from 'js-yaml'
 import { Parser } from 'xml2js'
 
-export function directoryExists(dirPath, fsTmp = fs) {
-	return fsTmp.existsSync(dirPath) && fsTmp.statSync(dirPath).isDirectory()
+export function directoryExists({ dirPath, fs }) {
+	return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()
 }
 
-export function fileExists(filePath, fsTmp = fs) {
-	return fsTmp.existsSync(filePath) && fsTmp.statSync(filePath).isFile()
+export function fileExists({ filePath, fs }) {
+	return fs.existsSync(filePath) && fs.statSync(filePath).isFile()
 }
 
 export function createDirectory(dirPath, fsTmp = fs) {
@@ -19,7 +19,7 @@ export function createDirectory(dirPath, fsTmp = fs) {
 }
 
 export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
-	if (!directoryExists(dirPath, fsTmp)) {
+	if (!directoryExists({ dirPath, fs: fsTmp })) {
 		return false
 	} else {
 		if (fsTmp.existsSync(dirPath)) {
@@ -40,7 +40,7 @@ export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
 
 export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
 	const filesList = []
-	if (directoryExists(dirPath, fsTmp)) {
+	if (directoryExists({ dirPath, fs: fsTmp })) {
 		fsTmp.readdirSync(dirPath).forEach((file) => {
 			if (!filter) {
 				filesList.push(file)
@@ -62,7 +62,7 @@ export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
 }
 
 export function getDirectories(dirPath, fsTmp = fs) {
-	if (directoryExists(dirPath, fsTmp)) {
+	if (directoryExists({ dirPath, fs: fsTmp })) {
 		return fsTmp
 			.readdirSync(dirPath, { withFileTypes: true })
 			.filter((dirent) => dirent.isDirectory())
@@ -73,7 +73,7 @@ export function getDirectories(dirPath, fsTmp = fs) {
 }
 
 export function deleteFile(filePath, fsTmp = fs) {
-	if (!fileExists(filePath, fsTmp)) {
+	if (!fileExists({ filePath, fs: fsTmp })) {
 		return false
 	} else {
 		return fsTmp.unlinkSync(filePath, { recursive: false, force: true })
@@ -117,19 +117,19 @@ export function saveFile(
 	}
 }
 
-export function readFile(fileName, convert = true, fsTmp = fs) {
+export function readFile(filePath, convert = true, fsTmp = fs) {
 	try {
 		let result = undefined
-		if (fileExists(fileName, fsTmp)) {
-			const data = fsTmp.readFileSync(fileName, {
+		if (fileExists({ filePath, fs: fsTmp })) {
+			const data = fsTmp.readFileSync(filePath, {
 				encoding: 'utf8',
 				flag: 'r',
 			})
-			if (convert && fileName.indexOf('.yaml') != -1) {
+			if (convert && filePath.indexOf('.yaml') != -1) {
 				result = yaml.load(data)
-			} else if (convert && fileName.indexOf('.json') != -1) {
+			} else if (convert && filePath.indexOf('.json') != -1) {
 				result = JSON.parse(data)
-			} else if (convert && fileName.indexOf('.xml') != -1) {
+			} else if (convert && filePath.indexOf('.xml') != -1) {
 				// returns a promise
 				result = convertXML(data)
 			} else {

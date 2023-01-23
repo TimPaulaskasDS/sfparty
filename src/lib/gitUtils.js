@@ -1,7 +1,7 @@
 import path from 'path'
+import fs from 'fs'
 import { spawn, execSync } from 'node:child_process'
 import * as os from 'node:os'
-import { existsSync } from 'fs'
 import * as fileUtils from './fileUtils.js'
 
 const defaultDefinition = {
@@ -155,33 +155,35 @@ export function log(dir, gitRef, execSyncStub = execSync) {
 export function lastCommit(
 	dir,
 	fileName = 'index.yaml',
-	existsSyncStub = existsSync,
+	existsSyncStub = fs.existsSync,
 	execSyncStub = execSync,
 	fileUtilsStub = fileUtils,
 ) {
-	try {
-		const folder = path.resolve(dir, '.sfdx', 'sfparty')
-		const filePath = path.resolve(folder, fileName)
-		let lastCommit = undefined
+	return new Promise((resolve, reject) => {
+		try {
+			const folder = path.resolve(dir, '.sfdx', 'sfparty')
+			const filePath = path.resolve(folder, fileName)
+			let lastCommit = undefined
 
-		fileUtilsStub.createDirectory(folder)
-		if (existsSyncStub(filePath)) {
-			const data = fileUtilsStub.readFile(filePath)
-			if (data.git.lastCommit !== undefined) {
-				lastCommit = data.git.lastCommit
+			fileUtilsStub.createDirectory(folder)
+			if (existsSyncStub(filePath)) {
+				const data = fileUtilsStub.readFile(filePath)
+				if (data.git.lastCommit !== undefined) {
+					lastCommit = data.git.lastCommit
+				}
 			}
+			const latestCommit = execSyncStub(`git log --format=format:%H -1`, {
+				cwd: dir,
+				encoding: 'utf-8',
+			})
+			resolve({
+				lastCommit: lastCommit,
+				latestCommit: latestCommit,
+			})
+		} catch (error) {
+			reject(error)
 		}
-		const latestCommit = execSyncStub(`git log --format=format:%H -1`, {
-			cwd: dir,
-			encoding: 'utf-8',
-		})
-		return {
-			lastCommit: lastCommit,
-			latestCommit: latestCommit,
-		}
-	} catch (error) {
-		throw new Error(error)
-	}
+	})
 }
 
 export function updateLastCommit(dir, latest, fileUtilsStub = fileUtils) {
@@ -193,7 +195,7 @@ export function updateLastCommit(dir, latest, fileUtilsStub = fileUtils) {
 		const folder = path.join(dir, '.sfdx', 'sfparty')
 		const fileName = path.join(folder, 'index.yaml')
 		let data = undefined
-		if (fileUtilsStub.fileExists(fileName)) {
+		if (fileUtilsStub.fileExists({ filePath: fileName, fs })) {
 			data = fileUtilsStub.readFile(fileName)
 		}
 

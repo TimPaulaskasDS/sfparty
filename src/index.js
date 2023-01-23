@@ -467,17 +467,17 @@ function processSplit(typeItem, argv) {
 
 		if (!all) {
 			let metaFilePath = path.join(metaDirPath, name)
-			if (!fileUtils.fileExists(metaFilePath)) {
+			if (!fileUtils.fileExists({ filePath: metaFilePath, fs })) {
 				name += metaExtension
 				metaFilePath = path.join(metaDirPath, name)
-				if (!fileUtils.fileExists(metaFilePath)) {
+				if (!fileUtils.fileExists({ filePath: metaFilePath, fs })) {
 					global.logger.error('File not found: ' + metaFilePath)
 					process.exit(1)
 				}
 			}
 			fileList.push(name)
 		} else {
-			if (fileUtils.directoryExists(sourceDir)) {
+			if (fileUtils.directoryExists({ dirPath: sourceDir, fs })) {
 				fileUtils.getFiles(sourceDir, metaExtension).forEach((file) => {
 					fileList.push(file)
 				})
@@ -619,7 +619,7 @@ function processCombine(typeItem, argv) {
 			}
 		} else if (!all) {
 			let metaDirPath = path.join(sourceDir, name)
-			if (!fileUtils.directoryExists(metaDirPath)) {
+			if (!fileUtils.directoryExists({ dirPath: metaDirPath, fs })) {
 				global.logger.error('Directory not found: ' + metaDirPath)
 				process.exit(1)
 			}

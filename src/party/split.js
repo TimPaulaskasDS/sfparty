@@ -1,7 +1,7 @@
 'use strict'
 
 import path from 'path'
-import { readFile } from 'fs'
+import fs from 'fs'
 import { Parser } from 'xml2js'
 import logUpdate from 'log-update'
 import clc from 'cli-color'
@@ -84,7 +84,9 @@ export class Split {
 			) {
 				global.logger.error('Invalid information passed to split')
 				resolve(false)
-			} else if (!fileUtils.fileExists(that.metaFilePath)) {
+			} else if (
+				!fileUtils.fileExists({ filePath: that.metaFilePath, fs })
+			) {
 				global.logger.error(`file not found: ${that.metaFilePath}`)
 				resolve(false)
 			} else {
@@ -94,7 +96,7 @@ export class Split {
 				)
 				let parser = new Parser()
 				const getJSON = new Promise((resolve, reject) => {
-					readFile(that.metaFilePath, function (err, data) {
+					fs.readFile(that.metaFilePath, function (err, data) {
 						parser.parseString(data, function (err, result) {
 							if (result) {
 								resolve({

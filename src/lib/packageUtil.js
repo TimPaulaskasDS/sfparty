@@ -1,4 +1,5 @@
 import path from 'path'
+import fs from 'fs'
 import * as packageDefinition from '../meta/Package.js'
 
 export class Package {
@@ -15,7 +16,10 @@ export class Package {
 					throw new Error('Package not initialized')
 
 				let fileName = path.resolve(that.xmlPath)
-				if (fileUtils.fileExists(fileName) && global.git.append) {
+				if (
+					fileUtils.fileExists({ filePath: fileName, fs }) &&
+					global.git.append
+				) {
 					let data = fileUtils.readFile(fileName)
 					data.then((json) => {
 						try {
