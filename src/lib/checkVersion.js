@@ -39,7 +39,7 @@ export async function checkVersion({
 		)
 		const latestVersion = data['dist-tags'].latest
 		if (semver.gt(latestVersion, currentVersion)) {
-			const version = clc.bgCyanBright(data['dist-tags'].latest)
+			const version = clc.bgMagenta(data['dist-tags'].latest)
 			const icon = update ? global.icons.working : global.icons.fail
 			console.log()
 			console.log(`${icon} A newer version ${version} is available.`)
