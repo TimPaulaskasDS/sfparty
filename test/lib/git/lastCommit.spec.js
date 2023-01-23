@@ -1,69 +1,133 @@
 import path from 'path'
-import { execSync } from 'child_process'
-import * as fileUtils from '../../../src/lib/fileUtils.js'
+import fs from 'fs'
+import child_process, { execSync } from 'child_process'
 import { lastCommit } from '../../../src/lib/gitUtils.js'
-import { existsSync } from 'fs'
 
-const dir = '/test/sfparty'
+const dir = '/test'
 const fileName = 'index.yaml'
-const folder = path.resolve(dir, '.sfdx', 'sfparty')
-const filePath = path.resolve(folder, fileName)
 
-jest.mock('fs', () => ({
-    existsSync: jest.fn()
-}))
-
-jest.mock('../../../src/lib/fileUtils.js', () => {
-    return {
-        createDirectory: jest.fn(),
-        readFile: jest.fn()
-    }
-})
-
-jest.mock('child_process', () => {
-    return {
-        execSync: jest.fn()
-    }
-})
+const fileUtils = {
+	createDirectory: jest.fn(),
+	readFile: jest.fn((filePath) => {
+		if (
+			filePath ===
+			path.resolve(process.cwd(), '.sfdx', 'sfparty', 'index.yaml')
+		) {
+			return { git: { lastCommit: 'lastCommit' } }
+		}
+	}),
+	fileExists: jest.fn((filePath) => {
+		if (
+			filePath ===
+			path.resolve(process.cwd(), '.sfdx', 'sfparty', 'index.yaml')
+		) {
+			return true
+		}
+		return false
+	}),
+}
 
 beforeEach(() => {
-    jest.resetAllMocks()
+	jest.clearAllMocks()
+	jest.mock('child_process', () => ({
+		execSync: jest.fn(() => {
+			return 'testCommit'
+		}),
+	}))
 })
 
-it('should return the last commit and latest commit', () => {
-    const lastCommitHash = '16d69f0cf3d902a900a0609177fe5cf0fda9a961'
-    const latestCommitHash = '16d69f0cf3d902a900a0609177fe5cf0fda9a961'
-    fileUtils.createDirectory.mockReturnValue(undefined)
-    fileUtils.readFile.mockReturnValue({ git: { lastCommit: lastCommitHash } })
-    execSync.mockReturnValue(latestCommitHash)
-    existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
-    const result = lastCommit(dir, fileName, existsSync, execSync, fileUtils)
-    expect(fileUtils.createDirectory).toHaveBeenCalledWith(folder)
-    expect(fileUtils.readFile).toHaveBeenCalledWith(filePath)
-    expect(execSync).toHaveBeenCalledWith(`git log --format=format:%H -1`, { cwd: dir, encoding: 'utf-8' })
-    expect(result).toEqual({lastCommit: lastCommitHash, latestCommit: latestCommitHash })
+test('should return lastCommit and latestCommit if file exists', async () => {
+	const result = await lastCommit({
+		dir: process.cwd(),
+		existsSync: fs.existsSync,
+		execSync: require('child_process').execSync,
+		fileUtils,
+	})
+	expect(result).toEqual({
+		lastCommit: 'lastCommit',
+		latestCommit: 'testCommit',
+	})
 })
 
-it('should return the latest commit if no lastCommit is found', () => {
-    const latestCommit = '16d69f0cf3d902a900a0609177fe5cf0fda9a961'
-    fileUtils.createDirectory.mockReturnValue(undefined)
-    fileUtils.readFile.mockReturnValue({ git: {} })
-    execSync.mockReturnValue(latestCommit)
-    existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
-    const result = lastCommit(dir, fileName, existsSync, execSync, fileUtils)
-    expect(fileUtils.createDirectory).toHaveBeenCalledWith(folder)
-    expect(fileUtils.readFile).toHaveBeenCalledWith(filePath)
-    expect(execSync).toHaveBeenCalledWith(`git log --format=format:%H -1`, { cwd: dir, encoding: 'utf-8' })
-    expect(result).toEqual({ lastCommit: undefined, latestCommit })
+test('should return only latestCommit if file does not exist', async () => {
+	fileUtils.fileExists.mockReturnValue(false)
+	const result = await lastCommit({
+		dir: __dirname,
+		existsSync: fs.existsSync,
+		execSync: require('child_process').execSync,
+		fileUtils,
+	})
+	expect(result).toEqual({
+		lastCommit: undefined,
+		latestCommit: 'testCommit',
+	})
 })
 
-it('should throw an error when fileUtils.readFile is called', () => {
-    const errorMessage = 'Unable to read file'
-    fileUtils.createDirectory.mockReturnValue(undefined)
-    fileUtils.readFile.mockImplementation(() => { throw new Error(errorMessage) })
-    execSync.mockReturnValue(undefined)
-    existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
-    expect(() => lastCommit(dir, fileName, existsSync, execSync, fileUtils)).toThrowError(errorMessage)
-    expect(fileUtils.createDirectory).toHaveBeenCalledWith(folder)
-    expect(fileUtils.readFile).toHaveBeenCalledWith(filePath)
+it('should throw an error', async () => {
+	jest.spyOn(fs, 'existsSync').mockImplementation(() => false)
+	try {
+		await lastCommit({
+			dir,
+			fileName,
+			existsSync: fs.existsSync,
+			execSync: require('child_process').execSync,
+			fileUtils,
+		})
+	} catch (e) {
+		expect(e.message).toBe(
+			`ENOENT: no such file or directory, access '${path.join(
+				dir,
+				'.sfdx',
+				'sfparty',
+				fileName,
+			)}'`,
+		)
+	}
+})
+
+it('should return only latest commit if lastCommit is undefined', async () => {
+	jest.spyOn(fs, 'existsSync').mockImplementation(() => true)
+	jest.spyOn(fileUtils, 'readFile').mockImplementation(() => ({ git: {} }))
+	jest.spyOn(child_process, 'execSync').mockImplementation(
+		() => 'latestCommit',
+	)
+
+	const result = await lastCommit({
+		dir: '/test',
+		fileUtils,
+		fs,
+		existsSync: fs.existsSync,
+		execSync: child_process.execSync,
+	})
+
+	expect(result).toEqual({
+		lastCommit: undefined,
+		latestCommit: 'latestCommit',
+	})
+	expect(fs.existsSync).toHaveBeenCalledWith('/test/.sfdx/sfparty/index.yaml')
+	expect(fileUtils.readFile).toHaveBeenCalledWith(
+		'/test/.sfdx/sfparty/index.yaml',
+	)
+	expect(child_process.execSync).toHaveBeenCalledWith(
+		'git log --format=format:%H -1',
+		{ cwd: '/test', encoding: 'utf-8' },
+	)
+})
+
+test('should throw an error when execSync returns an error', async () => {
+	jest.spyOn(child_process, 'execSync').mockImplementation(() => {
+		throw new Error('execSync error')
+	})
+
+	try {
+		await lastCommit({
+			dir: '/test',
+			fileUtils,
+			fs,
+			existsSync: fs.existsSync,
+			execSync: child_process.execSync,
+		})
+	} catch (e) {
+		expect(e.message).toBe('execSync error')
+	}
 })

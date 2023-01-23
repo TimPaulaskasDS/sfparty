@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict'
-import { spawnSync, spawn } from 'child_process'
+import { spawnSync, spawn, execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import yargs from 'yargs'
@@ -66,8 +66,8 @@ const typeArray = ['label', 'profile', 'permset', 'workflow']
 
 global.git = {
 	enabled: false,
-	last: undefined,
-	latest: undefined,
+	lastCommit: undefined,
+	latestCommit: undefined,
 	append: false,
 	delta: false,
 }
@@ -193,12 +193,17 @@ yargs(hideBin(process.argv))
 					global.git.append = argv.append || global.git.append
 					global.git.delta = argv.delta || global.git.delta
 					if (argv.git === '') {
-						const commit = git.lastCommit(global.__basedir, '-1')
+						const commit = git.lastCommit({
+							dir: global.__basedir,
+							existsSync: fs.existsSync,
+							execSync,
+							fileUtils,
+						})
 						commit
 							.then((data, error) => {
-								global.git.latest = data.latestCommit
-								global.git.last = data.lastCommit
-								if (data.last === undefined) {
+								global.git.latestCommit = data.latestCommit
+								global.git.lastCommit = data.lastCommit
+								if (data.lastCommit === undefined) {
 									gitMode({ status: 'not active' })
 									resolve(false)
 								} else {
@@ -541,8 +546,13 @@ function combineHandler(argv, startTime) {
 			console.log()
 			combineHandler(argv, startTime)
 		} else {
-			if (global.git.latest !== undefined) {
-				git.updateLastCommit(global.__basedir, global.git.latest)
+			if (global.git.latestCommit !== undefined) {
+				git.updateLastCommit({
+					dir: global.__basedir,
+					latest: global.git.latestCommit,
+					fileUtils,
+					fs,
+				})
 			}
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
 				let message = `Split completed in `

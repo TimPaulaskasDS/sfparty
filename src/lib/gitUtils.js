@@ -1,13 +1,9 @@
 import path from 'path'
-import fs from 'fs'
-import { spawn, execSync } from 'node:child_process'
 import * as os from 'node:os'
-import * as fileUtils from './fileUtils.js'
 
 const defaultDefinition = {
 	git: {
 		lastCommit: undefined,
-		latestCommit: undefined,
 	},
 	local: {
 		lastDate: undefined,
@@ -152,27 +148,27 @@ export function log(dir, gitRef, execSyncStub = execSync) {
 	}
 }
 
-export function lastCommit(
+export function lastCommit({
 	dir,
 	fileName = 'index.yaml',
-	existsSyncStub = fs.existsSync,
-	execSyncStub = execSync,
-	fileUtilsStub = fileUtils,
-) {
+	existsSync,
+	execSync,
+	fileUtils,
+}) {
 	return new Promise((resolve, reject) => {
 		try {
 			const folder = path.resolve(dir, '.sfdx', 'sfparty')
 			const filePath = path.resolve(folder, fileName)
 			let lastCommit = undefined
 
-			fileUtilsStub.createDirectory(folder)
-			if (existsSyncStub(filePath)) {
-				const data = fileUtilsStub.readFile(filePath)
+			fileUtils.createDirectory(folder)
+			if (existsSync(filePath)) {
+				const data = fileUtils.readFile(filePath)
 				if (data.git.lastCommit !== undefined) {
 					lastCommit = data.git.lastCommit
 				}
 			}
-			const latestCommit = execSyncStub(`git log --format=format:%H -1`, {
+			const latestCommit = execSync(`git log --format=format:%H -1`, {
 				cwd: dir,
 				encoding: 'utf-8',
 			})
@@ -186,7 +182,7 @@ export function lastCommit(
 	})
 }
 
-export function updateLastCommit(dir, latest, fileUtilsStub = fileUtils) {
+export function updateLastCommit({ dir, latest, fileUtils, fs }) {
 	if (typeof latest !== 'string' && typeof latest !== 'undefined')
 		throw new Error(
 			`updateLastCommit received a ${typeof latest} instead of string`,
@@ -195,8 +191,8 @@ export function updateLastCommit(dir, latest, fileUtilsStub = fileUtils) {
 		const folder = path.join(dir, '.sfdx', 'sfparty')
 		const fileName = path.join(folder, 'index.yaml')
 		let data = undefined
-		if (fileUtilsStub.fileExists({ filePath: fileName, fs })) {
-			data = fileUtilsStub.readFile(fileName)
+		if (fileUtils.fileExists({ filePath: fileName, fs })) {
+			data = fileUtils.readFile(fileName)
 		}
 
 		if (data === undefined) {
@@ -204,6 +200,6 @@ export function updateLastCommit(dir, latest, fileUtilsStub = fileUtils) {
 		}
 
 		data.git.lastCommit = latest
-		fileUtilsStub.saveFile(data, fileName)
+		fileUtils.saveFile(data, fileName)
 	}
 }
