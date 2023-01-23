@@ -268,9 +268,8 @@ yargs(hideBin(process.argv))
 		['$0 combine --type=permset --all'],
 		['$0 combine --type=permset --name="Permission Set Name"'],
 	])
-	.parse()
 	.help(false)
-	.version(false)
+	.version(false).argv.parse
 
 if (!checkYargs)
 	checkVersion({
