@@ -38,6 +38,10 @@ sfparty split
 sfparty combine
 ```
 
+### Update
+```bash
+sfparty update
+```
 ### Options
 
 ```
@@ -48,6 +52,7 @@ sfparty combine
 -t, --target   target path to directory to create yaml/json files  
 -g, --git      combine files based on git commits
 -h, --help     Show help  
+-v, --version  Show version
 ```
 
 ### Combine Options

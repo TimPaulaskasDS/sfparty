@@ -112,10 +112,15 @@ let errorMessage = clc.red(
 
 displayHeader() // display header mast
 
+let checkYargs = false
+
 yargs(hideBin(process.argv))
 	.command({
 		command: 'help',
 		alias: 'h',
+		builder: (yargs) => {
+			yargs.check(yargCheck)
+		},
 		handler: (argv) => {
 			const data = fs.readFileSync(
 				path.join(process.cwd(), 'README.md'),
@@ -126,6 +131,9 @@ yargs(hideBin(process.argv))
 	})
 	.command({
 		command: '[test]',
+		builder: (yargs) => {
+			yargs.check(yargCheck)
+		},
 		alias: 'test',
 		handler: (argv) => {
 			// THIS IS A PLACE TO TEST NEW CODE
@@ -149,13 +157,6 @@ yargs(hideBin(process.argv))
 				currentVersion: pkgObj.version,
 				update: true,
 			})
-		},
-	})
-	.command({
-		command: '[version]',
-		alias: 'version',
-		builder: (yargs) => {
-			yargs.check(yargCheck)
 		},
 	})
 	.command({
@@ -267,7 +268,16 @@ yargs(hideBin(process.argv))
 		['$0 combine --type=permset --all'],
 		['$0 combine --type=permset --name="Permission Set Name"'],
 	])
-	.help(false).argv.parse
+	.help(false)
+	.version(false)
+
+if (!checkYargs)
+	checkVersion({
+		axios,
+		spawnSync,
+		currentVersion: pkgObj.version,
+		update: false,
+	})
 
 function gitMode({ status, gitRef, lastCommit, latestCommit }) {
 	let statusMessage
@@ -302,6 +312,7 @@ function gitMode({ status, gitRef, lastCommit, latestCommit }) {
 }
 
 function yargCheck(argv, options) {
+	checkYargs = true
 	const argvKeys = Object.keys(argv)
 	const invalidKeys = argvKeys.filter(
 		(key) =>
