@@ -377,14 +377,14 @@ export class Combine {
 					) {
 						that.#desPkg.addMember(
 							that.metadataDefinition.package[
-								that.#fileName.shortName +
-									'.' +
-									path
-										.dirname(fileObj.fullName)
-										.split('/')
-										.pop()
+								path.dirname(fileObj.fullName).split('/').pop()
 							],
-							fileObj.shortName.replace(`.${global.format}`, ''),
+							that.#fileName.shortName +
+								'.' +
+								fileObj.shortName.replace(
+									`.${global.format}`,
+									'',
+								),
 						)
 					} else if (that.metadataDefinition.packageTypeIsDirectory) {
 						that.#desPkg.addMember(
@@ -461,11 +461,11 @@ export class Combine {
 				) {
 					that.#addPkg.addMember(
 						that.metadataDefinition.package[
-							that.#fileName.shortName +
-								'.' +
-								path.dirname(fileObj.fullName).split('/').pop()
+							path.dirname(fileObj.fullName).split('/').pop()
 						],
-						fileObj.shortName.replace(`.${global.format}`, ''),
+						that.#fileName.shortName +
+							'.' +
+							fileObj.shortName.replace(`.${global.format}`, ''),
 					)
 				} else if (that.metadataDefinition.packageTypeIsDirectory) {
 					that.#addPkg.addMember(
