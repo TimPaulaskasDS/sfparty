@@ -9,23 +9,24 @@ const fileName = 'index.yaml'
 const fileUtils = {
 	createDirectory: jest.fn(),
 	readFile: jest.fn((filePath) => {
-		if (
-			filePath ===
-			path.resolve(process.cwd(), '.sfdx', 'sfparty', 'index.yaml')
-		) {
+		if (filePath.indexOf('project') !== -1) {
 			return { git: { lastCommit: 'lastCommit' } }
 		}
 	}),
 	fileExists: jest.fn((filePath) => {
-		if (
-			filePath ===
-			path.resolve(process.cwd(), '.sfdx', 'sfparty', 'index.yaml')
-		) {
+		if (filePath.indexOf('project') !== -1) {
 			return true
 		}
 		return false
 	}),
 }
+
+jest.mock('fs', () => {
+	return {
+		existsSync: jest.fn(),
+		statSync: jest.fn(),
+	}
+})
 
 beforeEach(() => {
 	jest.clearAllMocks()
@@ -37,8 +38,9 @@ beforeEach(() => {
 })
 
 test('should return lastCommit and latestCommit if file exists', async () => {
+	fs.existsSync.mockReturnValue(true)
 	const result = await lastCommit({
-		dir: process.cwd(),
+		dir: 'project',
 		existsSync: fs.existsSync,
 		execSync: require('child_process').execSync,
 		fileUtils,
@@ -50,6 +52,7 @@ test('should return lastCommit and latestCommit if file exists', async () => {
 })
 
 test('should return only latestCommit if file does not exist', async () => {
+	fs.existsSync.mockReturnValue(false)
 	fileUtils.fileExists.mockReturnValue(false)
 	const result = await lastCommit({
 		dir: __dirname,
