@@ -1,5 +1,5 @@
 import path from 'path'
-import { execSync } from 'node:child_process'
+import { spawn, execSync } from 'node:child_process'
 import * as os from 'node:os'
 import { existsSync } from 'fs'
 import * as fileUtils from './fileUtils.js'
@@ -49,49 +49,92 @@ const status = {
 	},
 }
 
-export function diff(dir, gitRef = 'HEAD', existsSyncStub = existsSync, execSyncStub = execSync) {
+export function diff({ dir, gitRef = 'HEAD', existsSync, spawn }) {
 	return new Promise((resolve, reject) => {
 		try {
-			if (!existsSyncStub(dir)) {
+			if (!existsSync(dir)) {
 				throw new Error(`The directory "${dir}" does not exist`)
 			}
-			if (!existsSyncStub(path.join(dir, '.git'))) {
-				throw new Error(`The directory "${dir}" is not a git repository`)
+			if (!existsSync(path.join(dir, '.git'))) {
+				throw new Error(
+					`The directory "${dir}" is not a git repository`,
+				)
 			}
 
-			try {
-				execSyncStub("git --version", { stdio: "ignore" });
-			} catch (e) {
-				throw new Error("Git is not installed on this machine");
-			}
-			let data = execSyncStub(
-				`git diff --name-status --oneline --no-renames --relative ${gitRef} -- *-party/*`,
-				{ cwd: dir, maxBuffer: 1024 * 1024 * 10 }
-			).toString()
-
-			const gitData = data.toString().split(os.EOL)
-			const files = gitData.reduce((acc, gitRow) => {
-				if (gitRow.lastIndexOf('\t') > 0) {
-					const file = gitRow.split('\t')
-					if (file.slice(-1)[0] !== '') {
-						const statusType =
-							status[file[0]]
-						acc.push({
-							type: statusType.type,
-							path: file.slice(-1)[0],
-							action: statusType.action,
-						})
-					}
+			const git = spawn('git', ['--version'])
+			git.on('error', (err) => {
+				throw new Error('Git is not installed on this machine')
+			})
+			git.on('close', (code) => {
+				if (code !== 0) {
+					reject(
+						new Error(
+							`git --version command failed with code ${code}`,
+						),
+					)
 				}
-				return acc
-			}, [])
-			resolve(files)
+
+				const gitDiff = spawn(
+					'git',
+					[
+						'diff',
+						'--name-status',
+						'--oneline',
+						'--no-renames',
+						'--relative',
+						gitRef,
+						'--',
+						'*-party/*',
+					],
+					{ cwd: dir },
+				)
+				let data = ''
+				gitDiff.stdout.setEncoding('utf8')
+				gitDiff.stderr.on('data', (data) => {
+					if (data !== '')
+						reject(
+							new Error(
+								`git diff command failed with error: ${data}`,
+							),
+						)
+				})
+				gitDiff.stdout.on('data', (chunk) => {
+					data += chunk
+				})
+				gitDiff.stdout.on('close', (code) => {
+					if (code !== 0 && code !== false) {
+						reject(
+							new Error(
+								`git diff command failed with code ${code}`,
+							),
+						)
+					}
+					const gitData = data.toString().split(os.EOL)
+					const files = gitData.reduce((acc, gitRow) => {
+						if (gitRow.lastIndexOf('\t') > 0) {
+							const file = gitRow.split('\t')
+							if (file.slice(-1)[0] !== '') {
+								const statusType = status[file[0]]
+								acc.push({
+									type:
+										statusType !== undefined
+											? statusType.type
+											: 'A',
+									path: file.slice(-1)[0],
+									action: statusType.action,
+								})
+							}
+						}
+						return acc
+					}, [])
+					resolve(files)
+				})
+			})
 		} catch (error) {
 			reject(error)
 		}
 	})
 }
-
 
 export function log(dir, gitRef, execSyncStub = execSync) {
 	try {
