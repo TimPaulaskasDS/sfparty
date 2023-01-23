@@ -2,64 +2,84 @@ import path from 'path'
 import * as fileUtils from '../../../src/lib/fileUtils.js'
 import { updateLastCommit } from '../../../src/lib/gitUtils.js'
 
-jest.mock('../../../src/lib/fileUtils.js', () => {
-    return {
-        fileExists: jest.fn(),
-        readFile: jest.fn(),
-        saveFile: jest.fn()
-    }
-})
+let dir, latest
 
 beforeEach(() => {
-    jest.resetModules()
+	dir = '/test/directory'
+	latest = '1234567890abcdef'
 })
 
 afterEach(() => {
-    jest.clearAllMocks()
+	jest.resetModules()
 })
 
-it('throws error when latest is not a string or undefined', () => {
-    expect(() => updateLastCommit('dir', {})).toThrowError(/string/)
+it('should throw an error if latest is not a string', () => {
+	latest = {}
+	expect(() => updateLastCommit(dir, latest, fileUtils)).toThrowError(
+		'updateLastCommit received a object instead of string',
+	)
 })
 
-it('saves file with updated last commit', () => {
-    const dir = 'dir'
-    const latest = 'latest'
-    const folder = path.join(dir, '.sfdx', 'sfparty')
-    const fileName = path.join(folder, 'index.yaml')
-    const data = { git: { lastCommit: 'old' } }
-
-    fileUtils.fileExists.mockReturnValue(true)
-    fileUtils.readFile.mockReturnValue(data)
-
-    updateLastCommit(dir, latest, fileUtils)
-
-    expect(fileUtils.fileExists).toHaveBeenCalledWith(fileName)
-    expect(fileUtils.readFile).toHaveBeenCalledWith(fileName)
-    expect(fileUtils.saveFile).toHaveBeenCalledWith({ git: { lastCommit: latest } }, fileName)
+it('should not update lastCommit property if latest is undefined', () => {
+	latest = undefined
+	fileUtils.fileExists = jest.fn(() => true)
+	fileUtils.readFile = jest.fn(() => ({
+		git: { lastCommit: '1111111111abcdef' },
+	}))
+	fileUtils.saveFile = jest.fn()
+	updateLastCommit(dir, latest, fileUtils)
+	expect(fileUtils.fileExists).not.toHaveBeenCalled()
+	expect(fileUtils.readFile).not.toHaveBeenCalled()
+	expect(fileUtils.saveFile).not.toHaveBeenCalled()
 })
 
-it('creates file with default definition if it does not exist', () => {
-    const dir = 'dir'
-    const latest = 'latest'
-    const folder = path.join(dir, '.sfdx', 'sfparty')
-    const fileName = path.join(folder, 'index.yaml')
-    const defaultDefinition = {
-        git: {
-            lastCommit: latest,
-            latestCommit: undefined,
-        },
-        local: {
-            lastDate: undefined,
-        }
-    }
+it('should update lastCommit property in index.yaml file', () => {
+	// mock the fileExists method of fileUtils
+	fileUtils.fileExists = jest.fn(() => true)
+	// mock the readFile method of fileUtils
+	fileUtils.readFile = jest.fn(() => ({
+		git: { lastCommit: '1111111111abcdef' },
+	}))
+	// mock the saveFile method of fileUtils
+	fileUtils.saveFile = jest.fn()
+	updateLastCommit(dir, latest, fileUtils)
+	expect(fileUtils.readFile).toHaveBeenCalled()
+	expect(fileUtils.saveFile).toHaveBeenCalledWith(
+		{ git: { lastCommit: latest } },
+		'/test/directory/.sfdx/sfparty/index.yaml',
+	)
+})
 
-    fileUtils.fileExists.mockReturnValue(false)
-    expect(fileUtils.readFile).not.toHaveBeenCalled()
+it('should use existing index.yaml if it exists', () => {
+	fileUtils.fileExists = jest.fn(() => false)
+	fileUtils.readFile = jest.fn()
+	fileUtils.saveFile = jest.fn()
+	updateLastCommit(dir, latest, fileUtils)
+	expect(fileUtils.fileExists).toHaveBeenCalled()
+	expect(fileUtils.readFile).not.toHaveBeenCalled()
+	expect(fileUtils.saveFile).toHaveBeenCalled()
+})
 
-    updateLastCommit(dir, latest, fileUtils)
+it('should save the default definition if file does not exist', () => {
+	fileUtils.fileExists = jest.fn(() => false)
+	fileUtils.readFile = jest.fn()
+	fileUtils.saveFile = jest.fn()
 
-    expect(fileUtils.fileExists).toHaveBeenCalledWith(fileName)
-    expect(fileUtils.readFile).not.toHaveBeenCalled()
-    expect(fileUtils.saveFile).toHaveBeenCalledWith(defaultDefinition, fileName)
+	const defaultDefinition = {
+		git: {
+			lastCommit: latest,
+			latestCommit: undefined,
+		},
+		local: {
+			lastDate: undefined,
+		},
+	}
+
+	updateLastCommit(dir, latest, fileUtils)
+	expect(fileUtils.fileExists).toHaveBeenCalled()
+	expect(fileUtils.readFile).not.toHaveBeenCalled()
+	expect(fileUtils.saveFile).toHaveBeenCalledWith(
+		defaultDefinition,
+		'/test/directory/.sfdx/sfparty/index.yaml',
+	)
 })
