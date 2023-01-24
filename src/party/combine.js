@@ -33,8 +33,6 @@ export class Combine {
 		mtime: undefined,
 	}
 	#json = {}
-	#addPkg = undefined
-	#desPkg = undefined
 
 	constructor(config) {
 		this.metadataDefinition = config.metadataDefinition
@@ -43,9 +41,8 @@ export class Combine {
 		this.metaDir = config.metaDir
 		this.sequence = config.sequence
 		this.total = config.total
-		this.addManifest = config.addManifest || 'manifest/package-party.xml'
-		this.desManifest =
-			config.desManifest || 'manifest/destructiveChanges-party.xml'
+		this.addPkg = config.addPkg
+		this.desPkg = config.desPkg
 	}
 
 	get metadataDefinition() {
@@ -111,25 +108,7 @@ export class Combine {
 				that.#json[key] = undefined
 			})
 
-			if (global.git.enabled) {
-				that.#addPkg = new packageUtil.Package(that.addManifest)
-				that.#desPkg = new packageUtil.Package(that.desManifest)
-				const prom1 = that.#addPkg.getPackageXML(fileUtils)
-				const prom2 = that.#desPkg.getPackageXML(fileUtils)
-
-				Promise.allSettled([prom1, prom2]).then((results) => {
-					const rejected = results.filter(
-						(p) => p.status === 'rejected',
-					)
-					if (rejected.length > 0) {
-						reject(rejected[0].value)
-					} else {
-						resolve(processStart(that))
-					}
-				})
-			} else {
-				resolve(processStart(that))
-			}
+			resolve(processStart(that))
 		})
 
 		function processStart(that) {
@@ -139,10 +118,9 @@ export class Combine {
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
 				) {
-					that.#addPkg.addMember(that.#root, that.#fileName.shortName)
+					that.addPkg.addMember(that.#root, that.#fileName.shortName)
 				}
 				saveXML(that)
-				if (global.git.enabled) savePackageXML(that)
 				return true
 			} else {
 				logUpdate(
@@ -168,17 +146,11 @@ export class Combine {
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
 				) {
-					that.#desPkg.addMember(that.#root, that.#fileName.shortName)
+					that.desPkg.addMember(that.#root, that.#fileName.shortName)
 				}
 				deleteFile(that.#fileName.fullName)
-				if (global.git.enabled) savePackageXML(that)
 				return 'deleted'
 			}
-		}
-
-		function savePackageXML(that) {
-			that.#addPkg.savePackage(xml2js, fileUtils)
-			that.#desPkg.savePackage(xml2js, fileUtils)
 		}
 
 		function getXML(that) {
@@ -375,7 +347,7 @@ export class Combine {
 						path.dirname(fileObj.fullName).split('/').pop() in
 							that.metadataDefinition.package
 					) {
-						that.#desPkg.addMember(
+						that.desPkg.addMember(
 							that.metadataDefinition.package[
 								path.dirname(fileObj.fullName).split('/').pop()
 							],
@@ -387,7 +359,7 @@ export class Combine {
 								),
 						)
 					} else if (that.metadataDefinition.packageTypeIsDirectory) {
-						that.#desPkg.addMember(
+						that.desPkg.addMember(
 							that.#root,
 							fileObj.shortName.replace(`.${global.format}`, ''),
 						)
@@ -459,7 +431,7 @@ export class Combine {
 					path.dirname(fileObj.fullName).split('/').pop() in
 						that.metadataDefinition.package
 				) {
-					that.#addPkg.addMember(
+					that.addPkg.addMember(
 						that.metadataDefinition.package[
 							path.dirname(fileObj.fullName).split('/').pop()
 						],
@@ -468,7 +440,7 @@ export class Combine {
 							fileObj.shortName.replace(`.${global.format}`, ''),
 					)
 				} else if (that.metadataDefinition.packageTypeIsDirectory) {
-					that.#addPkg.addMember(
+					that.addPkg.addMember(
 						that.#root,
 						fileObj.shortName.replace(`.${global.format}`, ''),
 					)

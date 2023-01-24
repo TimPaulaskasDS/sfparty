@@ -4,6 +4,7 @@ import { spawnSync, spawn, execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import yargs from 'yargs'
+import xml2js from 'xml2js'
 import { hideBin } from 'yargs/helpers'
 import winston from 'winston'
 import clc from 'cli-color'
@@ -22,6 +23,7 @@ import * as permsetDefinition from './meta/PermissionSets.js'
 import * as workflowDefinition from './meta/Workflows.js'
 import { checkVersion } from './lib/checkVersion.js'
 import * as git from './lib/gitUtils.js'
+import * as packageUtil from './lib/packageUtil.js'
 
 const processStartTime = process.hrtime.bigint()
 
@@ -109,7 +111,8 @@ let errorMessage = clc.red(
 		clc.whiteBright.bgRedBright('combine') +
 		'.',
 )
-
+let addPkg
+let desPkg
 displayHeader() // display header mast
 
 let checkYargs = false
@@ -254,7 +257,32 @@ yargs(hideBin(process.argv))
 			})
 			startProm.then((result) => {
 				global.git.enabled = result
-				combineHandler(argv, processStartTime)
+
+				if (global.git.enabled) {
+					let addManifest =
+						argv.package || 'manifest/package-party.xml'
+					let desManifest =
+						argv.destructive ||
+						'manifest/destructiveChanges-party.xml'
+
+					addPkg = new packageUtil.Package(addManifest)
+					desPkg = new packageUtil.Package(desManifest)
+					const prom1 = addPkg.getPackageXML(fileUtils)
+					const prom2 = desPkg.getPackageXML(fileUtils)
+
+					Promise.allSettled([prom1, prom2]).then((results) => {
+						const rejected = results.filter(
+							(p) => p.status === 'rejected',
+						)
+						if (rejected.length > 0) {
+							throw new Error(rejected[0].value)
+						} else {
+							combineHandler(argv, processStartTime)
+						}
+					})
+				} else {
+					combineHandler(argv, processStartTime)
+				}
 			})
 			startProm.catch((error) => {
 				global.displayError(error, true)
@@ -565,6 +593,10 @@ function combineHandler(argv, startTime) {
 					fs,
 				})
 			}
+			if (global.git.enabled) {
+				addPkg.savePackage(xml2js, fileUtils)
+				desPkg.savePackage(xml2js, fileUtils)
+			}
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
 				let message = `Split completed in `
 				displayMessageAndDuration(startTime, message)
@@ -599,8 +631,6 @@ function processCombine(typeItem, argv) {
 		let name = argv.name
 		let all =
 			argv.type === undefined || name === undefined ? true : argv.all
-		let addManifest = argv.package
-		let desManifest = argv.destructive
 
 		sourceDir = path.join(
 			global.__basedir,
@@ -680,13 +710,13 @@ function processCombine(typeItem, argv) {
 		processList.forEach((metaDir) => {
 			const metadataItem = new metadataCombine.Combine({
 				metadataDefinition: typeObj.definition,
-				sourceDir: sourceDir,
-				targetDir: targetDir,
-				metaDir: metaDir,
+				sourceDir,
+				targetDir,
+				metaDir,
 				sequence: promList.length + 1,
 				total: processed.total,
-				addManifest: addManifest,
-				desManifest: desManifest,
+				addPkg,
+				desPkg,
 			})
 			const metadataItemProm = metadataItem.combine()
 			promList.push(metadataItemProm)
