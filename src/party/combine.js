@@ -15,7 +15,6 @@ const processed = {
 	current: 0,
 	type: undefined,
 }
-
 export class Combine {
 	#type = undefined
 	#root = undefined
@@ -33,6 +32,7 @@ export class Combine {
 		mtime: undefined,
 	}
 	#json = {}
+	#diffOnly = false
 
 	constructor(config) {
 		this.metadataDefinition = config.metadataDefinition
@@ -83,6 +83,12 @@ export class Combine {
 	combine() {
 		return new Promise((resolve, reject) => {
 			const that = this
+			that.#diffOnly =
+				global.metaTypes[that.metadataDefinition.alias].add.files
+					.length > 0 ||
+				global.metaTypes[that.metadataDefinition.alias].remove.files
+					.length > 0
+
 			if (!fileUtils.directoryExists({ dirPath: that.sourceDir, fs }))
 				reject(`Path does not exist: ${that.sourceDir}`)
 			let types = ['directories', 'singleFiles', 'main']
@@ -112,13 +118,33 @@ export class Combine {
 		})
 
 		function processStart(that) {
-			let success = getXML(that)
+			let success = processParts(that)
 			if (success) {
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
 				) {
-					that.addPkg.addMember(that.#root, that.#fileName.shortName)
+					if (
+						!that.#diffOnly ||
+						global.metaTypes[that.metadataDefinition.alias].add
+							.files.length > 0
+					) {
+						that.addPkg.addMember(
+							that.#root,
+							that.#fileName.shortName,
+						)
+					}
+
+					if (
+						that.#diffOnly &&
+						global.metaTypes[that.metadataDefinition.alias].remove
+							.files.length > 0
+					) {
+						that.desPkg.addMember(
+							that.#root,
+							that.#fileName.shortName,
+						)
+					}
 				}
 				saveXML(that)
 				return true
@@ -148,12 +174,12 @@ export class Combine {
 				) {
 					that.desPkg.addMember(that.#root, that.#fileName.shortName)
 				}
-				deleteFile(that.#fileName.fullName)
+				deleteFile(that, that.#fileName.fullName)
 				return 'deleted'
 			}
 		}
 
-		function getXML(that) {
+		function processParts(that) {
 			if (processed.type != that.#root) {
 				processed.current = 0
 				processed.type = that.#root
@@ -292,11 +318,28 @@ export class Combine {
 					processFile(that, key, fileObj)
 				})
 			}
+
+			const filteredArray = global.metaTypes[
+				that.metadataDefinition.alias
+			].remove.files.filter((filePath) =>
+				filePath.startsWith(
+					path.join(that.sourceDir, that.metaDir, key),
+				),
+			)
+			filteredArray.forEach((file) => {
+				const fileObj = {
+					shortName: path.basename(file),
+					fullName: file,
+				}
+				processFile(that, key, fileObj)
+			})
+
 			return true
 		}
 
-		function deleteFile(fileName) {
+		function deleteFile(that, fileName) {
 			fileUtils.deleteFile(fileName)
+			fileUtils.deleteDirectory(path.join(that.sourceDir, that.metaDir))
 		}
 
 		function processFile(
@@ -319,6 +362,16 @@ export class Combine {
 					)}`,
 					true,
 				)
+			}
+
+			const diffFiles = global.metaTypes[
+				that.metadataDefinition.alias
+			].add.files.concat(
+				global.metaTypes[that.metadataDefinition.alias].remove.files,
+			)
+
+			if (that.#diffOnly) {
+				if (!diffFiles.includes(fileObj.fullName)) return true
 			}
 
 			if (!fileUtils.fileExists({ filePath: fileObj.fullName, fs })) {
