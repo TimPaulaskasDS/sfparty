@@ -33,6 +33,9 @@ export class Combine {
 	}
 	#json = {}
 	#diffOnly = false
+	#addedFiles = []
+	#deletedFiles = []
+	#mainDeleted = false
 
 	constructor(config) {
 		this.metadataDefinition = config.metadataDefinition
@@ -118,28 +121,50 @@ export class Combine {
 		})
 
 		function processStart(that) {
+			const pathMatch = `/${that.metadataDefinition.directory}/${
+				that.#fileName.shortName
+			}/`
+
+			// get a list of all the added files
+			that.#addedFiles = global.metaTypes[
+				that.metadataDefinition.alias
+			].add.files.filter((i) =>
+				i.toLowerCase().includes(pathMatch.toLowerCase()),
+			)
+
+			// get a list of all the removed files
+			that.#deletedFiles = global.metaTypes[
+				that.metadataDefinition.alias
+			].remove.files.filter((i) =>
+				i.toLowerCase().includes(pathMatch.toLowerCase()),
+			)
+
+			// check if main part file deleted
+			that.#mainDeleted = global.metaTypes[
+				that.metadataDefinition.alias
+			].remove.files.some(
+				(i) =>
+					i.includes(pathMatch) &&
+					i.toLowerCase().includes(`/main.${global.format}`),
+			)
+
 			let success = processParts(that)
+			// Ensure we only match existing metadata type directory and item
+
 			if (success) {
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
 				) {
-					if (
-						!that.#diffOnly ||
-						global.metaTypes[that.metadataDefinition.alias].add
-							.files.length > 0
-					) {
+					if (!that.#diffOnly || that.#addedFiles.length > 0) {
 						that.addPkg.addMember(
 							that.#root,
 							that.#fileName.shortName,
 						)
 					}
 
-					if (
-						that.#diffOnly &&
-						global.metaTypes[that.metadataDefinition.alias].remove
-							.files.length > 0
-					) {
+					// only include the workflow node if main part file is delete
+					if (that.#diffOnly && that.#mainDeleted) {
 						that.desPkg.addMember(
 							that.#root,
 							that.#fileName.shortName,
@@ -364,19 +389,21 @@ export class Combine {
 				)
 			}
 
-			const diffFiles = global.metaTypes[
-				that.metadataDefinition.alias
-			].add.files.concat(
-				global.metaTypes[that.metadataDefinition.alias].remove.files,
-			)
-
 			if (that.#diffOnly) {
-				if (!diffFiles.includes(fileObj.fullName)) return true
+				if (
+					!that.#addedFiles
+						.concat(that.#deletedFiles)
+						.includes(fileObj.fullName) &&
+					!fileObj.fullName
+						.toLowerCase()
+						.includes(`/main.${global.format}`)
+				)
+					return true
 			}
 
 			if (!fileUtils.fileExists({ filePath: fileObj.fullName, fs })) {
 				// File does not exist
-				// If file is main.yaml, then return false to indicate that the XML file should be deleted
+				// If file is main part file, then return false to indicate that the XML file should be deleted
 				if (
 					fileObj.fullName ==
 					path.join(
@@ -389,6 +416,7 @@ export class Combine {
 				}
 
 				if (
+					// git enabled and (package directory OR package mapping)
 					global.git.enabled &&
 					(that.metadataDefinition.packageTypeIsDirectory ||
 						(that.metadataDefinition.package !== undefined &&
@@ -396,6 +424,7 @@ export class Combine {
 								that.metadataDefinition.package))
 				) {
 					if (
+						// package mapping
 						that.metadataDefinition.package !== undefined &&
 						path.dirname(fileObj.fullName).split('/').pop() in
 							that.metadataDefinition.package
@@ -411,7 +440,10 @@ export class Combine {
 									'',
 								),
 						)
-					} else if (that.metadataDefinition.packageTypeIsDirectory) {
+					} else if (
+						// package directory
+						that.metadataDefinition.packageTypeIsDirectory
+					) {
 						that.desPkg.addMember(
 							that.#root,
 							fileObj.shortName.replace(`.${global.format}`, ''),
