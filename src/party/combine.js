@@ -6,7 +6,6 @@ import cliSpinners from 'cli-spinners'
 import fs from 'fs'
 import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
-import * as packageUtil from '../lib/packageUtil.js'
 
 const spinner = cliSpinners['dots']
 const processed = {
@@ -156,7 +155,7 @@ export class Combine {
 				) {
 					if (!that.#delta || that.#addedFiles.length > 0) {
 						that.addPkg.addMember(
-							that.#root,
+							that.metadataDefinition.type,
 							that.#fileName.shortName,
 						)
 					}
@@ -164,7 +163,7 @@ export class Combine {
 					// only include the workflow node if main part file is delete
 					if (that.#delta && that.#mainDeleted) {
 						that.desPkg.addMember(
-							that.#root,
+							that.metadataDefinition.type,
 							that.#fileName.shortName,
 						)
 					}
@@ -195,7 +194,10 @@ export class Combine {
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
 				) {
-					that.desPkg.addMember(that.#root, that.#fileName.shortName)
+					that.desPkg.addMember(
+						that.metadataDefinition.type,
+						that.#fileName.shortName,
+					)
 				}
 				deleteFile(that, that.#fileName.fullName)
 				return 'deleted'
@@ -443,7 +445,7 @@ export class Combine {
 						that.metadataDefinition.packageTypeIsDirectory
 					) {
 						that.desPkg.addMember(
-							that.#root,
+							that.metadataDefinition.type,
 							fileObj.shortName.replace(`.${global.format}`, ''),
 						)
 					}
@@ -524,7 +526,7 @@ export class Combine {
 					)
 				} else if (that.metadataDefinition.packageTypeIsDirectory) {
 					that.addPkg.addMember(
-						that.#root,
+						that.metadataDefinition.type,
 						fileObj.shortName.replace(`.${global.format}`, ''),
 					)
 				}

@@ -4,6 +4,7 @@ export const metadataDefinition = {
 	directory: 'permissionsets',
 	filetype: 'permissionset',
 	root: 'PermissionSet',
+	type: 'PermissionSet',
 	alias: 'permset',
 	main: [
 		'label',

@@ -4,6 +4,7 @@ export const metadataDefinition = {
 	directory: 'profiles',
 	filetype: 'profile',
 	root: 'Profile',
+	type: 'Profile',
 	alias: 'profile',
 	main: ['fullName', 'custom', 'description', 'userLicense', '$'],
 	singleFiles: [

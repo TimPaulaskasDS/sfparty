@@ -4,6 +4,7 @@ export const metadataDefinition = {
 	directory: 'labels',
 	filetype: 'labels',
 	root: 'CustomLabels',
+	type: 'CustomLabel',
 	alias: 'label',
 	main: ['$'],
 	singleFiles: [],

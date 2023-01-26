@@ -4,6 +4,7 @@ export const metadataDefinition = {
 	directory: 'workflows',
 	filetype: 'workflow',
 	root: 'Workflow',
+	type: 'Workflow',
 	alias: 'workflow',
 	main: ['$'],
 	singleFiles: [],
