@@ -68,8 +68,9 @@ export class Package {
 					packageDefinition.metadataDefinition.fallbackVersion
 			}
 			that.packageJSON = json
-			if (json.Package.types !== undefined)
+			if (json.Package.types !== undefined) {
 				transformJSON(json.Package.types)
+			}
 			cleanPackage(that)
 		}
 
@@ -80,6 +81,7 @@ export class Package {
 				)
 			if (that.packageJSON.Package == undefined)
 				throw new Error('Package initialization failed')
+
 			if (that.packageJSON.Package.types === undefined)
 				return 'No types found'
 
@@ -93,6 +95,12 @@ export class Package {
 					)
 				}
 			})
+
+			// remove all types nodes that have no members
+			that.packageJSON.Package.types =
+				that.packageJSON.Package.types.filter(
+					(subType) => subType.members.length > 0,
+				)
 		}
 	}
 

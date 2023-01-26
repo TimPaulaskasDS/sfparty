@@ -152,7 +152,7 @@ it('should correctly process the json object returned from the XML file', async 
 					name: 'PermissionSet',
 				},
 				{
-					members: ['Test', 'Test.yaml'],
+					members: ['Test.yaml'],
 					name: 'Workflow',
 				},
 			],
@@ -181,10 +181,6 @@ it('should correctly process the json object returned from the XML file', async 
 				{
 					members: ['Test'],
 					name: 'PermissionSet',
-				},
-				{
-					members: ['Test'],
-					name: 'Workflow',
 				},
 			],
 			version: '56.0',
