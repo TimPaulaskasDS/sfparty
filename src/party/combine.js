@@ -32,7 +32,7 @@ export class Combine {
 		mtime: undefined,
 	}
 	#json = {}
-	#diffOnly = false
+	#delta = false
 	#addedFiles = []
 	#deletedFiles = []
 	#mainDeleted = false
@@ -86,11 +86,6 @@ export class Combine {
 	combine() {
 		return new Promise((resolve, reject) => {
 			const that = this
-			that.#diffOnly =
-				global.metaTypes[that.metadataDefinition.alias].add.files
-					.length > 0 ||
-				global.metaTypes[that.metadataDefinition.alias].remove.files
-					.length > 0
 
 			if (!fileUtils.directoryExists({ dirPath: that.sourceDir, fs }))
 				reject(`Path does not exist: ${that.sourceDir}`)
@@ -148,6 +143,9 @@ export class Combine {
 					i.toLowerCase().includes(`/main.${global.format}`),
 			)
 
+			// set delta based on metadata definition
+			that.#delta = that.metadataDefinition.delta
+
 			let success = processParts(that)
 			// Ensure we only match existing metadata type directory and item
 
@@ -156,7 +154,7 @@ export class Combine {
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
 				) {
-					if (!that.#diffOnly || that.#addedFiles.length > 0) {
+					if (!that.#delta || that.#addedFiles.length > 0) {
 						that.addPkg.addMember(
 							that.#root,
 							that.#fileName.shortName,
@@ -164,7 +162,7 @@ export class Combine {
 					}
 
 					// only include the workflow node if main part file is delete
-					if (that.#diffOnly && that.#mainDeleted) {
+					if (that.#delta && that.#mainDeleted) {
 						that.desPkg.addMember(
 							that.#root,
 							that.#fileName.shortName,
@@ -389,7 +387,7 @@ export class Combine {
 				)
 			}
 
-			if (that.#diffOnly) {
+			if (that.#delta) {
 				if (
 					!that.#addedFiles
 						.concat(that.#deletedFiles)

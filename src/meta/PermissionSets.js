@@ -74,4 +74,5 @@ export const metadataDefinition = {
 		tabSettings: ['tab', 'visibility'],
 		userPermissions: ['name', 'enabled'],
 	},
+	delta: false,
 }

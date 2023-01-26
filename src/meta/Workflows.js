@@ -124,4 +124,5 @@ export const metadataDefinition = {
 		rules: 'WorkflowRule',
 		tasks: 'WorkflowTask',
 	},
+	delta: true,
 }
