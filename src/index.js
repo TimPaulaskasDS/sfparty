@@ -350,7 +350,11 @@ function yargCheck(argv, options) {
 			!options.array.includes(key),
 	)
 
-	if (!argv._.includes('update')) {
+	if (
+		!argv._.includes('update') &&
+		!argv._.includes('combine') &&
+		!argv._.includes('split')
+	) {
 		checkVersion({
 			axios,
 			spawnSync,
@@ -452,6 +456,12 @@ function splitHandler(argv, startTime) {
 				let message = `Split completed in `
 				displayMessageAndDuration(startTime, message)
 			}
+			checkVersion({
+				axios,
+				spawnSync,
+				currentVersion: pkgObj.version,
+				update: false,
+			})
 		}
 	})
 }
@@ -601,6 +611,12 @@ function combineHandler(argv, startTime) {
 				let message = `Split completed in `
 				displayMessageAndDuration(startTime, message)
 			}
+			checkVersion({
+				axios,
+				spawnSync,
+				currentVersion: pkgObj.version,
+				update: false,
+			})
 		}
 	})
 	combine.catch((error) => {
