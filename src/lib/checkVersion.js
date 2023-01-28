@@ -28,8 +28,9 @@ export async function checkVersion({
 	currentVersion,
 	update = false,
 }) {
+	let result
 	try {
-		const { data } = await axios.get(
+		let { data } = await axios.get(
 			'https://registry.npmjs.org/@ds-sfdc/sfparty',
 			{
 				params: {
@@ -37,9 +38,15 @@ export async function checkVersion({
 				},
 			},
 		)
-		const latestVersion = data['dist-tags'].latest
+		result = data
+	} catch (error) {
+		// do not display errors
+	}
+
+	if (result !== undefined) {
+		const latestVersion = result['dist-tags'].latest
 		if (semver.gt(latestVersion, currentVersion)) {
-			const version = clc.bgMagenta(data['dist-tags'].latest)
+			const version = clc.bgMagenta(result['dist-tags'].latest)
 			const icon = update ? global.icons.working : global.icons.fail
 			console.log()
 			console.log(`${icon} A newer version ${version} is available.`)
@@ -85,12 +92,5 @@ export async function checkVersion({
 			}
 			return 'You are on the latest version'
 		}
-	} catch (error) {
-		if (error.response && error.response.status === 404) {
-			error = new PackageNotFoundError(
-				'Package not found on the npm registry',
-			)
-		}
-		throw error
 	}
 }
