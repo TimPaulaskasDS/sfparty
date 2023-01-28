@@ -1,64 +1,64 @@
 {
-  "name": "@ds-sfdc/sfparty",
-  "version": "1.4.3",
-  "description": "Salesforce metadata XML splitter for CI/CD",
-  "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/TimPaulaskasDS/sfparty.git"
-  },
-  "bin": {
-    "sfparty": "src/index.js"
-  },
-  "main": "src/index.js",
-  "scripts": {
-    "test": "jest",
-    "postinstall": "husky install",
-    "prepack": "pinst --disable",
-    "postpack": "pinst --enable"
-  },
-  "keywords": [
-    "salesforce,metadata,xml,split,yaml,json"
-  ],
-  "author": "Tim Paulaskas",
-  "license": "BSD-3-Clause",
-  "dependencies": {
-    "axios": "^1.2.2",
-    "cli-color": "^2.0.3",
-    "cli-spinners": "^2.7.0",
-    "convert-hrtime": "^5.0.0",
-    "js-yaml": "^4.1.0",
-    "log-update": "^5.0.1",
-    "marked": "^4.2.12",
-    "marked-terminal": "^5.1.1",
-    "pinst": "^3.0.0",
-    "pretty-quick": "^3.1.3",
-    "semver": "^7.3.8",
-    "util": "^0.10.3",
-    "winston": "^3.8.2",
-    "xml2js": "^0.4.23",
-    "yargs": "^17.6.2"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.20.12",
-    "@babel/preset-env": "^7.20.2",
-    "@commitlint/cli": "^17.4.0",
-    "@commitlint/config-conventional": "^17.4.0",
-    "babel-jest": "^29.3.1",
-    "husky": "^8.0.3",
-    "jest": "^29.3.1",
-    "nodemon": "^2.0.20",
-    "prettier": "^2.8.3"
-  },
-  "engines": {
-    "node": ">=0.11"
-  },
-  "bugs": {
-    "url": "https://github.com/TimPaulaskasDS/sfparty/issues"
-  },
-  "homepage": "https://github.com/TimPaulaskasDS/sfparty#readme",
-  "directories": {
-    "lib": "lib",
-    "test": "tests"
-  }
+	"name": "@ds-sfdc/sfparty",
+	"version": "1.4.4",
+	"description": "Salesforce metadata XML splitter for CI/CD",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/TimPaulaskasDS/sfparty.git"
+	},
+	"bin": {
+		"sfparty": "src/index.js"
+	},
+	"main": "src/index.js",
+	"scripts": {
+		"test": "jest",
+		"postinstall": "husky install",
+		"prepack": "pinst --disable",
+		"postpack": "pinst --enable"
+	},
+	"keywords": [
+		"salesforce,metadata,xml,split,yaml,json"
+	],
+	"author": "Tim Paulaskas",
+	"license": "BSD-3-Clause",
+	"dependencies": {
+		"axios": "^1.2.2",
+		"cli-color": "^2.0.3",
+		"cli-spinners": "^2.7.0",
+		"convert-hrtime": "^5.0.0",
+		"js-yaml": "^4.1.0",
+		"log-update": "^5.0.1",
+		"marked": "^4.2.12",
+		"marked-terminal": "^5.1.1",
+		"pinst": "^3.0.0",
+		"pretty-quick": "^3.1.3",
+		"semver": "^7.3.8",
+		"util": "^0.10.3",
+		"winston": "^3.8.2",
+		"xml2js": "^0.4.23",
+		"yargs": "^17.6.2"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.20.12",
+		"@babel/preset-env": "^7.20.2",
+		"@commitlint/cli": "^17.4.0",
+		"@commitlint/config-conventional": "^17.4.0",
+		"babel-jest": "^29.3.1",
+		"husky": "^8.0.3",
+		"jest": "^29.3.1",
+		"nodemon": "^2.0.20",
+		"prettier": "^2.8.3"
+	},
+	"engines": {
+		"node": ">=0.11"
+	},
+	"bugs": {
+		"url": "https://github.com/TimPaulaskasDS/sfparty/issues"
+	},
+	"homepage": "https://github.com/TimPaulaskasDS/sfparty#readme",
+	"directories": {
+		"lib": "lib",
+		"test": "tests"
+	}
 }
