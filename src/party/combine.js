@@ -143,7 +143,7 @@ export class Combine {
 			)
 
 			// set delta based on metadata definition
-			that.#delta = that.metadataDefinition.delta
+			that.#delta = that.metadataDefinition.delta && global.git.enabled
 
 			let success = processParts(that)
 			// Ensure we only match existing metadata type directory and item
