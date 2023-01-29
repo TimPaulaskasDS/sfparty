@@ -608,7 +608,7 @@ function combineHandler(argv, startTime) {
 				desPkg.savePackage(xml2js, fileUtils)
 			}
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
-				let message = `Split completed in `
+				let message = `Combine completed in `
 				displayMessageAndDuration(startTime, message)
 			}
 			checkVersion({
