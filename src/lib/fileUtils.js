@@ -4,21 +4,36 @@ import * as path from 'path'
 import * as yaml from 'js-yaml'
 import { Parser } from 'xml2js'
 
+String.prototype.replaceSpecialChars = function () {
+	return this.replace(/\*/g, '\u002a')
+		.replace(/\?/g, '\u003f')
+		.replace(/</g, '\u003c')
+		.replace(/>/g, '\u003e')
+		.replace(/"/g, '\u0022')
+		.replace(/\|/g, '\u007c')
+		.replace(/\\/g, '\u005c')
+		.replace(/:/g, '\u003a')
+}
+
 export function directoryExists({ dirPath, fs }) {
+	dirPath = dirPath.replaceSpecialChars()
 	return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()
 }
 
 export function fileExists({ filePath, fs }) {
+	filePath = filePath.replaceSpecialChars()
 	return fs.existsSync(filePath) && fs.statSync(filePath).isFile()
 }
 
 export function createDirectory(dirPath, fsTmp = fs) {
+	dirPath = dirPath.replaceSpecialChars()
 	if (!fsTmp.existsSync(dirPath)) {
 		fsTmp.mkdirSync(dirPath, { recursive: true })
 	}
 }
 
 export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
+	dirPath = dirPath.replaceSpecialChars()
 	if (!directoryExists({ dirPath, fs: fsTmp })) {
 		return false
 	} else {
@@ -39,6 +54,7 @@ export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
 }
 
 export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
+	dirPath = dirPath.replaceSpecialChars()
 	const filesList = []
 	if (directoryExists({ dirPath, fs: fsTmp })) {
 		fsTmp.readdirSync(dirPath).forEach((file) => {
@@ -62,6 +78,7 @@ export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
 }
 
 export function getDirectories(dirPath, fsTmp = fs) {
+	dirPath = dirPath.replaceSpecialChars()
 	if (directoryExists({ dirPath, fs: fsTmp })) {
 		return fsTmp
 			.readdirSync(dirPath, { withFileTypes: true })
@@ -73,6 +90,7 @@ export function getDirectories(dirPath, fsTmp = fs) {
 }
 
 export function deleteFile(filePath, fsTmp = fs) {
+	filePath = filePath.replaceSpecialChars()
 	if (!fileExists({ filePath, fs: fsTmp })) {
 		return false
 	} else {
@@ -81,6 +99,7 @@ export function deleteFile(filePath, fsTmp = fs) {
 }
 
 export function fileInfo(filePath, fsTmp = fs) {
+	filePath = filePath.replaceSpecialChars()
 	return {
 		dirname: path.join(path.dirname(filePath)), //something/folder/example
 		basename: path.basename(filePath, path.extname(filePath)), //example
@@ -100,6 +119,7 @@ export function saveFile(
 	fsTmp = fs,
 ) {
 	try {
+		fileName = fileName.replaceSpecialChars()
 		switch (format) {
 			case 'json':
 				let jsonString = JSON.stringify(json, null, '\t')
@@ -119,6 +139,7 @@ export function saveFile(
 
 export function readFile(filePath, convert = true, fsTmp = fs) {
 	try {
+		filePath = filePath.replaceSpecialChars()
 		let result = undefined
 		if (fileExists({ filePath, fs: fsTmp })) {
 			const data = fsTmp.readFileSync(filePath, {
@@ -167,6 +188,7 @@ export function writeFile(
 	fsTmp = fs,
 ) {
 	try {
+		fileName = fileName.replaceSpecialChars()
 		// write data to the file
 		fsTmp.writeFileSync(fileName, data)
 
@@ -188,6 +210,7 @@ export function find(filename, root, fsTmp = fs) {
 	root = root || process.cwd()
 
 	if (!filename) throw new Error('filename is required')
+	filename = filename.replaceSpecialChars()
 
 	if (filename.indexOf('/') !== -1 || filename === '..') {
 		throw new Error('filename must be just a filename and not a path')
