@@ -22,6 +22,7 @@ export class Combine {
 	#fileName = {
 		fullName: undefined,
 		shortName: undefined,
+		profileName: undefined,
 	}
 	#errorMessage = ''
 	#frameIndex = 0
@@ -469,6 +470,20 @@ export class Combine {
 				return true
 			}
 			let result = fileUtils.readFile(fileObj.fullName)
+			if (
+				fileObj.fullName ==
+					path.join(
+						that.sourceDir,
+						that.metaDir,
+						`main.${global.format}`,
+					) &&
+				that.#type == 'profile'
+			) {
+				that.#fileName.profileName = path.join(
+					that.targetDir,
+					result.main.fullName + `.${that.#type}-meta.xml`,
+				)
+			}
 
 			// if split by object we need to add object back to values
 			if (
