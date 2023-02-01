@@ -20,7 +20,7 @@ export const metadataDefinition = {
 	sortKeys: {
 		alerts: 'fullName',
 		fieldUpdates: 'fullName',
-		flowActions: 'label',
+		flowActions: 'fullName',
 		knowledgePublishes: 'label',
 		outboundMessages: 'fullName',
 		rules: 'fullName',
