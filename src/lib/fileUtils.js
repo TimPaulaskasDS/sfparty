@@ -44,8 +44,12 @@ export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
 					// recurse
 					deleteDirectory(curPath, recursive, fsTmp)
 				} else {
-					// delete file
-					fsTmp.unlinkSync(curPath)
+					try {
+						// delete file
+						fsTmp.unlinkSync(curPath)
+					} catch (error) {
+						fsTmp.rmdirSync(curPath)
+					}
 				}
 			})
 			return fsTmp.rmdirSync(dirPath)
