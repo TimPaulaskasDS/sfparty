@@ -116,35 +116,37 @@ export class Combine {
 		})
 
 		function processStart(that) {
-			const pathMatch = `/${that.metadataDefinition.directory}/${
-				that.#fileName.shortName
-			}/`
-
-			// get a list of all the added files
-			that.#addedFiles = global.metaTypes[
-				that.metadataDefinition.alias
-			].add.files.filter((i) =>
-				i.toLowerCase().includes(pathMatch.toLowerCase()),
-			)
-
-			// get a list of all the removed files
-			that.#deletedFiles = global.metaTypes[
-				that.metadataDefinition.alias
-			].remove.files.filter((i) =>
-				i.toLowerCase().includes(pathMatch.toLowerCase()),
-			)
-
-			// check if main part file deleted
-			that.#mainDeleted = global.metaTypes[
-				that.metadataDefinition.alias
-			].remove.files.some(
-				(i) =>
-					i.includes(pathMatch) &&
-					i.toLowerCase().includes(`/main.${global.format}`),
-			)
-
 			// set delta based on metadata definition if git delta enabled
 			that.#delta = that.metadataDefinition.delta && global.git.delta
+
+			if (that.#delta) {
+				const pathMatch = `/${that.metadataDefinition.directory}/${
+					that.#fileName.shortName
+				}/`
+
+				// get a list of all the added files
+				that.#addedFiles = global.metaTypes[
+					that.metadataDefinition.alias
+				].add.files.filter((i) =>
+					i.toLowerCase().includes(pathMatch.toLowerCase()),
+				)
+
+				// get a list of all the removed files
+				that.#deletedFiles = global.metaTypes[
+					that.metadataDefinition.alias
+				].remove.files.filter((i) =>
+					i.toLowerCase().includes(pathMatch.toLowerCase()),
+				)
+
+				// check if main part file deleted
+				that.#mainDeleted = global.metaTypes[
+					that.metadataDefinition.alias
+				].remove.files.some(
+					(i) =>
+						i.includes(pathMatch) &&
+						i.toLowerCase().includes(`/main.${global.format}`),
+				)
+			}
 
 			let success = processParts(that)
 			// Ensure we only match existing metadata type directory and item
@@ -456,7 +458,7 @@ export class Combine {
 
 			// abort function if doing a delta deploy and file is not in git list
 			if (
-				global.git.delta &&
+				that.#delta &&
 				!global.metaTypes[
 					that.metadataDefinition.alias
 				].add.files.includes(fileObj.fullName) &&
