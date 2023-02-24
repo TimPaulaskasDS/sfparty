@@ -43,6 +43,13 @@ export async function checkVersion({
 		// do not display errors
 	}
 
+	let updateCommand
+	if (process.env.npm_lifecycle_script === 'sfparty') {
+		updateCommand = 'npm i @ds-sfdc/sfparty@latest'
+	} else {
+		updateCommand = 'sfparty update'
+	}
+
 	if (result !== undefined) {
 		const latestVersion = result['dist-tags'].latest
 		if (semver.gt(latestVersion, currentVersion)) {
@@ -53,7 +60,7 @@ export async function checkVersion({
 			if (!update) {
 				console.log(
 					`Please upgrade by running ${clc.cyanBright(
-						'sfparty update',
+						updateCommand,
 					)}`,
 				)
 				return 'A newer version'
