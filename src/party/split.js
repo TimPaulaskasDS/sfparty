@@ -411,8 +411,16 @@ function xml2json(currentValue) {
 			currentValue = currentValue[0].toString().trim()
 		}
 	}
-	if (currentValue == 'true') currentValue = true
-	if (currentValue == 'false') currentValue = false
+
+	try {
+		if (currentValue == 'true') currentValue = true
+		if (currentValue == 'false') currentValue = false
+	} catch (error) {
+		if (error.message !== 'Cannot convert object to primitive value') {
+			console.error(error)
+		}
+	}
+
 	return currentValue
 }
 
