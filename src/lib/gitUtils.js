@@ -160,21 +160,42 @@ export function lastCommit({
 		try {
 			const folder = path.resolve(dir, '.sfdx', 'sfparty')
 			const filePath = path.resolve(folder, fileName)
-			let lastCommit = undefined
+			let branchSpecificLastCommit
 
+			// Ensure the folder exists
 			fileUtils.createDirectory(folder)
+
 			if (existsSync(filePath)) {
 				const data = fileUtils.readFile(filePath)
-				if (data.git.lastCommit !== undefined) {
-					lastCommit = data.git.lastCommit
+
+				// Determine the current branch name
+				const currentBranch = execSync(
+					`git rev-parse --abbrev-ref HEAD`,
+					{
+						cwd: dir,
+						encoding: 'utf-8',
+					},
+				).trim()
+
+				// Check if branch-specific last commit exists
+				if (
+					data.git.branches &&
+					data.git.branches[currentBranch] !== undefined
+				) {
+					branchSpecificLastCommit = data.git.branches[currentBranch]
+				} else {
+					// Fallback to top-level lastCommit if branch-specific commit doesn't exist
+					branchSpecificLastCommit = data.git.lastCommit
 				}
 			}
+
 			const latestCommit = execSync(`git log --format=format:%H -1`, {
 				cwd: dir,
 				encoding: 'utf-8',
 			})
+
 			resolve({
-				lastCommit: lastCommit,
+				lastCommit: branchSpecificLastCommit,
 				latestCommit: latestCommit,
 			})
 		} catch (error) {

@@ -134,3 +134,30 @@ test('should throw an error when execSync returns an error', async () => {
 		expect(e.message).toBe('execSync error')
 	}
 })
+
+// Mock execSync to simulate branch detection
+jest.mock('child_process', () => ({
+	...jest.requireActual('child_process'),
+	execSync: jest.fn((command) => {
+		if (command === 'git rev-parse --abbrev-ref HEAD') {
+			return 'currentBranch' // Simulate current branch name
+		}
+		return 'testCommit' // Simulate latest commit hash
+	}),
+}))
+
+test('should throw an error when execSync returns an error', async () => {
+	jest.spyOn(child_process, 'execSync').mockImplementationOnce(() => {
+		throw new Error('execSync error')
+	})
+
+	await expect(
+		lastCommit({
+			dir: '/test',
+			fileUtils,
+			fs,
+			existsSync: fs.existsSync,
+			execSync: child_process.execSync,
+		}),
+	).rejects.toThrow('execSync error')
+})
