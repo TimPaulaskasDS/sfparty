@@ -1,5 +1,6 @@
 import path from 'path'
 import * as os from 'node:os'
+import { execSync } from 'child_process'
 
 const defaultDefinition = {
 	git: {
@@ -187,10 +188,12 @@ export function updateLastCommit({ dir, latest, fileUtils, fs }) {
 		throw new Error(
 			`updateLastCommit received a ${typeof latest} instead of string`,
 		)
+
 	if (latest !== undefined) {
 		const folder = path.join(dir, '.sfdx', 'sfparty')
 		const fileName = path.join(folder, 'index.yaml')
 		let data = undefined
+
 		if (fileUtils.fileExists({ filePath: fileName, fs })) {
 			data = fileUtils.readFile(fileName)
 		}
@@ -199,7 +202,20 @@ export function updateLastCommit({ dir, latest, fileUtils, fs }) {
 			data = defaultDefinition
 		}
 
-		data.git.lastCommit = latest
+		// Determine the current branch name
+		const currentBranch = execSync(`git rev-parse --abbrev-ref HEAD`, {
+			cwd: dir,
+			encoding: 'utf-8',
+		}).trim()
+
+		// Initialize branches object if not exist
+		if (!data.git.branches) {
+			data.git.branches = {}
+		}
+
+		// Update the last commit for the current branch
+		data.git.branches[currentBranch] = latest
+
 		fileUtils.saveFile(data, fileName)
 	}
 }

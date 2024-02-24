@@ -1,6 +1,6 @@
-import path from 'path'
 import * as fileUtils from '../../../src/lib/fileUtils.js'
 import { updateLastCommit } from '../../../src/lib/gitUtils.js'
+import { execSync } from 'child_process'
 
 let dir, latest
 
@@ -33,41 +33,37 @@ it('should not update lastCommit property if latest is undefined', () => {
 	expect(fileUtils.saveFile).not.toHaveBeenCalled()
 })
 
-it('should update lastCommit property in index.yaml file', () => {
-	// mock the fileExists method of fileUtils
+jest.mock('child_process', () => ({
+	...jest.requireActual('child_process'), // This line ensures that other child_process methods are still available as normal
+	execSync: jest.fn().mockReturnValue('mock-branch'),
+}))
+
+// Then in your test:
+it('should update lastCommit property in index.yaml for the current branch', () => {
 	fileUtils.fileExists = jest.fn(() => true)
-	// mock the readFile method of fileUtils
 	fileUtils.readFile = jest.fn(() => ({
-		git: { lastCommit: '1111111111abcdef' },
+		git: { branches: { 'mock-branch': '1111111111abcdef' } },
 	}))
-	// mock the saveFile method of fileUtils
 	fileUtils.saveFile = jest.fn()
+
 	updateLastCommit({ dir, latest, fileUtils })
-	expect(fileUtils.readFile).toHaveBeenCalled()
+
 	expect(fileUtils.saveFile).toHaveBeenCalledWith(
-		{ git: { lastCommit: latest } },
+		{ git: { branches: { 'mock-branch': latest } } },
 		'/test/directory/.sfdx/sfparty/index.yaml',
 	)
 })
 
-it('should use existing index.yaml if it exists', () => {
+it('should save the default definition with branches object if file does not exist', () => {
+	jest.mock('child_process', () => ({
+		execSync: jest.fn().mockReturnValue('mock-branch'),
+	}))
 	fileUtils.fileExists = jest.fn(() => false)
-	fileUtils.readFile = jest.fn()
-	fileUtils.saveFile = jest.fn()
-	updateLastCommit({ dir, latest, fileUtils })
-	expect(fileUtils.fileExists).toHaveBeenCalled()
-	expect(fileUtils.readFile).not.toHaveBeenCalled()
-	expect(fileUtils.saveFile).toHaveBeenCalled()
-})
-
-it('should save the default definition if file does not exist', () => {
-	fileUtils.fileExists = jest.fn(() => false)
-	fileUtils.readFile = jest.fn()
 	fileUtils.saveFile = jest.fn()
 
-	const defaultDefinition = {
+	const defaultDefinitionWithBranches = {
 		git: {
-			lastCommit: latest,
+			branches: { 'mock-branch': latest },
 		},
 		local: {
 			lastDate: undefined,
@@ -75,10 +71,9 @@ it('should save the default definition if file does not exist', () => {
 	}
 
 	updateLastCommit({ dir, latest, fileUtils })
-	expect(fileUtils.fileExists).toHaveBeenCalled()
-	expect(fileUtils.readFile).not.toHaveBeenCalled()
+
 	expect(fileUtils.saveFile).toHaveBeenCalledWith(
-		defaultDefinition,
+		defaultDefinitionWithBranches,
 		'/test/directory/.sfdx/sfparty/index.yaml',
 	)
 })
