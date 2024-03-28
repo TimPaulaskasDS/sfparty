@@ -12,7 +12,7 @@
 	},
 	"main": "src/index.js",
 	"scripts": {
-		"test": "jest",
+		"test": "jest"
 	},
 	"keywords": [
 		"salesforce,metadata,xml,split,yaml,json"
