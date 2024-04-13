@@ -126,11 +126,11 @@ export function saveFile(
 		fileName = fileName.replaceSpecialChars()
 		switch (format) {
 			case 'json':
-				let jsonString = JSON.stringify(json, null, '\t')
+				const jsonString = JSON.stringify(json, null, '\t')
 				fsTmp.writeFileSync(fileName, jsonString)
 				break
 			case 'yaml':
-				let doc = yaml.dump(json)
+				const doc = yaml.dump(json)
 				fsTmp.writeFileSync(fileName, doc)
 				break
 		}
@@ -151,7 +151,11 @@ export function readFile(filePath, convert = true, fsTmp = fs) {
 				flag: 'r',
 			})
 			if (convert && filePath.indexOf('.yaml') != -1) {
-				result = yaml.load(data)
+				result = yaml.load(data, {
+					onWarning: (warning) => {
+						throw new Error(`YAML parsing warning: ${warning}`)
+					},
+				})
 			} else if (convert && filePath.indexOf('.json') != -1) {
 				result = JSON.parse(data)
 			} else if (convert && filePath.indexOf('.xml') != -1) {
@@ -173,7 +177,7 @@ export function readFile(filePath, convert = true, fsTmp = fs) {
 async function convertXML(data) {
 	return new Promise((resolve, reject) => {
 		try {
-			let parser = new Parser()
+			const parser = new Parser()
 			parser.parseString(data, function (err, result) {
 				if (err) throw err
 				resolve(result)

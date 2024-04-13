@@ -89,7 +89,7 @@ export class Combine {
 
 			if (!fileUtils.directoryExists({ dirPath: that.sourceDir, fs }))
 				reject(`Path does not exist: ${that.sourceDir}`)
-			let types = ['directories', 'singleFiles', 'main']
+			const types = ['directories', 'singleFiles', 'main']
 			types.forEach((type) => {
 				if (that.metadataDefinition[type] !== undefined) {
 					that.#types = that.#types.concat(
@@ -120,9 +120,7 @@ export class Combine {
 			that.#delta = that.metadataDefinition.delta && global.git.delta
 
 			if (that.#delta) {
-				const pathMatch = `/${that.metadataDefinition.directory}/${
-					that.#fileName.shortName
-				}/`
+				const pathMatch = `/${that.metadataDefinition.directory}/${that.#fileName.shortName}/`
 
 				// get a list of all the added files
 				that.#addedFiles = global.metaTypes[
@@ -148,7 +146,7 @@ export class Combine {
 				)
 			}
 
-			let success = processParts(that)
+			const success = processParts(that)
 			// Ensure we only match existing metadata type directory and item
 
 			if (success) {
@@ -253,7 +251,7 @@ export class Combine {
 								`main.${global.format}`,
 							),
 						}
-						let success = processFile(that, key, fileObj, 'main')
+						const success = processFile(that, key, fileObj, 'main')
 						if (!success) {
 							throw new Error('delete XML')
 						}
@@ -559,7 +557,7 @@ export class Combine {
 
 		function hydrateObject(that, json, key, fileObj) {
 			const sortKey = that.metadataDefinition.sortKeys[key]
-			let object = json.object
+			const object = json.object
 
 			try {
 				json[key].forEach((arrItem) => {
@@ -631,9 +629,9 @@ export class Combine {
 		}
 
 		function finishMessage(that) {
-			let executionTime = getTimeDiff(BigInt(that.#startTime))
-			let durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
-			let stateIcon =
+			const executionTime = getTimeDiff(BigInt(that.#startTime))
+			const durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
+			const stateIcon =
 				that.#errorMessage == ''
 					? global.icons.success
 					: global.icons.fail
@@ -746,7 +744,7 @@ function arrangeKeys(that, json, key = undefined) {
 
 function getTimeDiff(startTime, endTime = process.hrtime.bigint()) {
 	const diff = BigInt(endTime) - BigInt(startTime)
-	let executionTime = convertHrtime(diff)
+	const executionTime = convertHrtime(diff)
 	executionTime.seconds = Math.round(executionTime.seconds)
 	executionTime.milliseconds = Math.round(executionTime.milliseconds / 1000)
 	if (executionTime.milliseconds == 0 && executionTime.nanoseconds > 0)
