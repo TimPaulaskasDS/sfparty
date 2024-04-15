@@ -226,3 +226,4 @@ force-app/main/default/workflows/**
 .vscode/launch.json
 yarn.lock
 manifest/**-party.xml
+force-app-party/main/default/profiles/DS -**/**

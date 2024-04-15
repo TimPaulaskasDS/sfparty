@@ -149,7 +149,7 @@ export class Combine {
 			const success = processParts(that)
 			// Ensure we only match existing metadata type directory and item
 
-			if (success) {
+			if (success === true) {
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git.enabled
@@ -171,6 +171,12 @@ export class Combine {
 				}
 				saveXML(that)
 				return true
+			} else if (
+				success &&
+				success.name &&
+				success.name == 'YAMLException'
+			) {
+				throw error
 			} else {
 				logUpdate(
 					that.#spinnerMessage
@@ -279,6 +285,8 @@ export class Combine {
 			} catch (error) {
 				if (error.message == 'delete XML') {
 					return false
+				} else if (error.name == 'YAMLException') {
+					throw error
 				} else {
 					return true
 				}
@@ -469,7 +477,12 @@ export class Combine {
 			) {
 				return true
 			}
-			let result = fileUtils.readFile(fileObj.fullName)
+			let result
+			try {
+				result = fileUtils.readFile(fileObj.fullName)
+			} catch (error) {
+				throw error
+			}
 			if (
 				fileObj.fullName ==
 					path.join(

@@ -104,7 +104,7 @@ global.metaTypes = {
 let types = []
 const packageDir = getRootPath()
 
-let errorMessage = clc.red(
+const errorMessage = clc.red(
 	'Please specify the action of ' +
 		clc.whiteBright.bgRedBright('split') +
 		' or ' +
@@ -193,7 +193,7 @@ yargs(hideBin(process.argv))
 			global.format = argv.format
 			const startProm = new Promise((resolve, reject) => {
 				if (argv.git !== undefined) {
-					let gitRef = argv.git.trim()
+					const gitRef = argv.git.trim()
 					global.git.append = argv.append || global.git.append
 					global.git.delta = argv.delta || global.git.delta
 					if (argv.git === '') {
@@ -259,9 +259,9 @@ yargs(hideBin(process.argv))
 				global.git.enabled = result
 
 				if (global.git.enabled) {
-					let addManifest =
+					const addManifest =
 						argv.package || 'manifest/package-party.xml'
-					let desManifest =
+					const desManifest =
 						argv.destructive ||
 						'manifest/destructiveChanges-party.xml'
 
@@ -413,13 +413,13 @@ function yargCheck(argv, options) {
 function displayMessageAndDuration(startTime, message) {
 	const diff = process.hrtime.bigint() - BigInt(startTime)
 	let durationMessage
-	let executionTime = convertHrtime(diff)
-	let minutes = Math.floor(
+	const executionTime = convertHrtime(diff)
+	const minutes = Math.floor(
 		(executionTime.seconds +
 			Math.round(executionTime.milliseconds / 100000)) /
 			60,
 	)
-	let seconds = Math.round(
+	const seconds = Math.round(
 		(executionTime.seconds +
 			Math.round(executionTime.milliseconds / 100000)) %
 			60,
@@ -453,7 +453,7 @@ function splitHandler(argv, startTime) {
 			splitHandler(argv, startTime)
 		} else {
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
-				let message = `Split completed in `
+				const message = `Split completed in `
 				displayMessageAndDuration(startTime, message)
 			}
 			checkVersion({
@@ -488,7 +488,7 @@ function processSplit(typeItem, argv) {
 		let sourceDir = argv.source || ''
 		let targetDir = argv.target || ''
 		let name = argv.name
-		let all =
+		const all =
 			argv.type === undefined || name === undefined ? true : argv.all
 
 		if (type == global.metaTypes.label.type) {
@@ -517,7 +517,7 @@ function processSplit(typeItem, argv) {
 				typeObj.definition.directory,
 			)
 		}
-		let metaDirPath = sourceDir
+		const metaDirPath = sourceDir
 
 		if (!all) {
 			let metaFilePath = path.join(metaDirPath, name)
@@ -570,15 +570,15 @@ function processSplit(typeItem, argv) {
 			})
 		})
 		Promise.allSettled(promList).then((results) => {
-			let message = `Split ${clc.bgBlackBright(
+			const message = `Split ${clc.bgBlackBright(
 				processed.current > promList.length
 					? promList.length
 					: processed.current,
 			)} file(s) ${
 				processed.errors > 0
 					? 'with ' +
-					  clc.bgBlackBright.red(processed.errors) +
-					  ' error(s) '
+						clc.bgBlackBright.red(processed.errors) +
+						' error(s) '
 					: ''
 			}in `
 			displayMessageAndDuration(startTime, message)
@@ -590,6 +590,12 @@ function processSplit(typeItem, argv) {
 function combineHandler(argv, startTime) {
 	const combine = processCombine(types[0], argv)
 	combine.then((resolve) => {
+		if (resolve == false) {
+			global.logger.error(
+				'Will not continue due to YAML format issues. Please correct and try again.',
+			)
+			process.exit(1)
+		}
 		types.shift() // remove first item from array
 		if (types.length > 0) {
 			console.log()
@@ -608,7 +614,7 @@ function combineHandler(argv, startTime) {
 				desPkg.savePackage(xml2js, fileUtils)
 			}
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
-				let message = `Combine completed in `
+				const message = `Combine completed in `
 				displayMessageAndDuration(startTime, message)
 			}
 			checkVersion({
@@ -644,8 +650,8 @@ function processCombine(typeItem, argv) {
 
 		let sourceDir = argv.source || ''
 		let targetDir = argv.target || ''
-		let name = argv.name
-		let all =
+		const name = argv.name
+		const all =
 			argv.type === undefined || name === undefined ? true : argv.all
 
 		sourceDir = path.join(
@@ -685,7 +691,7 @@ function processCombine(typeItem, argv) {
 				processList.push(global.metaTypes.label.definition.root)
 			}
 		} else if (!all) {
-			let metaDirPath = path.join(sourceDir, name)
+			const metaDirPath = path.join(sourceDir, name)
 			if (!fileUtils.directoryExists({ dirPath: metaDirPath, fs })) {
 				global.logger.error('Directory not found: ' + metaDirPath)
 				process.exit(1)
@@ -747,17 +753,24 @@ function processCombine(typeItem, argv) {
 			results.forEach((result) => {
 				if (result.value == true) {
 					successes++
-				} else if (result.value == false) {
+				} else if (
+					result.value == false ||
+					result.status == 'rejected'
+				) {
 					errors++
 				}
 			})
-			let message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
+			const message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
 				errors > 0
-					? 'with ' + clc.bgBlackBright(errors) + 'error(s) '
+					? 'with ' + clc.bgBlackBright(errors) + ' error(s) '
 					: ''
 			}in `
 			displayMessageAndDuration(startTime, message)
-			resolve(true)
+			if (successes == 0 && errors > 0) {
+				resolve(false)
+			} else {
+				resolve(true)
+			}
 		})
 	})
 }
@@ -839,7 +852,7 @@ function displayHeader() {
 		horizontal: '─',
 		vertical: '│',
 	}
-	let versionString = `sfparty v${pkgObj.version}${
+	const versionString = `sfparty v${pkgObj.version}${
 		process.stdout.columns > pkgObj.description.length + 15
 			? ' - ' + pkgObj.description
 			: ''
@@ -876,7 +889,7 @@ function displayHeader() {
 }
 
 function getRootPath(packageDir) {
-	let rootPath = fileUtils.find('sfdx-project.json')
+	const rootPath = fileUtils.find('sfdx-project.json')
 	let defaultDir
 	if (rootPath) {
 		global.__basedir = fileUtils.fileInfo(rootPath).dirname
