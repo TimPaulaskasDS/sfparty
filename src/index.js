@@ -582,7 +582,11 @@ function processSplit(typeItem, argv) {
 					: ''
 			}in `
 			displayMessageAndDuration(startTime, message)
-			resolve(true)
+			if (errors > 0) {
+				resolve(false)
+			} else {
+				resolve(true)
+			}
 		})
 	})
 }
@@ -762,11 +766,13 @@ function processCombine(typeItem, argv) {
 			})
 			const message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
 				errors > 0
-					? 'with ' + clc.bgBlackBright(errors) + ' error(s) '
+					? 'with ' +
+						clc.bgBlackBright.red(processed.errors) +
+						' error(s) '
 					: ''
 			}in `
 			displayMessageAndDuration(startTime, message)
-			if (successes == 0 && errors > 0) {
+			if (errors > 0) {
 				resolve(false)
 			} else {
 				resolve(true)
