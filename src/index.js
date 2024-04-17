@@ -582,7 +582,7 @@ function processSplit(typeItem, argv) {
 					: ''
 			}in `
 			displayMessageAndDuration(startTime, message)
-			if (errors > 0) {
+			if (processed.errors > 0) {
 				resolve(false)
 			} else {
 				resolve(true)
