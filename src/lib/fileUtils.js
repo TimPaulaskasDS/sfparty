@@ -152,8 +152,8 @@ export function readFile(filePath, convert = true, fsTmp = fs) {
 			})
 			if (convert && filePath.indexOf('.yaml') != -1) {
 				result = yaml.load(data, {
-					onWarning: (warning) => {
-						throw new Error(`YAML parsing warning: ${warning}`)
+					onWarning: (warning, filePath) => {
+						throw new Error(`YAML parsing ${filePath}: ${warning}`)
 					},
 				})
 			} else if (convert && filePath.indexOf('.json') != -1) {

@@ -6,6 +6,7 @@ import cliSpinners from 'cli-spinners'
 import fs from 'fs'
 import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
+import { log } from 'console'
 
 const spinner = cliSpinners['dots']
 const processed = {
@@ -206,7 +207,9 @@ export class Combine {
 						that.#fileName.shortName,
 					)
 				}
-				deleteFile(that, that.#fileName.fullName)
+				try {
+					deleteFile(that, that.#fileName.fullName)
+				} catch (error) {}
 				return 'deleted'
 			}
 		}
@@ -410,7 +413,30 @@ export class Combine {
 					return true
 			}
 
-			if (!fileUtils.fileExists({ filePath: fileObj.fullName, fs })) {
+			const loginIpRanges =
+				fileObj.shortName.toLowerCase() ==
+				'loginIpRanges'.toLocaleLowerCase()
+			let loginIpRangesSandboxFile
+			let loginIpRangesSandbox = false
+			if (loginIpRanges) {
+				loginIpRangesSandboxFile = fileObj.fullName.replace(
+					`.${global.format}`,
+					`-sandbox.${global.format}`,
+				)
+				loginIpRangesSandbox = fileUtils.fileExists({
+					filePath: loginIpRangesSandboxFile,
+					fs,
+				})
+			}
+			const fileExists = fileUtils.fileExists({
+				filePath: fileObj.fullName,
+				fs,
+			})
+
+			if (
+				(!fileExists && !loginIpRanges) ||
+				(loginIpRanges && !fileExists && !loginIpRangesSandbox)
+			) {
 				// File does not exist
 				// If file is main part file, then return false to indicate that the XML file should be deleted
 				if (
@@ -468,6 +494,7 @@ export class Combine {
 				!global.metaTypes[
 					that.metadataDefinition.alias
 				].add.files.includes(fileObj.fullName) &&
+				!loginIpRangesSandbox &&
 				fileObj.fullName !==
 					path.join(
 						that.sourceDir,
@@ -479,8 +506,33 @@ export class Combine {
 			}
 			let result
 			try {
-				result = fileUtils.readFile(fileObj.fullName)
+				if (loginIpRanges) {
+					let loginIpRangesResult
+					let loginIpRangesSandboxResult
+					if (fileExists)
+						loginIpRangesResult = fileUtils.readFile(
+							fileObj.fullName,
+						)
+					if (loginIpRangesSandbox)
+						loginIpRangesSandboxResult = fileUtils.readFile(
+							loginIpRangesSandboxFile,
+						)
+					if (fileExists && loginIpRangesSandbox) {
+						result = mergeIpRanges(
+							loginIpRangesResult,
+							loginIpRangesSandboxResult,
+						)
+					} else if (fileExists) {
+						result = loginIpRangesResult
+					} else if (loginIpRangesSandbox) {
+						result = loginIpRangesSandboxResult
+					}
+				} else {
+					result = fileUtils.readFile(fileObj.fullName)
+				}
 			} catch (error) {
+				logUpdate(fileObj.fullName)
+				logUpdate.done()
 				throw error
 			}
 			if (
@@ -560,6 +612,24 @@ export class Combine {
 				}
 			}
 
+			// Function to merge arrays without duplicates
+			function mergeIpRanges(array1, array2) {
+				const combined = array1
+
+				array2.loginIpRanges.forEach((item2) => {
+					if (
+						!combined.loginIpRanges.some(
+							(item1) =>
+								JSON.stringify(item1) === JSON.stringify(item2),
+						)
+					) {
+						combined.loginIpRanges.push(item2)
+					}
+				})
+
+				return combined
+			}
+
 			updateFileStats(
 				that,
 				fileObj.fullName,
@@ -612,9 +682,7 @@ export class Combine {
 				) {
 					that.#fileStats.mtime = stats.mtime
 				}
-			} catch (error) {
-				throw error
-			}
+			} catch (error) {}
 		}
 
 		function saveXML(that) {

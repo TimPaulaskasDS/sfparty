@@ -63,7 +63,7 @@ export class Split {
 		let fileName = fileUtils.fileInfo(value).filename
 
 		// Use actual file name if found so it matches case sensitivity
-		let foundFile = fileUtils.getFiles(path.dirname(value), fileName)
+		const foundFile = fileUtils.getFiles(path.dirname(value), fileName)
 		if (foundFile.length > 0) fileName = path.basename(foundFile[0])
 
 		this.#fileName.shortName = fileName.replace(
@@ -94,7 +94,7 @@ export class Split {
 					that.targetDir,
 					that.#fileName.shortName,
 				)
-				let parser = new Parser()
+				const parser = new Parser()
 				const getJSON = new Promise((resolve, reject) => {
 					fs.readFile(that.metaFilePath, function (err, data) {
 						parser.parseString(data, function (err, result) {
@@ -126,9 +126,7 @@ export class Split {
 						].xmlns.replace('http:', 'https:')
 					} catch (error) {
 						global.logger.error(
-							`${
-								that.#fileName.fullName
-							} has an invalid XML root`,
+							`${that.#fileName.fullName} has an invalid XML root`,
 						)
 						resolve(false)
 						return
@@ -136,8 +134,23 @@ export class Split {
 
 					// modify the json to remove unwanted arrays
 					that.#json = transformJSON(that, result, that.#root)
+					const sandboxLoginIpRange = fileUtils.readFile(
+						path.join(that.targetDir, 'loginIpRanges-sandbox.yaml'),
+					)
+
 					fileUtils.deleteDirectory(that.targetDir, true) // recursive delete existing directory
 					fileUtils.createDirectory(that.targetDir) // create directory
+
+					if (sandboxLoginIpRange) {
+						fileUtils.saveFile(
+							sandboxLoginIpRange,
+							path.join(
+								that.targetDir,
+								'loginIpRanges-sandbox.yaml',
+							),
+							'yaml',
+						)
+					}
 
 					try {
 						processJSON(
@@ -217,8 +230,8 @@ export class Split {
 		}
 
 		function Main(that) {
-			let fileName = path.join(that.targetDir, `main.${global.format}`)
-			let mainInfo = {
+			const fileName = path.join(that.targetDir, `main.${global.format}`)
+			const mainInfo = {
 				main: {},
 			}
 			mainInfo.main.name = that.#fileName.shortName
@@ -255,9 +268,9 @@ export class Split {
 		}
 
 		function completeFile(that) {
-			let executionTime = getTimeDiff(BigInt(that.#startTime))
-			let durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
-			let stateIcon =
+			const executionTime = getTimeDiff(BigInt(that.#startTime))
+			const durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
+			const stateIcon =
 				that.#errorMessage == ''
 					? global.icons.success
 					: global.icons.fail
@@ -333,7 +346,7 @@ function processFile(that, json, key, baseDir, fileNameOverride) {
 }
 
 function transformJSON(that, result, rootTag) {
-	let jsonString = JSON.stringify(result, (name, value) => {
+	const jsonString = JSON.stringify(result, (name, value) => {
 		if (Object.keys(that.metadataDefinition.sortKeys).includes(name)) {
 			return value
 		} else {
@@ -426,7 +439,7 @@ function xml2json(currentValue) {
 
 function getTimeDiff(startTime, endTime = process.hrtime.bigint()) {
 	const diff = BigInt(endTime) - BigInt(startTime)
-	let executionTime = convertHrtime(diff)
+	const executionTime = convertHrtime(diff)
 	executionTime.seconds = Math.round(executionTime.seconds)
 	executionTime.milliseconds = Math.round(executionTime.milliseconds / 1000)
 	if (executionTime.milliseconds == 0 && executionTime.nanoseconds > 0)
