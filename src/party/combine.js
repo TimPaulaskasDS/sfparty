@@ -6,7 +6,8 @@ import cliSpinners from 'cli-spinners'
 import fs from 'fs'
 import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
-import { log } from 'console'
+import * as cidefault from 'ci-info'
+const ci = cidefault.default
 
 const spinner = cliSpinners['dots']
 const processed = {
@@ -319,29 +320,34 @@ export class Combine {
 
 				// iterate over fileList
 				fileList.forEach((file, index) => {
-					logUpdate(
-						that.#spinnerMessage
-							.replace(
-								'[%1]',
-								that.sequence
-									.toString()
-									.padStart(
-										that.total.toString().length,
-										' ',
-									),
-							)
-							.replace(
-								'[%2]',
-								`\n${clc.magentaBright(
-									nextFrame(that),
-								)} ${key} - ${index + 1} of ${
-									fileList.length
-								} - ${clc.magentaBright(file)}`,
-							)
-							.replace('[%3]', `${that.#errorMessage}`)
-							.replace('[%4]', `${global.icons.working} `)
-							.replace('[%5]', `${that.#fileName.shortName} `),
-					)
+					if (!ci.isCI) {
+						logUpdate(
+							that.#spinnerMessage
+								.replace(
+									'[%1]',
+									that.sequence
+										.toString()
+										.padStart(
+											that.total.toString().length,
+											' ',
+										),
+								)
+								.replace(
+									'[%2]',
+									`\n${clc.magentaBright(
+										nextFrame(that),
+									)} ${key} - ${index + 1} of ${
+										fileList.length
+									} - ${clc.magentaBright(file)}`,
+								)
+								.replace('[%3]', `${that.#errorMessage}`)
+								.replace('[%4]', `${global.icons.working} `)
+								.replace(
+									'[%5]',
+									`${that.#fileName.shortName} `,
+								),
+						)
+					}
 
 					const fileObj = {
 						shortName: file,
