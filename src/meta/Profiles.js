@@ -84,5 +84,5 @@ export const metadataDefinition = {
 		userPermissions: ['name', 'enabled'],
 	},
 	xmlFirst: 'fullName',
-	delta: false,
+	delta: true,
 }
