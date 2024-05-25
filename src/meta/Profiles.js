@@ -79,7 +79,12 @@ export const metadataDefinition = {
 		],
 		pageAccesses: ['apexPage', 'enabled'],
 		profileActionOverrides: ['pageOrSobjectType'], // TODO
-		recordTypeVisibilities: ['recordType', 'visible'],
+		recordTypeVisibilities: [
+			'recordType',
+			'default',
+			'visible',
+			'personAccountDefault',
+		],
 		tabVisibilities: ['tab', 'visibility'],
 		userPermissions: ['name', 'enabled'],
 	},

@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 'use strict'
 import { spawnSync, spawn, execSync } from 'child_process'
+import { argv, env } from 'process'
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+import { createRequire } from 'module'
 import fs from 'fs'
 import path from 'path'
 import yargs from 'yargs'
@@ -26,6 +30,8 @@ import * as git from './lib/gitUtils.js'
 import * as packageUtil from './lib/packageUtil.js'
 
 const processStartTime = process.hrtime.bigint()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 marked.setOptions({
 	// Define custom renderer
@@ -101,6 +107,8 @@ global.metaTypes = {
 	},
 }
 
+global.runType = null
+
 let types = []
 const packageDir = getRootPath()
 
@@ -116,6 +124,33 @@ let desPkg
 displayHeader() // display header mast
 
 let checkYargs = false
+
+const isRunningUnderNpx = () => {
+	const npxIndicator = argv.some((arg) => arg.includes('_npx'))
+	const initCwd = env.INIT_CWD
+	return npxIndicator || initCwd !== undefined
+}
+
+const isRunningDirectlyWithNode = async () => {
+	const require = createRequire(import.meta.url)
+	const modulePath = resolve(__dirname, 'index.js')
+	const mainModulePath = process.argv[1]
+
+	const { main } = await import('module')
+	return modulePath === mainModulePath
+}
+
+const checkExecutionContext = async () => {
+	if (isRunningUnderNpx()) {
+		global.runType = 'npx'
+	} else if (await isRunningDirectlyWithNode()) {
+		global.runType = 'node'
+	} else {
+		global.runType = 'global'
+	}
+}
+
+checkExecutionContext()
 
 yargs(hideBin(process.argv))
 	.command({

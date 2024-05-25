@@ -30,7 +30,7 @@ export async function checkVersion({
 }) {
 	let result
 	try {
-		let { data } = await axios.get(
+		const { data } = await axios.get(
 			'https://registry.npmjs.org/@ds-sfdc/sfparty',
 			{
 				params: {
@@ -44,10 +44,16 @@ export async function checkVersion({
 	}
 
 	let updateCommand
-	if (process.env.npm_lifecycle_script === 'sfparty') {
-		updateCommand = 'npm i @ds-sfdc/sfparty@latest'
-	} else {
-		updateCommand = 'sfparty update'
+	switch (global.runType) {
+		case 'global':
+			updateCommand = 'sfparty update'
+			break
+		case 'npx':
+			updateCommand = 'npm i @ds-sfdc/sfparty@latest'
+			break
+		case 'node':
+			updateCommand = 'git pull'
+			break
 	}
 
 	if (result !== undefined) {
@@ -65,7 +71,7 @@ export async function checkVersion({
 				)
 				return 'A newer version'
 			} else {
-				let command = 'npm i -g @ds-sfdc/sfparty@latest'.split(' ')
+				const command = 'npm i -g @ds-sfdc/sfparty@latest'.split(' ')
 				console.log(
 					`Updating the application using ${clc.cyanBright(
 						command.join(' '),
