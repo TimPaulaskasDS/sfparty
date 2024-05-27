@@ -71,7 +71,12 @@ export const metadataDefinition = {
 			'modifyAllRecords',
 		],
 		pageAccesses: ['apexPage', 'enabled'],
-		recordTypeVisibilities: ['recordType', 'visible'],
+		recordTypeVisibilities: [
+			'recordType',
+			'default',
+			'visible',
+			'personAccountDefault',
+		],
 		tabSettings: ['tab', 'visibility'],
 		userPermissions: ['name', 'enabled'],
 	},
