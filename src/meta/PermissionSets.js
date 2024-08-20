@@ -21,6 +21,7 @@ export const metadataDefinition = {
 		'customMetadataTypeAccesses',
 		'customPermissions',
 		'customSettingAccesses',
+		'externalCredentialPrincipalAccesses',
 		'externalDataSourceAccesses',
 		'flowAccesses',
 		'pageAccesses',
@@ -58,6 +59,10 @@ export const metadataDefinition = {
 		customMetadataTypeAccesses: ['name', 'enabled'],
 		customPermissions: ['name', 'enabled'],
 		customSettingAccesses: ['name', 'enabled'],
+		externalCredentialPrincipalAccesses: [
+			'externalCredentialPrincipal',
+			'enabled',
+		],
 		externalDataSourceAccesses: ['externalDataSource', 'enabled'],
 		fieldPermissions: ['field', 'editable', 'readable'],
 		flowAccesses: ['flow', 'enabled'],
