@@ -28,7 +28,7 @@
 		"convert-hrtime": "^5.0.0",
 		"js-yaml": "^4.1.0",
 		"log-update": "^6.1.0",
-		"marked": "^14.1.2",
+		"marked": "^13.0.3",
 		"marked-terminal": "^7.1.0",
 		"pretty-quick": "^4.0.0",
 		"semver": "^7.6.3",
