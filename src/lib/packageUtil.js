@@ -15,12 +15,12 @@ export class Package {
 				if (that.xmlPath === undefined)
 					throw new Error('Package not initialized')
 
-				let fileName = path.resolve(that.xmlPath)
+				const fileName = path.resolve(that.xmlPath)
 				if (
 					fileUtils.fileExists({ filePath: fileName, fs }) &&
 					global.git.append
 				) {
-					let data = fileUtils.readFile(fileName)
+					const data = fileUtils.readFile(fileName)
 					data.then((json) => {
 						try {
 							if (
@@ -40,7 +40,7 @@ export class Package {
 					})
 				} else {
 					try {
-						let json = JSON.parse(
+						const json = JSON.parse(
 							JSON.stringify(
 								packageDefinition.metadataDefinition
 									.emptyPackage,
@@ -59,7 +59,7 @@ export class Package {
 
 		function processJSON(that, json, fileUtils) {
 			try {
-				let data = fileUtils.readFile(
+				const data = fileUtils.readFile(
 					path.join(global.__basedir, 'sfdx-project.json'),
 				)
 				json.Package.version = data.sourceApiVersion
@@ -187,8 +187,8 @@ export class Package {
 	}
 
 	savePackage(xml2js, fileUtils) {
-		let that = this
-		let json = that.packageJSON.Package
+		const that = this
+		const json = that.packageJSON.Package
 		try {
 			json.$.xmlns = json.$.xmlns.replace('http:', 'https:')
 			const version = json.version
@@ -200,7 +200,7 @@ export class Package {
 				rootName: 'Package',
 				xmldec: { version: '1.0', encoding: 'UTF-8' },
 			})
-			let fileName = that.xmlPath
+			const fileName = that.xmlPath
 			fileUtils.createDirectory(path.dirname(fileName))
 
 			const xml = builder.buildObject(json)
@@ -216,7 +216,7 @@ function transformJSON(json) {
 	try {
 		json.forEach((typesItem) => {
 			Object.keys(typesItem).forEach((key) => {
-				let jsonString = JSON.stringify(
+				const jsonString = JSON.stringify(
 					typesItem[key],
 					(name, value) => {
 						if (key == 'members') {
