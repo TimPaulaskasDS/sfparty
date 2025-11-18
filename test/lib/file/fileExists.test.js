@@ -2,8 +2,8 @@ import fs from 'fs'
 import { fileExists } from '../../../src/lib/fileUtils'
 
 beforeEach(() => {
-	fs.existsSync = jest.fn()
-	fs.statSync = jest.fn()
+	fs.existsSync = vi.fn()
+	fs.statSync = vi.fn()
 })
 
 it('should return true if file exists', () => {

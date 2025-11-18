@@ -37,15 +37,15 @@ global.metaTypes = {
 
 let pkg
 const fileUtils = {
-	fileExists: jest.fn(),
-	readFile: jest.fn(),
+	fileExists: vi.fn(),
+	readFile: vi.fn(),
 }
 beforeEach(() => {
 	pkg = new Package('xmlPath')
 })
 
 afterEach(() => {
-	jest.clearAllMocks()
+	vi.clearAllMocks()
 })
 
 it('should default the package if the json is empty', async () => {

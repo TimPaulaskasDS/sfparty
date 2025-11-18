@@ -1,19 +1,19 @@
 import path from 'path'
-import fs from 'fs'
-import child_process, { execSync } from 'child_process'
+import * as fs from 'fs'
+import * as child_process from 'child_process'
 import { lastCommit } from '../../../src/lib/gitUtils.js'
 
 const dir = '/test'
 const fileName = 'index.yaml'
 
 const fileUtils = {
-	createDirectory: jest.fn(),
-	readFile: jest.fn((filePath) => {
+	createDirectory: vi.fn(),
+	readFile: vi.fn((filePath) => {
 		if (filePath.indexOf('project') !== -1) {
 			return { git: { lastCommit: 'lastCommit' } }
 		}
 	}),
-	fileExists: jest.fn((filePath) => {
+	fileExists: vi.fn((filePath) => {
 		if (filePath.indexOf('project') !== -1) {
 			return true
 		}
@@ -21,28 +21,27 @@ const fileUtils = {
 	}),
 }
 
-jest.mock('fs', () => {
+vi.mock('fs', async (importOriginal) => {
+	const actual = await importOriginal()
 	return {
-		existsSync: jest.fn(),
-		statSync: jest.fn(),
+		...actual,
+		default: actual,
+		existsSync: vi.fn(),
+		statSync: vi.fn(),
 	}
 })
 
 beforeEach(() => {
-	jest.clearAllMocks()
-	jest.mock('child_process', () => ({
-		execSync: jest.fn(() => {
-			return 'testCommit'
-		}),
-	}))
+	vi.clearAllMocks()
 })
 
 test('should return lastCommit and latestCommit if file exists', async () => {
 	fs.existsSync.mockReturnValue(true)
+	const execSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: 'project',
 		existsSync: fs.existsSync,
-		execSync: require('child_process').execSync,
+		execSync: execSyncMock,
 		fileUtils,
 	})
 	expect(result).toEqual({
@@ -54,10 +53,11 @@ test('should return lastCommit and latestCommit if file exists', async () => {
 test('should return only latestCommit if file does not exist', async () => {
 	fs.existsSync.mockReturnValue(false)
 	fileUtils.fileExists.mockReturnValue(false)
+	const execSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: __dirname,
 		existsSync: fs.existsSync,
-		execSync: require('child_process').execSync,
+		execSync: execSyncMock,
 		fileUtils,
 	})
 	expect(result).toEqual({
@@ -66,34 +66,28 @@ test('should return only latestCommit if file does not exist', async () => {
 	})
 })
 
-it('should throw an error', async () => {
-	jest.spyOn(fs, 'existsSync').mockImplementation(() => false)
-	try {
-		await lastCommit({
-			dir,
-			fileName,
-			existsSync: fs.existsSync,
-			execSync: require('child_process').execSync,
-			fileUtils,
-		})
-	} catch (e) {
-		expect(e.message).toBe(
-			`ENOENT: no such file or directory, access '${path.join(
-				dir,
-				'.sfdx',
-				'sfparty',
-				fileName,
-			)}'`,
-		)
-	}
+it('should handle missing file gracefully', async () => {
+	fs.existsSync.mockImplementation(() => false)
+	const execSyncMock = vi.fn().mockReturnValue('testCommit')
+
+	const result = await lastCommit({
+		dir,
+		fileName,
+		existsSync: fs.existsSync,
+		execSync: execSyncMock,
+		fileUtils,
+	})
+
+	expect(result).toEqual({
+		lastCommit: undefined,
+		latestCommit: 'testCommit',
+	})
 })
 
 it('should return only latest commit if lastCommit is undefined', async () => {
-	jest.spyOn(fs, 'existsSync').mockImplementation(() => true)
-	jest.spyOn(fileUtils, 'readFile').mockImplementation(() => ({ git: {} }))
-	jest.spyOn(child_process, 'execSync').mockImplementation(
-		() => 'latestCommit',
-	)
+	vi.spyOn(fs, 'existsSync').mockImplementation(() => true)
+	vi.spyOn(fileUtils, 'readFile').mockImplementation(() => ({ git: {} }))
+	vi.spyOn(child_process, 'execSync').mockImplementation(() => 'latestCommit')
 
 	const result = await lastCommit({
 		dir: '/test',
@@ -118,7 +112,7 @@ it('should return only latest commit if lastCommit is undefined', async () => {
 })
 
 test('should throw an error when execSync returns an error', async () => {
-	jest.spyOn(child_process, 'execSync').mockImplementation(() => {
+	vi.spyOn(child_process, 'execSync').mockImplementation(() => {
 		throw new Error('execSync error')
 	})
 
@@ -136,9 +130,9 @@ test('should throw an error when execSync returns an error', async () => {
 })
 
 // Mock execSync to simulate branch detection
-jest.mock('child_process', () => ({
-	...jest.requireActual('child_process'),
-	execSync: jest.fn((command) => {
+vi.mock('child_process', () => ({
+	...vi.importActual('child_process'),
+	execSync: vi.fn((command) => {
 		if (command === 'git rev-parse --abbrev-ref HEAD') {
 			return 'currentBranch' // Simulate current branch name
 		}
@@ -147,7 +141,7 @@ jest.mock('child_process', () => ({
 }))
 
 test('should throw an error when execSync returns an error', async () => {
-	jest.spyOn(child_process, 'execSync').mockImplementationOnce(() => {
+	vi.spyOn(child_process, 'execSync').mockImplementationOnce(() => {
 		throw new Error('execSync error')
 	})
 

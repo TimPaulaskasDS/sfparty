@@ -2,18 +2,18 @@ import { execSync, spawn } from 'child_process'
 import { existsSync } from 'fs'
 import { diff } from '../../../src/lib/gitUtils'
 
-jest.mock('fs', () => ({
-	existsSync: jest.fn(),
+vi.mock('fs', () => ({
+	existsSync: vi.fn(),
 }))
-jest.mock('child_process', () => ({
-	execSync: jest.fn(),
+vi.mock('child_process', () => ({
+	execSync: vi.fn(),
 }))
 const mockStream = {
-	setEncoding: jest.fn(),
-	on: jest.fn(),
+	setEncoding: vi.fn(),
+	on: vi.fn(),
 }
-jest.mock('child_process', () => ({
-	spawn: jest.fn(() => ({
+vi.mock('child_process', () => ({
+	spawn: vi.fn(() => ({
 		stdout: mockStream,
 		stderr: mockStream,
 	})),
@@ -22,12 +22,12 @@ jest.mock('child_process', () => ({
 const gitRef = 'HEAD~1..HEAD'
 
 beforeEach(() => {
-	jest.clearAllMocks()
+	vi.clearAllMocks()
 })
 
 test('rejects if directory does not exist', async () => {
-	const existsSync = jest.fn().mockReturnValueOnce(false)
-	const spawn = jest.fn()
+	const existsSync = vi.fn().mockReturnValueOnce(false)
+	const spawn = vi.fn()
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
 		fail('Expected function to throw an error')
@@ -54,7 +54,7 @@ test('rejects if .git directory does not exist', async () => {
 test('rejects when git is not installed', async () => {
 	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
-		on: jest.fn().mockImplementationOnce((event, callback) => {
+		on: vi.fn().mockImplementationOnce((event, callback) => {
 			if (event === 'error') {
 				callback(new Error('Command failed'))
 			}
@@ -73,7 +73,7 @@ test('rejects when git is not installed', async () => {
 test('resolves with files when git diff command is successful', async () => {
 	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
-		on: jest.fn((event, callback) => {
+		on: vi.fn((event, callback) => {
 			if (event === 'close') {
 				callback(0)
 			}
@@ -81,8 +81,8 @@ test('resolves with files when git diff command is successful', async () => {
 	}
 	const gitDiff = {
 		stdout: {
-			setEncoding: jest.fn(),
-			on: jest.fn((event, callback) => {
+			setEncoding: vi.fn(),
+			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					callback('A\tfile1.txt\nM\tfile2.txt\nD\tfile3.txt')
 				} else if (event === 'close') {
@@ -91,7 +91,7 @@ test('resolves with files when git diff command is successful', async () => {
 			}),
 		},
 		stderr: {
-			on: jest.fn((event, callback) => {
+			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					callback('')
 				}
@@ -111,7 +111,7 @@ test('resolves with files when git diff command is successful', async () => {
 test('rejects when git diff command fails', async () => {
 	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
-		on: jest.fn((event, callback) => {
+		on: vi.fn((event, callback) => {
 			if (event === 'close') {
 				callback(0)
 			}
@@ -119,11 +119,11 @@ test('rejects when git diff command fails', async () => {
 	}
 	const gitDiff = {
 		stderr: {
-			on: jest.fn(),
+			on: vi.fn(),
 		},
 		stdout: {
-			setEncoding: jest.fn(),
-			on: jest.fn(),
+			setEncoding: vi.fn(),
+			on: vi.fn(),
 		},
 	}
 	gitDiff.stderr.on.mockImplementation((_, cb) => cb('Command failed'))
@@ -142,7 +142,7 @@ test('rejects when git diff command fails', async () => {
 test('ignores files when git diff output does not have a tab character', async () => {
 	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
-		on: jest.fn((event, callback) => {
+		on: vi.fn((event, callback) => {
 			if (event === 'close') {
 				callback(0)
 			}
@@ -150,11 +150,11 @@ test('ignores files when git diff output does not have a tab character', async (
 	}
 	const gitDiff = {
 		stderr: {
-			on: jest.fn(),
+			on: vi.fn(),
 		},
 		stdout: {
-			setEncoding: jest.fn(),
-			on: jest.fn((event, callback) => {
+			setEncoding: vi.fn(),
+			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					callback(`\t\t\nA\tfile1.txt\nM\tfile2.txt\nfile3.txt\n`)
 				}
@@ -176,7 +176,7 @@ test('ignores files when git diff output does not have a tab character', async (
 test('rejects when git --version command fails', async () => {
 	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
-		on: jest.fn((event, callback) => {
+		on: vi.fn((event, callback) => {
 			if (event === 'close') {
 				callback(1)
 			}
@@ -197,7 +197,7 @@ test('rejects when git --version command fails', async () => {
 test('rejects when git diff command fails', async () => {
 	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
-		on: jest.fn((event, callback) => {
+		on: vi.fn((event, callback) => {
 			if (event === 'close') {
 				callback(0)
 			}
@@ -205,11 +205,11 @@ test('rejects when git diff command fails', async () => {
 	}
 	const gitDiff = {
 		stderr: {
-			on: jest.fn(),
+			on: vi.fn(),
 		},
 		stdout: {
-			setEncoding: jest.fn(),
-			on: jest.fn((event, callback) => {
+			setEncoding: vi.fn(),
+			on: vi.fn((event, callback) => {
 				if (event === 'close') {
 					callback(1)
 				}
