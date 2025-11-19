@@ -227,4 +227,8 @@ force-app/main/default/workflows/**
 yarn.lock
 manifest/**-party.xml
 force-app-party/main/default/profiles/DS -**/**
-config/user/**html/
+config/user/**
+
+# Test coverage reports
+html/
+coverage/
