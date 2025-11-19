@@ -30,12 +30,16 @@ export async function checkVersion({
 }) {
 	let result
 	try {
+		// Security: Add timeout and limits to external API calls
 		const { data } = await axios.get(
 			'https://registry.npmjs.org/@ds-sfdc/sfparty',
 			{
 				params: {
 					field: 'dist-tags.latest',
 				},
+				timeout: 5000, // 5 second timeout
+				maxRedirects: 3,
+				validateStatus: (status) => status === 200,
 			},
 		)
 		result = data

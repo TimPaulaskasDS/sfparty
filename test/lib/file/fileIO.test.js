@@ -185,6 +185,7 @@ describe('writeFile', () => {
 		expect(mockFs.writeFileSync).toHaveBeenCalledWith(
 			'/test/file.txt',
 			'content',
+			{ mode: 0o644 },
 		)
 		expect(mockFs.utimesSync).toHaveBeenCalledWith(
 			'/test/file.txt',

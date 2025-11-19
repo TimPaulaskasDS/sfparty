@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict'
 import axios from 'axios'
-import { execSync, spawn, spawnSync } from 'child_process'
+import { execSync, spawn, spawnSync, execFileSync } from 'child_process'
 import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
 import fs from 'fs'
@@ -227,14 +227,15 @@ yargs(hideBin(process.argv))
 			global.format = argv.format
 			const startProm = new Promise((resolve, reject) => {
 				if (argv.git !== undefined) {
-					const gitRef = argv.git.trim()
+					// Security: Validate git reference input
+					const gitRef = sanitizeGitRef(argv.git)
 					global.git.append = argv.append || global.git.append
 					global.git.delta = argv.delta || global.git.delta
 					if (argv.git === '') {
 						const commit = git.lastCommit({
 							dir: global.__basedir,
 							existsSync: fs.existsSync,
-							execSync,
+							execFileSync,
 							fileUtils,
 						})
 						commit
@@ -371,6 +372,25 @@ function gitMode({ status, gitRef, lastCommit, latestCommit }) {
 		`${clc.yellowBright('git mode')} ${statusMessage} ${displayMessage}`,
 	)
 	console.log()
+}
+
+// Security: Sanitize git references from CLI input
+function sanitizeGitRef(gitRef) {
+	if (!gitRef || typeof gitRef !== 'string') {
+		throw new Error('Invalid git reference')
+	}
+
+	const trimmed = gitRef.trim()
+
+	// Allow: commit hashes, branch names, ranges, HEAD, tags, special git refs
+	// Deny: shell metacharacters that could enable command injection
+	if (!/^[a-zA-Z0-9._\-\/^~@]+(\.\.+[a-zA-Z0-9._\-\/^~@]+)?$/.test(trimmed)) {
+		throw new Error(
+			'Git reference contains invalid characters. Only alphanumeric, dots, dashes, underscores, slashes, ^, ~, and @ are allowed.',
+		)
+	}
+
+	return trimmed
 }
 
 function yargCheck(argv, options) {

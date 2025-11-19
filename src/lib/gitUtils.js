@@ -1,6 +1,23 @@
 import * as os from 'node:os'
-import { execSync } from 'child_process'
+import { execSync, execFileSync } from 'child_process'
 import path from 'path'
+
+// Security: Validate git references to prevent command injection
+function validateGitRef(gitRef) {
+	if (!gitRef || typeof gitRef !== 'string') {
+		throw new Error('Invalid git reference')
+	}
+
+	const trimmed = gitRef.trim()
+
+	// Allow: commit hashes, branch names, ranges, HEAD, tags
+	// Deny: shell metacharacters that could enable command injection
+	if (!/^[a-zA-Z0-9._\-\/^~]+(\.{2,3}[a-zA-Z0-9._\-\/^~]+)?$/.test(trimmed)) {
+		throw new Error('Git reference contains invalid characters')
+	}
+
+	return trimmed
+}
 
 const defaultDefinition = {
 	git: {
@@ -133,12 +150,20 @@ export function diff({ dir, gitRef = 'HEAD', existsSync, spawn }) {
 	})
 }
 
-export function log(dir, gitRef, execSyncStub = execSync) {
+export function log(dir, gitRef, execFileSyncStub = execFileSync) {
 	try {
-		const gitLog = execSyncStub(`git log --format=format:%H ${gitRef}`, {
-			cwd: dir,
-			encoding: 'utf-8',
-		})
+		// Security: Validate git reference before use
+		const validatedRef = validateGitRef(gitRef)
+
+		// Security: Use execFileSync with array arguments to prevent command injection
+		const gitLog = execFileSyncStub(
+			'git',
+			['log', '--format=format:%H', validatedRef],
+			{
+				cwd: dir,
+				encoding: 'utf-8',
+			},
+		)
 		const commits = gitLog.split(os.EOL).filter((commit) => commit)
 		return commits
 	} catch (error) {
@@ -153,7 +178,7 @@ export function lastCommit({
 	dir,
 	fileName = 'index.yaml',
 	existsSync,
-	execSync,
+	execFileSync: execFileSyncStub = execFileSync,
 	fileUtils,
 }) {
 	return new Promise((resolve, reject) => {
@@ -169,8 +194,10 @@ export function lastCommit({
 				const data = fileUtils.readFile(filePath)
 
 				// Determine the current branch name
-				const currentBranch = execSync(
-					`git rev-parse --abbrev-ref HEAD`,
+				// Security: Use execFileSync with array arguments
+				const currentBranch = execFileSyncStub(
+					'git',
+					['rev-parse', '--abbrev-ref', 'HEAD'],
 					{
 						cwd: dir,
 						encoding: 'utf-8',
@@ -189,10 +216,15 @@ export function lastCommit({
 				}
 			}
 
-			const latestCommit = execSync(`git log --format=format:%H -1`, {
-				cwd: dir,
-				encoding: 'utf-8',
-			})
+			// Security: Use execFileSync with array arguments
+			const latestCommit = execFileSyncStub(
+				'git',
+				['log', '--format=format:%H', '-1'],
+				{
+					cwd: dir,
+					encoding: 'utf-8',
+				},
+			)
 
 			resolve({
 				lastCommit: branchSpecificLastCommit,
@@ -224,10 +256,15 @@ export function updateLastCommit({ dir, latest, fileUtils, fs }) {
 		}
 
 		// Determine the current branch name
-		const currentBranch = execSync(`git rev-parse --abbrev-ref HEAD`, {
-			cwd: dir,
-			encoding: 'utf-8',
-		}).trim()
+		// Security: Use execFileSync with array arguments
+		const currentBranch = execFileSync(
+			'git',
+			['rev-parse', '--abbrev-ref', 'HEAD'],
+			{
+				cwd: dir,
+				encoding: 'utf-8',
+			},
+		).trim()
 
 		// Initialize branches object if not exist
 		if (!data.git.branches) {

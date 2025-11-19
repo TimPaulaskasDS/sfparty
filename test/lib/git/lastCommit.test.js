@@ -37,11 +37,11 @@ beforeEach(() => {
 
 test('should return lastCommit and latestCommit if file exists', async () => {
 	fs.existsSync.mockReturnValue(true)
-	const execSyncMock = vi.fn().mockReturnValue('testCommit')
+	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: 'project',
 		existsSync: fs.existsSync,
-		execSync: execSyncMock,
+		execFileSync: execFileSyncMock,
 		fileUtils,
 	})
 	expect(result).toEqual({
@@ -53,11 +53,11 @@ test('should return lastCommit and latestCommit if file exists', async () => {
 test('should return only latestCommit if file does not exist', async () => {
 	fs.existsSync.mockReturnValue(false)
 	fileUtils.fileExists.mockReturnValue(false)
-	const execSyncMock = vi.fn().mockReturnValue('testCommit')
+	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: __dirname,
 		existsSync: fs.existsSync,
-		execSync: execSyncMock,
+		execFileSync: execFileSyncMock,
 		fileUtils,
 	})
 	expect(result).toEqual({
@@ -68,13 +68,13 @@ test('should return only latestCommit if file does not exist', async () => {
 
 it('should handle missing file gracefully', async () => {
 	fs.existsSync.mockImplementation(() => false)
-	const execSyncMock = vi.fn().mockReturnValue('testCommit')
+	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 
 	const result = await lastCommit({
 		dir,
 		fileName,
 		existsSync: fs.existsSync,
-		execSync: execSyncMock,
+		execFileSync: execFileSyncMock,
 		fileUtils,
 	})
 
@@ -87,14 +87,17 @@ it('should handle missing file gracefully', async () => {
 it('should return only latest commit if lastCommit is undefined', async () => {
 	vi.spyOn(fs, 'existsSync').mockImplementation(() => true)
 	vi.spyOn(fileUtils, 'readFile').mockImplementation(() => ({ git: {} }))
-	vi.spyOn(child_process, 'execSync').mockImplementation(() => 'latestCommit')
+	const execFileSyncMock = vi
+		.fn()
+		.mockReturnValueOnce('currentBranch') // First call for branch name
+		.mockReturnValueOnce('latestCommit') // Second call for latest commit
 
 	const result = await lastCommit({
 		dir: '/test',
 		fileUtils,
 		fs,
 		existsSync: fs.existsSync,
-		execSync: child_process.execSync,
+		execFileSync: execFileSyncMock,
 	})
 
 	expect(result).toEqual({
@@ -105,15 +108,11 @@ it('should return only latest commit if lastCommit is undefined', async () => {
 	expect(fileUtils.readFile).toHaveBeenCalledWith(
 		'/test/.sfdx/sfparty/index.yaml',
 	)
-	expect(child_process.execSync).toHaveBeenCalledWith(
-		'git log --format=format:%H -1',
-		{ cwd: '/test', encoding: 'utf-8' },
-	)
 })
 
-test('should throw an error when execSync returns an error', async () => {
-	vi.spyOn(child_process, 'execSync').mockImplementation(() => {
-		throw new Error('execSync error')
+test('should throw an error when execFileSync returns an error', async () => {
+	const execFileSyncMock = vi.fn().mockImplementation(() => {
+		throw new Error('execFileSync error')
 	})
 
 	try {
@@ -122,27 +121,25 @@ test('should throw an error when execSync returns an error', async () => {
 			fileUtils,
 			fs,
 			existsSync: fs.existsSync,
-			execSync: child_process.execSync,
+			execFileSync: execFileSyncMock,
 		})
 	} catch (e) {
-		expect(e.message).toBe('execSync error')
+		expect(e.message).toBe('execFileSync error')
 	}
 })
 
-// Mock execSync to simulate branch detection
-vi.mock('child_process', () => ({
-	...vi.importActual('child_process'),
-	execSync: vi.fn((command) => {
-		if (command === 'git rev-parse --abbrev-ref HEAD') {
-			return 'currentBranch' // Simulate current branch name
-		}
-		return 'testCommit' // Simulate latest commit hash
-	}),
-}))
+// Mock child_process to support execFileSync
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal()
+	return {
+		...actual,
+		execFileSync: vi.fn(),
+	}
+})
 
-test('should throw an error when execSync returns an error', async () => {
-	vi.spyOn(child_process, 'execSync').mockImplementationOnce(() => {
-		throw new Error('execSync error')
+test('should throw an error when execFileSync returns an error', async () => {
+	const execFileSyncMock = vi.fn().mockImplementationOnce(() => {
+		throw new Error('execFileSync error')
 	})
 
 	await expect(
@@ -151,9 +148,9 @@ test('should throw an error when execSync returns an error', async () => {
 			fileUtils,
 			fs,
 			existsSync: fs.existsSync,
-			execSync: child_process.execSync,
+			execFileSync: execFileSyncMock,
 		}),
-	).rejects.toThrow('execSync error')
+	).rejects.toThrow('execFileSync error')
 })
 
 test('should use branch-specific commit when branches object exists', async () => {
@@ -167,19 +164,17 @@ test('should use branch-specific commit when branches object exists', async () =
 			},
 		},
 	}))
-	vi.spyOn(child_process, 'execSync').mockImplementation((command) => {
-		if (command === 'git rev-parse --abbrev-ref HEAD') {
-			return 'test-branch'
-		}
-		return 'latest-commit'
-	})
+	const execFileSyncMock = vi
+		.fn()
+		.mockReturnValueOnce('test-branch') // First call for branch name
+		.mockReturnValueOnce('latest-commit') // Second call for latest commit
 
 	const result = await lastCommit({
 		dir: '/test',
 		fileUtils,
 		fs,
 		existsSync: fs.existsSync,
-		execSync: child_process.execSync,
+		execFileSync: execFileSyncMock,
 	})
 
 	expect(result).toEqual({

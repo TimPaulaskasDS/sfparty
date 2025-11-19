@@ -37,10 +37,13 @@ it('should not update lastCommit property if latest is undefined', () => {
 	expect(saveFileSpy).not.toHaveBeenCalled()
 })
 
-vi.mock('child_process', () => ({
-	...vi.importActual('child_process'), // This line ensures that other child_process methods are still available as normal
-	execSync: vi.fn().mockReturnValue('mock-branch'),
-}))
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal()
+	return {
+		...actual,
+		execFileSync: vi.fn().mockReturnValue('mock-branch'),
+	}
+})
 
 // Then in your test:
 it('should update lastCommit property in index.yaml for the current branch', () => {
@@ -63,9 +66,6 @@ it('should update lastCommit property in index.yaml for the current branch', () 
 })
 
 it('should save the default definition with branches object if file does not exist', () => {
-	vi.mock('child_process', () => ({
-		execSync: vi.fn().mockReturnValue('mock-branch'),
-	}))
 	const fileExistsSpy = vi
 		.spyOn(fileUtilsModule, 'fileExists')
 		.mockReturnValue(false)

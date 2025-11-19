@@ -4,8 +4,11 @@ import * as yaml from 'js-yaml'
 import * as path from 'path'
 import { Parser } from 'xml2js'
 
-String.prototype.replaceSpecialChars = function () {
-	return this.replace(/\*/g, '\u002a')
+// Security: Utility function instead of prototype pollution
+export function replaceSpecialChars(str) {
+	if (typeof str !== 'string') return str
+	return str
+		.replace(/\*/g, '\u002a')
 		.replace(/\?/g, '\u003f')
 		.replace(/</g, '\u003c')
 		.replace(/>/g, '\u003e')
@@ -15,25 +18,68 @@ String.prototype.replaceSpecialChars = function () {
 		.replace(/:/g, '\u003a')
 }
 
+// Security: Validate paths to prevent traversal attacks
+export function validatePath(userPath, workspaceRoot) {
+	if (!userPath || typeof userPath !== 'string') {
+		throw new Error('Invalid path: path must be a non-empty string')
+	}
+
+	const normalized = path.normalize(userPath)
+
+	// Check for .. sequences (path traversal)
+	if (normalized.includes('..')) {
+		throw new Error('Path traversal detected: .. sequence not allowed')
+	}
+
+	// If workspace root is provided, ensure path stays within it
+	if (workspaceRoot) {
+		const resolved = path.resolve(workspaceRoot, normalized)
+		const resolvedRoot = path.resolve(workspaceRoot)
+
+		if (!resolved.startsWith(resolvedRoot)) {
+			throw new Error('Path traversal detected: path outside workspace')
+		}
+
+		return resolved
+	}
+
+	return normalized
+}
+
+// Security: Sanitize file paths in error messages
+export function sanitizeErrorPath(filePath) {
+	if (!filePath || typeof filePath !== 'string') {
+		return 'unknown'
+	}
+
+	// If global basedir is set, replace it with <workspace>
+	if (global.__basedir && filePath.includes(global.__basedir)) {
+		return filePath.replace(global.__basedir, '<workspace>')
+	}
+
+	// Otherwise just return the basename
+	return path.basename(filePath)
+}
+
 export function directoryExists({ dirPath, fs }) {
-	dirPath = dirPath.replaceSpecialChars()
+	dirPath = replaceSpecialChars(dirPath)
 	return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()
 }
 
 export function fileExists({ filePath, fs }) {
-	filePath = filePath.replaceSpecialChars()
+	filePath = replaceSpecialChars(filePath)
 	return fs.existsSync(filePath) && fs.statSync(filePath).isFile()
 }
 
 export function createDirectory(dirPath, fsTmp = fs) {
-	dirPath = dirPath.replaceSpecialChars()
+	dirPath = replaceSpecialChars(dirPath)
 	if (!fsTmp.existsSync(dirPath)) {
 		fsTmp.mkdirSync(dirPath, { recursive: true })
 	}
 }
 
 export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
-	dirPath = dirPath.replaceSpecialChars()
+	dirPath = replaceSpecialChars(dirPath)
 	if (!directoryExists({ dirPath, fs: fsTmp })) {
 		return false
 	} else {
@@ -58,7 +104,7 @@ export function deleteDirectory(dirPath, recursive = false, fsTmp = fs) {
 }
 
 export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
-	dirPath = dirPath.replaceSpecialChars()
+	dirPath = replaceSpecialChars(dirPath)
 	const filesList = []
 	if (directoryExists({ dirPath, fs: fsTmp })) {
 		fsTmp.readdirSync(dirPath).forEach((file) => {
@@ -82,7 +128,7 @@ export function getFiles(dirPath, filter = undefined, fsTmp = fs) {
 }
 
 export function getDirectories(dirPath, fsTmp = fs) {
-	dirPath = dirPath.replaceSpecialChars()
+	dirPath = replaceSpecialChars(dirPath)
 	if (directoryExists({ dirPath, fs: fsTmp })) {
 		return fsTmp
 			.readdirSync(dirPath, { withFileTypes: true })
@@ -94,7 +140,7 @@ export function getDirectories(dirPath, fsTmp = fs) {
 }
 
 export function deleteFile(filePath, fsTmp = fs) {
-	filePath = filePath.replaceSpecialChars()
+	filePath = replaceSpecialChars(filePath)
 	if (!fileExists({ filePath, fs: fsTmp })) {
 		return false
 	} else {
@@ -103,7 +149,7 @@ export function deleteFile(filePath, fsTmp = fs) {
 }
 
 export function fileInfo(filePath, fsTmp = fs) {
-	filePath = filePath.replaceSpecialChars()
+	filePath = replaceSpecialChars(filePath)
 	return {
 		dirname: path.join(path.dirname(filePath)), //something/folder/example
 		basename: path.basename(filePath, path.extname(filePath)), //example
@@ -123,7 +169,7 @@ export function saveFile(
 	fsTmp = fs,
 ) {
 	try {
-		fileName = fileName.replaceSpecialChars()
+		fileName = replaceSpecialChars(fileName)
 		switch (format) {
 			case 'json':
 				const jsonString = JSON.stringify(json, null, '\t')
@@ -143,7 +189,13 @@ export function saveFile(
 
 export function readFile(filePath, convert = true, fsTmp = fs) {
 	try {
-		filePath = filePath.replaceSpecialChars()
+		// Security: Validate path before processing
+		if (global.__basedir) {
+			filePath = validatePath(filePath, global.__basedir)
+		} else {
+			filePath = validatePath(filePath)
+		}
+		filePath = replaceSpecialChars(filePath)
 		let result = undefined
 		if (fileExists({ filePath, fs: fsTmp })) {
 			const data = fsTmp.readFileSync(filePath, {
@@ -151,7 +203,9 @@ export function readFile(filePath, convert = true, fsTmp = fs) {
 				flag: 'r',
 			})
 			if (convert && filePath.indexOf('.yaml') != -1) {
+				// Security: Use JSON schema to prevent prototype pollution
 				result = yaml.load(data, {
+					schema: yaml.JSON_SCHEMA,
 					onWarning: (warning, filePath) => {
 						throw new Error(`YAML parsing ${filePath}: ${warning}`)
 					},
@@ -169,6 +223,17 @@ export function readFile(filePath, convert = true, fsTmp = fs) {
 			return undefined
 		}
 	} catch (error) {
+		// Security: Sanitize paths in error messages
+		if (error.message && error.message.includes('/')) {
+			const sanitized = new Error(
+				error.message.replace(/\/[^\s]+/g, (match) =>
+					sanitizeErrorPath(match),
+				),
+			)
+			sanitized.stack = error.stack
+			global.logger.error(sanitized)
+			throw sanitized
+		}
 		global.logger.error(error)
 		throw error
 	}
@@ -177,7 +242,15 @@ export function readFile(filePath, convert = true, fsTmp = fs) {
 async function convertXML(data) {
 	return new Promise((resolve, reject) => {
 		try {
-			const parser = new Parser()
+			// Security: Configure parser with safe options
+			const parser = new Parser({
+				explicitRoot: true,
+				explicitArray: false,
+				strict: true,
+				async: false,
+				normalize: true,
+				trim: true,
+			})
 			parser.parseString(data, function (err, result) {
 				if (err) throw err
 				resolve(result)
@@ -196,9 +269,15 @@ export function writeFile(
 	fsTmp = fs,
 ) {
 	try {
-		fileName = fileName.replaceSpecialChars()
-		// write data to the file
-		fsTmp.writeFileSync(fileName, data)
+		// Security: Validate path before writing
+		if (global.__basedir) {
+			fileName = validatePath(fileName, global.__basedir)
+		} else {
+			fileName = validatePath(fileName)
+		}
+		fileName = replaceSpecialChars(fileName)
+		// Security: write data with restricted permissions (owner read/write, group/others read)
+		fsTmp.writeFileSync(fileName, data, { mode: 0o644 })
 
 		// if atime or mtime are undefined, use current date/time
 		if (atime === undefined) atime = new Date()
@@ -207,6 +286,17 @@ export function writeFile(
 		// update XML file to match the latest atime and mtime of the files processed
 		fsTmp.utimesSync(fileName, atime, mtime)
 	} catch (error) {
+		// Security: Sanitize paths in error messages
+		if (error.message && error.message.includes('/')) {
+			const sanitized = new Error(
+				error.message.replace(/\/[^\s]+/g, (match) =>
+					sanitizeErrorPath(match),
+				),
+			)
+			sanitized.stack = error.stack
+			global.logger.error(sanitized)
+			throw sanitized
+		}
 		global.logger.error(error)
 		throw error
 	}
@@ -218,11 +308,16 @@ export function find(filename, root, fsTmp = fs) {
 	root = root || process.cwd()
 
 	if (!filename) throw new Error('filename is required')
-	filename = filename.replaceSpecialChars()
 
-	if (filename.indexOf('/') !== -1 || filename === '..') {
+	if (
+		filename.indexOf('/') !== -1 ||
+		filename === '..' ||
+		filename.includes('..')
+	) {
 		throw new Error('filename must be just a filename and not a path')
 	}
+
+	filename = replaceSpecialChars(filename)
 
 	function findFile(directory, filename) {
 		var file = path.join(directory, filename)

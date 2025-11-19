@@ -1,10 +1,10 @@
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import * as os from 'os'
 import { log } from '../../../src/lib/gitUtils'
 
 vi.mock('child_process', () => {
 	return {
-		execSync: vi.fn(),
+		execFileSync: vi.fn(),
 	}
 })
 
@@ -14,12 +14,13 @@ beforeEach(() => {
 
 it('should return an array of git commit hashes', () => {
 	const commits = ['1234567890abcdef', '234567890abcdef1', '34567890abcdef12']
-	execSync.mockReturnValue(commits.join(os.EOL))
+	execFileSync.mockReturnValue(commits.join(os.EOL))
 	const dir = process.cwd()
 	const gitRef = 'HEAD~1..HEAD'
-	const result = log(dir, gitRef, execSync)
-	expect(execSync).toHaveBeenCalledWith(
-		`git log --format=format:%H ${gitRef}`,
+	const result = log(dir, gitRef, execFileSync)
+	expect(execFileSync).toHaveBeenCalledWith(
+		'git',
+		['log', '--format=format:%H', gitRef],
 		{ cwd: dir, encoding: 'utf-8' },
 	)
 	expect(result).toEqual(commits)
@@ -27,12 +28,12 @@ it('should return an array of git commit hashes', () => {
 
 it('should throw an error if git is not installed or no entry found in path', () => {
 	const error = { message: 'ENOENT' }
-	execSync.mockImplementation(() => {
+	execFileSync.mockImplementation(() => {
 		throw error
 	})
 	const dir = process.cwd()
 	const gitRef = 'HEAD~1..HEAD'
-	expect(() => log(dir, gitRef, execSync)).toThrowError(
+	expect(() => log(dir, gitRef, execFileSync)).toThrowError(
 		'git not installed or no entry found in path',
 	)
 })

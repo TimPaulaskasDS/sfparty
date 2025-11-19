@@ -94,7 +94,15 @@ export class Split {
 					that.targetDir,
 					that.#fileName.shortName,
 				)
-				const parser = new Parser()
+				// Security: Configure parser with safe options
+				const parser = new Parser({
+					explicitRoot: true,
+					explicitArray: false,
+					strict: true,
+					async: false,
+					normalize: true,
+					trim: true,
+				})
 				const getJSON = new Promise((resolve, reject) => {
 					fs.readFile(that.metaFilePath, function (err, data) {
 						parser.parseString(data, function (err, result) {
