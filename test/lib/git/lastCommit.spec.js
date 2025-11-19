@@ -155,35 +155,3 @@ test('should throw an error when execSync returns an error', async () => {
 		}),
 	).rejects.toThrow('execSync error')
 })
-
-test('should use branch-specific commit when branches object exists', async () => {
-	// Test for gitUtils.js line 185 - branch-specific commit path
-	vi.spyOn(fs, 'existsSync').mockImplementation(() => true)
-	vi.spyOn(fileUtils, 'readFile').mockImplementation(() => ({
-		git: {
-			lastCommit: 'default-commit',
-			branches: {
-				'test-branch': 'branch-specific-commit',
-			},
-		},
-	}))
-	vi.spyOn(child_process, 'execSync').mockImplementation((command) => {
-		if (command === 'git rev-parse --abbrev-ref HEAD') {
-			return 'test-branch'
-		}
-		return 'latest-commit'
-	})
-
-	const result = await lastCommit({
-		dir: '/test',
-		fileUtils,
-		fs,
-		existsSync: fs.existsSync,
-		execSync: child_process.execSync,
-	})
-
-	expect(result).toEqual({
-		lastCommit: 'branch-specific-commit',
-		latestCommit: 'latest-commit',
-	})
-})

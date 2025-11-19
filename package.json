@@ -16,6 +16,9 @@
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest run --coverage",
+		"lint": "biome check src/ test/",
+		"lint:fix": "biome check --write src/ test/",
+		"format": "biome format --write src/ test/",
 		"prepare": "husky || true"
 	},
 	"keywords": [
@@ -43,6 +46,7 @@
 	"devDependencies": {
 		"@commitlint/cli": "^19.6.0",
 		"@commitlint/config-conventional": "^19.6.0",
+		"@vitest/coverage-v8": "^4.0.10",
 		"@vitest/ui": "^4.0.10",
 		"eslint": "^9.16.0",
 		"husky": "^9.1.7",

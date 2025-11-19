@@ -1,12 +1,12 @@
 'use strict'
 
-import path from 'path'
-import fs from 'fs'
-import { Parser } from 'xml2js'
-import logUpdate from 'log-update'
 import clc from 'cli-color'
-import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
+import convertHrtime from 'convert-hrtime'
+import fs from 'fs'
+import logUpdate from 'log-update'
+import path from 'path'
+import { Parser } from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
 
 const spinner = cliSpinners['dots']

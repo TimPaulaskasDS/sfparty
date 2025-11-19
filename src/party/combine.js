@@ -1,12 +1,13 @@
-import path from 'path'
-import logUpdate from 'log-update'
+import * as cidefault from 'ci-info'
 import clc from 'cli-color'
-import convertHrtime from 'convert-hrtime'
 import cliSpinners from 'cli-spinners'
+import convertHrtime from 'convert-hrtime'
 import fs from 'fs'
+import logUpdate from 'log-update'
+import path from 'path'
 import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
-import * as cidefault from 'ci-info'
+
 const ci = cidefault.default
 
 const spinner = cliSpinners['dots']

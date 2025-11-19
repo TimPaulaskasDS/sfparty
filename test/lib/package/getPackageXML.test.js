@@ -1,9 +1,9 @@
 import fs from 'fs'
-import * as packageDefinition from '../../../src/meta/Package.js'
 import { Package } from '../../../src/lib/packageUtil.js'
 import * as labelDefinition from '../../../src/meta/CustomLabels.js'
-import * as profileDefinition from '../../../src/meta/Profiles.js'
+import * as packageDefinition from '../../../src/meta/Package.js'
 import * as permsetDefinition from '../../../src/meta/PermissionSets.js'
+import * as profileDefinition from '../../../src/meta/Profiles.js'
 import * as workflowDefinition from '../../../src/meta/Workflows.js'
 
 global.__basedir = '.'
@@ -186,4 +186,55 @@ it('should correctly process the json object returned from the XML file', async 
 			version: '56.0',
 		},
 	})
+})
+
+it('should handle git.append = false', async () => {
+	fileUtils.fileExists.mockReturnValue(true)
+	global.git = { append: false }
+	const result = await pkg.getPackageXML(fileUtils)
+	expect(result).toBe('not found')
+	expect(pkg.packageJSON).toBeDefined()
+})
+
+it('should handle undefined types in Package', async () => {
+	fileUtils.fileExists.mockReturnValue(true)
+	fileUtils.readFile.mockResolvedValue({
+		Package: {
+			version: '56.0',
+		},
+	})
+	global.git = { append: true }
+	const result = await pkg.getPackageXML(fileUtils)
+	expect(result).toBe('existing')
+	expect(pkg.packageJSON.Package.types).toBeUndefined()
+})
+
+it('should handle empty json object keys', async () => {
+	fileUtils.fileExists.mockReturnValue(true)
+	fileUtils.readFile.mockResolvedValue(undefined)
+	global.git = { append: true }
+	const result = await pkg.getPackageXML(fileUtils)
+	expect(result).toBe('existing')
+	expect(pkg.packageJSON).toEqual(
+		packageDefinition.metadataDefinition.emptyPackage,
+	)
+})
+
+it('should handle array members with single string value', async () => {
+	fileUtils.fileExists.mockReturnValue(true)
+	fileUtils.readFile.mockResolvedValue({
+		Package: {
+			types: [
+				{
+					members: ['SingleValue'],
+					name: ['CustomLabels'],
+				},
+			],
+			version: '56.0',
+		},
+	})
+	global.git = { append: true }
+	const result = await pkg.getPackageXML(fileUtils)
+	expect(result).toBe('existing')
+	expect(pkg.packageJSON.Package.types[0].name).toBe('CustomLabels')
 })

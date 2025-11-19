@@ -1,6 +1,6 @@
-import * as xml2js from 'xml2js'
-import path from 'path'
 import fs from 'fs'
+import path from 'path'
+import * as xml2js from 'xml2js'
 import { Package } from '../../../src/lib/packageUtil.js'
 
 const fileUtils = {

@@ -35,8 +35,7 @@ const options = {
 }
 
 function getOptions(type) {
-	// eslint-disable-next-line prefer-const
-	let optionObj = { ...options }
+	const optionObj = { ...options }
 	Object.keys(optionObj).forEach((key) => {
 		Object.keys(optionObj[key]).forEach((subKey) => {
 			if (typeof optionObj[key][subKey] == 'string') {
@@ -110,8 +109,7 @@ const examples = [
 ]
 
 function getExamples(type) {
-	// eslint-disable-next-line prefer-const
-	let exArr = [...examples]
+	const exArr = [...examples]
 	exArr.forEach((arrItem) => {
 		arrItem[0] = arrItem[0].replaceAll('$1', type)
 	})

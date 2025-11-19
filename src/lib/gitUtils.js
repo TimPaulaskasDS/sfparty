@@ -1,6 +1,6 @@
-import path from 'path'
 import * as os from 'node:os'
 import { execSync } from 'child_process'
+import path from 'path'
 
 const defaultDefinition = {
 	git: {
