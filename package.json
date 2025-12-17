@@ -8,18 +8,23 @@
 		"url": "git+https://github.com/TimPaulaskasDS/sfparty.git"
 	},
 	"bin": {
-		"sfparty": "src/index.js"
+		"sfparty": "dist/index.js"
 	},
-	"main": "src/index.js",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"scripts": {
-		"test": "vitest run",
+		"build": "tsc",
+		"build:watch": "tsc --watch",
+		"dev": "tsc && node dist/index.js",
+		"test": "npm run build && vitest run",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
-		"test:coverage": "vitest run --coverage",
-		"lint": "biome check src/ test/",
-		"lint:fix": "biome check --write src/ test/",
+		"test:coverage": "npm run build && vitest run --coverage",
+		"lint": "biome check --max-diagnostics=1000 src/ test/",
+		"lint:fix": "biome check --write --max-diagnostics=1000 src/ test/",
 		"format": "biome format --write src/ test/",
-		"prepare": "husky || true"
+		"prepare": "husky || true",
+		"prepublishOnly": "npm run build"
 	},
 	"keywords": [
 		"salesforce,metadata,xml,split,yaml,json"
@@ -46,6 +51,12 @@
 	"devDependencies": {
 		"@commitlint/cli": "^19.6.0",
 		"@commitlint/config-conventional": "^19.6.0",
+		"@types/cli-color": "^2.0.6",
+		"@types/js-yaml": "^4.0.9",
+		"@types/node": "^22.0.0",
+		"@types/semver": "^7.5.8",
+		"@types/xml2js": "^0.4.14",
+		"@types/yargs": "^17.0.33",
 		"@vitest/coverage-v8": "^4.0.10",
 		"@vitest/ui": "^4.0.10",
 		"eslint": "^9.16.0",
@@ -53,6 +64,7 @@
 		"lint-staged": "^15.2.10",
 		"nodemon": "^3.1.7",
 		"prettier": "^3.4.2",
+		"typescript": "^5.6.0",
 		"vitest": "^4.0.10"
 	},
 	"engines": {
@@ -67,7 +79,7 @@
 		"test": "tests"
 	},
 	"lint-staged": {
-		"*.js": [
+		"*.{js,ts}": [
 			"eslint --fix",
 			"prettier --write"
 		]
