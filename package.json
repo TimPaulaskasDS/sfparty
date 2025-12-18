@@ -16,19 +16,17 @@
 		"build": "tsc",
 		"build:watch": "tsc --watch",
 		"dev": "tsc && node dist/index.js",
-		"test": "npm run build && vitest run",
-		"test:watch": "vitest",
-		"test:ui": "vitest --ui",
-		"test:coverage": "npm run build && vitest run --coverage",
+		"test": "npm run build && vitest run --maxWorkers=1",
+		"test:watch": "vitest --maxWorkers=1",
+		"test:ui": "vitest --ui --maxWorkers=1",
+		"test:coverage": "npm run build && vitest run --coverage --maxWorkers=1",
 		"lint": "biome check --max-diagnostics=1000 src/ test/",
 		"lint:fix": "biome check --write --max-diagnostics=1000 src/ test/",
 		"format": "biome format --write src/ test/",
 		"prepare": "husky || true",
 		"prepublishOnly": "npm run build"
 	},
-	"keywords": [
-		"salesforce,metadata,xml,split,yaml,json"
-	],
+	"keywords": ["salesforce,metadata,xml,split,yaml,json"],
 	"author": "Tim Paulaskas",
 	"license": "BSD-3-Clause",
 	"dependencies": {
@@ -79,9 +77,6 @@
 		"test": "tests"
 	},
 	"lint-staged": {
-		"*.{js,ts}": [
-			"eslint --fix",
-			"prettier --write"
-		]
+		"*.{js,ts}": ["eslint --fix", "prettier --write"]
 	}
 }

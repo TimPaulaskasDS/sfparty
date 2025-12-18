@@ -1,4 +1,3 @@
-import fs from 'fs'
 import path from 'path'
 import * as xml2js from 'xml2js'
 import { Package } from '../../../src/lib/packageUtil.js'
@@ -7,7 +6,6 @@ const fileUtils = {
 	createDirectory: vi.fn(),
 	writeFile: vi.fn(),
 }
-
 describe('savePackage', () => {
 	let pkg
 	beforeEach(() => {
@@ -19,23 +17,19 @@ describe('savePackage', () => {
 			},
 		}
 	})
-
 	afterEach(() => {
 		vi.resetAllMocks()
 	})
-
 	it('should replace http with https in xmlns property', () => {
 		pkg.savePackage(xml2js, fileUtils)
 		expect(pkg.packageJSON.Package.$.xmlns).toBe('https://www.example.com')
 	})
-
 	it('should save version property to variable, delete it from json and set it again', () => {
 		const version = pkg.packageJSON.Package.version
 		pkg.savePackage(xml2js, fileUtils)
 		expect(version).toBe('1.0')
 		expect(pkg.packageJSON.Package.version).toBe(version)
 	})
-
 	it('should build xml object from json and write it to a file', () => {
 		pkg.addMember('type', 'member')
 		expect(pkg.packageJSON.Package.types[0].name).toBe('type')
@@ -51,7 +45,6 @@ describe('savePackage', () => {
 			xml,
 		)
 	})
-
 	it('should throw an error if it occurs', () => {
 		fileUtils.createDirectory.mockImplementation(() => {
 			throw new Error('createDirectory error')
@@ -61,3 +54,4 @@ describe('savePackage', () => {
 		}).toThrowError('createDirectory error')
 	})
 })
+//# sourceMappingURL=savePackage.test.js.map

@@ -8,22 +8,19 @@ global.icons = {
 	fail: '❗',
 	working: '⏳',
 }
-
 global.runType = null
-
 vi.mock('axios')
 vi.mock('child_process', () => ({ spawnSync: vi.fn() }))
-
 describe('checkVersion', () => {
 	let spy
 	beforeEach(() => {
 		vi.clearAllMocks()
-		spy = vi.spyOn(console, 'log')
+		// Mock console.log to prevent output but allow assertions
+		spy = vi.spyOn(console, 'log').mockImplementation(() => {})
 	})
 	afterEach(() => {
 		spy.mockRestore()
 	})
-
 	it('should return "A newer version" if a newer version is available', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
@@ -35,7 +32,6 @@ describe('checkVersion', () => {
 		})
 		expect(result).toBe('A newer version')
 	})
-
 	it('should return "You are on the latest version" if the current version is the latest version', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '1.0.0' } },
@@ -47,7 +43,6 @@ describe('checkVersion', () => {
 		})
 		expect(result).toBe('You are on the latest version')
 	})
-
 	it('should throw a NpmNotInstalledError if npm is not installed', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
@@ -70,7 +65,6 @@ describe('checkVersion', () => {
 			)
 		}
 	})
-
 	it('should throw a PackageNotFoundError if the package is not found on the npm registry', async () => {
 		axios.get.mockRejectedValue({ response: { status: 404 } })
 		try {
@@ -84,7 +78,6 @@ describe('checkVersion', () => {
 			expect(err.message).toBe('Package not found on the npm registry')
 		}
 	})
-
 	it('should throw a UpdateError if an error occurs while updating the package', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
@@ -105,7 +98,6 @@ describe('checkVersion', () => {
 			expect(err.message).toBe('Error updating the application.')
 		}
 	})
-
 	it('should throw a UpdateError if update.status !== 0', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
@@ -127,7 +119,6 @@ describe('checkVersion', () => {
 			expect(err.message).toBe('Error updating the application.')
 		}
 	})
-
 	it('should log "You are on the latest version" if update flag is true and the current version is the latest version', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '1.0.0' } },
@@ -142,7 +133,6 @@ describe('checkVersion', () => {
 			`${global.icons.success} You are on the latest version.`,
 		)
 	})
-
 	it('should log "Application updated successfully." after successful update', async () => {
 		axios.get.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
@@ -158,7 +148,6 @@ describe('checkVersion', () => {
 			'Application updated successfully.',
 		)
 	})
-
 	it('should use correct update command for global runType', async () => {
 		// Test for checkVersion.js lines 49-50 - global case
 		global.runType = 'global'
@@ -175,7 +164,6 @@ describe('checkVersion', () => {
 			expect.stringContaining('sfparty update'),
 		)
 	})
-
 	it('should use correct update command for npx runType', async () => {
 		// Test for checkVersion.js lines 51-52 - npx case
 		global.runType = 'npx'
@@ -192,7 +180,6 @@ describe('checkVersion', () => {
 			expect.stringContaining('npm i @ds-sfdc/sfparty@latest'),
 		)
 	})
-
 	it('should use correct update command for node runType', async () => {
 		// Test for checkVersion.js lines 53-54 - node case
 		global.runType = 'node'
@@ -210,3 +197,4 @@ describe('checkVersion', () => {
 		)
 	})
 })
+//# sourceMappingURL=checkVersion.spec.js.map

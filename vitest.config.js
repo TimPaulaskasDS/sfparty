@@ -4,7 +4,8 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: 'node',
-		threads: 1,
+		maxWorkers: 1,
+		setupFiles: ['./test/setup.ts'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'html', 'clover', 'json'],
