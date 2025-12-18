@@ -245,13 +245,12 @@ export class Split {
 							that.targetDir,
 						)
 						completeFile(that)
+						resolve(true)
 					} catch (error) {
 						console.log(that.#fileName.shortName)
 						global.logger?.error(error as string)
-						throw error
+						reject(error)
 					}
-
-					resolve(true)
 				})
 			}
 		})
@@ -271,7 +270,7 @@ export class Split {
 				processed.type = that.#root
 			}
 			processed.current++
-			Object.keys(json).forEach((key) => {
+			for (const key of Object.keys(json)) {
 				that.sequence = processed.current
 				logUpdate(
 					that.#spinnerMessage
@@ -297,6 +296,9 @@ export class Split {
 					fileUtils.createDirectory(targetDir) // create directory
 					if (Array.isArray(json[key])) {
 						processDirectory(that, json[key], key, targetDir)
+					} else if (json[key] && typeof json[key] === 'object') {
+						// Handle single element case - convert to array
+						processDirectory(that, [json[key]], key, targetDir)
 					}
 				} else if (
 					that.metadataDefinition.singleFiles !== undefined &&
@@ -317,7 +319,7 @@ export class Split {
 					logUpdate(key, 'unknown')
 					logUpdate.done()
 				}
-			})
+			}
 
 			if (that.metadataDefinition.main !== undefined) {
 				Main(that)
