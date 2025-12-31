@@ -1,13 +1,3 @@
-// Type declarations for pkgObj.cjs
-declare module './lib/pkgObj.cjs' {
-	const pkgObj: {
-		version: string
-		description: string
-		name: string
-	}
-	export default pkgObj
-}
-
 // Type declarations for marked-terminal
 declare module 'marked-terminal' {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

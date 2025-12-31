@@ -1,13 +1,6 @@
-import * as fs from 'fs'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Package } from '../../../src/lib/packageUtil.js'
 import * as packageDefinition from '../../../src/meta/Package.js'
-
-interface GlobalContext {
-	format?: string
-}
-
-declare const global: GlobalContext & typeof globalThis
 
 interface GlobalContext {
 	format?: string
@@ -208,7 +201,7 @@ it('should handle error in addMember catch block', () => {
 			members: [],
 		}
 		pkg.packageJSON.Package.types.push(
-			problematicType as { name: string; members: string[] },
+			problematicType as unknown as { name: string; members: string[] },
 		)
 	}
 	expect(() => pkg.addMember('type', 'member')).toThrow('Name access error')
@@ -274,8 +267,55 @@ it('should handle error in addMember sort catch block', () => {
 			members: ['member2'],
 		}
 		pkg.packageJSON.Package.types.push(
-			problematicType as { name: string; members: string[] },
+			problematicType as unknown as { name: string; members: string[] },
 		)
 	}
 	expect(() => pkg.addMember('TypeB', 'member3')).toThrow('Sort error')
+})
+
+it('should handle error in addMember try block catch on line 271', () => {
+	// Test line 271: throw error in catch block when error occurs in try block (lines 249-269)
+	// Specifically test when JSON.parse throws during typeJSON creation
+	if (pkg.packageJSON) {
+		pkg.packageJSON.Package.types = [
+			{ name: 'TypeA', members: ['member1'] },
+		]
+	}
+	// Mock JSON.parse to throw when creating new typeJSON node
+	const originalParse = JSON.parse
+	JSON.parse = vi.fn(() => {
+		throw new Error('Parse error in addMember')
+	})
+	expect(() => pkg.addMember('TypeB', 'member2')).toThrow(
+		'Parse error in addMember',
+	)
+	JSON.parse = originalParse
+})
+
+it('should handle sort comparison when a.name is less than b.name', () => {
+	// Test line 266: (a.name || '') < (b.name || '') returns -1
+	if (pkg.packageJSON) {
+		pkg.packageJSON.Package.types = [
+			{ name: 'TypeB', members: ['member1'] },
+		]
+	}
+	pkg.addMember('TypeA', 'member2')
+	if (pkg.packageJSON?.Package.types) {
+		expect(pkg.packageJSON.Package.types[0].name).toBe('TypeA')
+		expect(pkg.packageJSON.Package.types[1].name).toBe('TypeB')
+	}
+})
+
+it('should handle sort comparison when a.name is greater than b.name', () => {
+	// Test line 267: (a.name || '') > (b.name || '') returns 1
+	if (pkg.packageJSON) {
+		pkg.packageJSON.Package.types = [
+			{ name: 'TypeA', members: ['member1'] },
+		]
+	}
+	pkg.addMember('TypeB', 'member2')
+	if (pkg.packageJSON?.Package.types) {
+		expect(pkg.packageJSON.Package.types[0].name).toBe('TypeA')
+		expect(pkg.packageJSON.Package.types[1].name).toBe('TypeB')
+	}
 })

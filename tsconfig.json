@@ -13,6 +13,7 @@
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
+		"rootDir": "./src",
 		"outDir": "./dist",
 		"types": ["node"],
 		"noUnusedLocals": true,
@@ -20,6 +21,6 @@
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true
 	},
-	"include": ["src/**/*", "test/**/*"],
-	"exclude": ["node_modules", "dist", "coverage", "examples"]
+	"include": ["src/**/*"],
+	"exclude": ["node_modules", "dist", "coverage", "examples", "test"]
 }

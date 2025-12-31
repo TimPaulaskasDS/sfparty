@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="https://soap.sforce.com/2006/04/metadata">
+  <alerts>
+    <fullName>Nested_Alert_Test</fullName>
+    <description>Test alert with nested recipients structure</description>
+    <protected>false</protected>
+    <recipients>
+      <type>owner</type>
+      <field>OwnerId</field>
+      <recipient>
+        <type>user</type>
+        <value>user@example.com</value>
+      </recipient>
+    </recipients>
+    <recipients>
+      <field>Submitter__c</field>
+      <type>userLookup</type>
+      <recipient>
+        <type>contact</type>
+        <value>contact@example.com</value>
+        <nested>
+          <level1>
+            <level2>
+              <value>deeply nested</value>
+            </level2>
+          </level1>
+        </nested>
+      </recipient>
+    </recipients>
+    <senderType>CurrentUser</senderType>
+    <template>Test_Template</template>
+  </alerts>
+  <rules>
+    <fullName>Nested_Rule_Test</fullName>
+    <actions>
+      <name>Test_Action</name>
+      <type>FieldUpdate</type>
+      <parameters>
+        <name>field</name>
+        <value>Test_Value</value>
+        <nestedParams>
+          <param1>value1</param1>
+          <param2>value2</param2>
+        </nestedParams>
+      </parameters>
+    </actions>
+    <active>true</active>
+    <description>Test rule with nested action parameters</description>
+    <triggerType>onCreateOrTriggeringRecordUpdate</triggerType>
+  </rules>
+</Workflow>

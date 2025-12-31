@@ -3,17 +3,19 @@ import axios from 'axios'
 import { execFileSync, spawn, spawnSync } from 'child_process'
 import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
+import { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
 import { marked } from 'marked'
+// ora is now only used in TUIProgressTracker fallback
 // @ts-expect-error - no type definitions available
 import markedTerminal from 'marked-terminal'
 // @ts-ignore - no types available
 import { createRequire } from 'module'
+import os from 'os'
 import path, { dirname, resolve } from 'path'
 import { argv, env } from 'process'
 import { fileURLToPath } from 'url'
 import winston from 'winston'
-import xml2js from 'xml2js'
 import type * as Yargs from 'yargs'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
@@ -21,8 +23,12 @@ import { checkVersion } from './lib/checkVersion.js'
 import * as fileUtils from './lib/fileUtils.js'
 import * as git from './lib/gitUtils.js'
 import * as packageUtil from './lib/packageUtil.js'
-// @ts-expect-error - CJS module
-import pkgObj from './lib/pkgObj.cjs'
+import {
+	PerformanceLogger,
+	setPerformanceLogger,
+} from './lib/performanceLogger.js'
+import pkgObj from './lib/pkgObj.js'
+import { TUIProgressTracker } from './lib/tuiProgressTracker.js'
 import * as labelDefinition from './meta/CustomLabels.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as profileDefinition from './meta/Profiles.js'
@@ -31,6 +37,46 @@ import * as yargOptions from './meta/yargs.js'
 import { Combine } from './party/combine.js'
 import { Split } from './party/split.js'
 import type { MetadataDefinition } from './types/metadata.js'
+
+// Suppress terminal capability errors at the very start, before any imports that might trigger them
+if (process.stdout.isTTY && process.env.TERM !== 'dumb') {
+	const originalStderrWrite = process.stderr.write.bind(process.stderr)
+	process.stderr.write = function (
+		chunk: any,
+		encoding?: any,
+		cb?: any,
+	): boolean {
+		const message = chunk?.toString() || ''
+		// Filter out terminal capability errors - be very aggressive
+		if (
+			message.includes('xterm-256color.Setulc') ||
+			message.includes('stack.pop') ||
+			message.includes('out.push') ||
+			message.includes('var v,') ||
+			message.includes('stack.push') ||
+			message.includes('stack =') ||
+			message.includes('out =') ||
+			message.includes('return out.join') ||
+			message.includes('Error on xterm') ||
+			message.includes('\\u001b[58::') ||
+			message.includes('%p1%{65536}') ||
+			message.includes('\x1b[58::')
+		) {
+			// Call callback if provided to prevent hanging
+			if (typeof cb === 'function') {
+				cb()
+			}
+			return true // Suppress these messages
+		}
+		if (cb) {
+			return originalStderrWrite(chunk, encoding, cb)
+		} else if (encoding) {
+			return originalStderrWrite(chunk, encoding)
+		} else {
+			return originalStderrWrite(chunk)
+		}
+	}
+}
 
 const processStartTime = process.hrtime.bigint()
 const __filename = fileURLToPath(import.meta.url)
@@ -104,6 +150,15 @@ declare const global: GlobalContext & typeof globalThis
 
 global.__basedir = undefined
 
+// Initialize logger with console and file transports
+const logDir = path.join(process.cwd(), '.sfdx', 'sfparty')
+// Ensure log directory exists
+if (!fs.existsSync(logDir)) {
+	fs.mkdirSync(logDir, { recursive: true })
+}
+
+const logFile = path.join(logDir, 'sfparty.log')
+
 global.logger = winston.createLogger({
 	levels: {
 		error: 0,
@@ -114,9 +169,25 @@ global.logger = winston.createLogger({
 		debug: 5,
 		silly: 6,
 	},
-	format: winston.format.cli(),
+	format: winston.format.combine(
+		winston.format.timestamp(),
+		winston.format.errors({ stack: true }),
+		winston.format.json(),
+	),
 	defaultMeta: { service: 'sfparty' },
-	transports: [new winston.transports.Console()],
+	transports: [
+		new winston.transports.Console({
+			format: winston.format.cli(),
+		}),
+		// Only create file transport if we'll actually log something
+		// File logging is primarily for errors and warnings
+		new winston.transports.File({
+			filename: logFile,
+			maxsize: 10 * 1024 * 1024, // 10MB
+			maxFiles: 5,
+			level: 'warn', // Only log warnings and errors to file (not info)
+		}),
+	],
 }) as Logger
 
 global.icons = {
@@ -143,6 +214,298 @@ global.git = {
 	latestCommit: undefined,
 	append: false,
 	delta: false,
+}
+
+/**
+ * Old ProgressTracker removed - TUIProgressTracker now handles both TUI and fallback spinner modes
+ */
+
+/**
+ * Resource-aware concurrency calculator
+ * Dynamically calculates optimal concurrency based on available system resources
+ */
+class ResourceManager {
+	private readonly cpuCores: number
+	private readonly totalMemory: number
+	private readonly estimatedMemoryPerFile: number = 30 * 1024 * 1024 // 30MB per file (more realistic for profiles)
+	private readonly minConcurrency: number = 10
+	private readonly maxConcurrency: number = 100
+
+	constructor() {
+		this.cpuCores = os.cpus().length
+		this.totalMemory = os.totalmem()
+	}
+
+	/**
+	 * Calculate optimal concurrency based on current system resources
+	 */
+	calculateOptimalConcurrency(fileCount: number): number {
+		const freeMemory = os.freemem()
+		const usedMemory = this.totalMemory - freeMemory
+		const memoryUsagePercent = (usedMemory / this.totalMemory) * 100
+
+		// Calculate memory-based concurrency
+		// Reserve memory for system, but be more realistic about what's actually available
+		// macOS often shows high memory usage due to file caching, but that memory is reclaimable
+		// Reserve 500MB for system (more realistic than 1GB)
+		const reservedMemory = 512 * 1024 * 1024 // 500MB
+		const availableMemory = Math.max(0, freeMemory - reservedMemory)
+
+		// Also consider that we can use some of the "used" memory if it's just file cache
+		// macOS uses free memory for file caching, which is quickly reclaimable
+		// If free memory is very low but we have reasonable total memory, assume some cache is reclaimable
+		// However, be much more conservative when free memory is critically low (<200MB) to avoid swap thrashing
+		let reclaimableCache = 0
+		if (
+			memoryUsagePercent > 85 &&
+			this.totalMemory > 8 * 1024 * 1024 * 1024
+		) {
+			if (freeMemory < 200 * 1024 * 1024) {
+				// Critically low free memory - assume minimal reclaimable cache to avoid swap
+				reclaimableCache = Math.min(
+					512 * 1024 * 1024,
+					this.totalMemory * 0.05,
+				) // Max 512MB or 5% when critical
+			} else if (freeMemory < 500 * 1024 * 1024) {
+				// Very low free memory - be conservative
+				reclaimableCache = Math.min(
+					1024 * 1024 * 1024,
+					this.totalMemory * 0.08,
+				) // Max 1GB or 8% when very low
+			} else {
+				// Low but not critical - can assume more cache is reclaimable
+				reclaimableCache = Math.min(
+					2 * 1024 * 1024 * 1024,
+					this.totalMemory * 0.1,
+				) // Up to 2GB or 10%
+			}
+		}
+
+		const effectiveAvailableMemory = availableMemory + reclaimableCache
+		const memoryBasedConcurrency = Math.floor(
+			effectiveAvailableMemory / this.estimatedMemoryPerFile,
+		)
+
+		// Calculate CPU-based concurrency
+		// For I/O-bound operations, we can use more than CPU cores
+		// Scale based on CPU cores as a baseline
+		const cpuBasedConcurrency = this.cpuCores * 3 // I/O bound can use 3x CPU cores
+
+		// Adjust based on memory pressure, with more aggressive reductions for critical memory situations
+		let memoryMultiplier = 1.0
+		if (memoryUsagePercent > 98 && freeMemory < 200 * 1024 * 1024) {
+			// Critical memory pressure - very conservative to avoid swap thrashing
+			memoryMultiplier = 0.2
+		} else if (memoryUsagePercent > 95 && freeMemory < 500 * 1024 * 1024) {
+			// Extreme memory pressure with very little free - be very conservative
+			memoryMultiplier = 0.3
+		} else if (memoryUsagePercent > 90 && freeMemory < 1024 * 1024 * 1024) {
+			// High memory pressure with <1GB free - reduce significantly
+			memoryMultiplier = 0.5
+		} else if (memoryUsagePercent > 85) {
+			// Moderate-high memory pressure - reduce moderately
+			memoryMultiplier = 0.7
+		} else if (memoryUsagePercent < 50) {
+			// Low memory usage - can be more aggressive
+			memoryMultiplier = 1.3
+		} else if (memoryUsagePercent < 70) {
+			// Moderate memory usage - normal
+			memoryMultiplier = 1.1
+		}
+
+		// Take the minimum of CPU and memory constraints, adjusted for pressure
+		const baseConcurrency = Math.min(
+			memoryBasedConcurrency,
+			cpuBasedConcurrency,
+		)
+		const adjustedConcurrency = Math.floor(
+			baseConcurrency * memoryMultiplier,
+		)
+
+		// Clamp to reasonable bounds, but allow lower minimum when memory is critical
+		const minConcurrency =
+			memoryUsagePercent > 98 && freeMemory < 200 * 1024 * 1024
+				? 3 // Very low minimum when memory is critical
+				: memoryUsagePercent > 95 && freeMemory < 500 * 1024 * 1024
+					? 5 // Low minimum when memory is extreme
+					: this.minConcurrency
+		const concurrency = Math.max(
+			minConcurrency,
+			Math.min(this.maxConcurrency, adjustedConcurrency),
+		)
+
+		// Don't exceed file count
+		return Math.min(concurrency, fileCount)
+	}
+
+	/**
+	 * Get current system resource stats for logging
+	 */
+	getResourceStats(): {
+		cpuCores: number
+		totalMemory: number
+		freeMemory: number
+		usedMemory: number
+		memoryUsagePercent: number
+	} {
+		const freeMemory = os.freemem()
+		const usedMemory = this.totalMemory - freeMemory
+		const memoryUsagePercent = (usedMemory / this.totalMemory) * 100
+
+		return {
+			cpuCores: this.cpuCores,
+			totalMemory: this.totalMemory,
+			freeMemory,
+			usedMemory,
+			memoryUsagePercent,
+		}
+	}
+
+	/**
+	 * Recalculate concurrency based on current resource state
+	 * Used for adaptive adjustment during execution
+	 */
+	recalculateConcurrency(
+		fileCount: number,
+		currentConcurrency: number,
+	): number {
+		const newConcurrency = this.calculateOptimalConcurrency(fileCount)
+		// Only adjust if there's a significant difference to avoid thrashing
+		const difference = Math.abs(newConcurrency - currentConcurrency)
+		if (difference > 2) {
+			return newConcurrency
+		}
+		return currentConcurrency
+	}
+}
+
+/**
+ * Concurrency limiter using semaphore pattern with adaptive concurrency
+ * Monitors performance and adjusts concurrency based on actual throughput
+ */
+async function limitConcurrency<T>(
+	tasks: (() => Promise<T>)[],
+	concurrency: number,
+	resourceManager?: ResourceManager,
+): Promise<T[]> {
+	const results: T[] = new Array(tasks.length)
+	let running = 0
+	let index = 0
+	let currentConcurrency = concurrency
+	let completedCount = 0
+	let lastAdjustmentTime = Date.now()
+	const taskDurations: number[] = [] // Track recent task durations for performance analysis
+	const maxDurationHistory = 20 // Keep last 20 task durations
+
+	// Periodically check and adjust concurrency based on resources and performance
+	const adjustInterval = resourceManager
+		? setInterval(() => {
+				const now = Date.now()
+				const timeSinceLastAdjustment = now - lastAdjustmentTime
+
+				// Check resource-based adjustment
+				const resourceConcurrency =
+					resourceManager.recalculateConcurrency(
+						tasks.length,
+						currentConcurrency,
+					)
+
+				// Performance-based adjustment: analyze recent task completion times
+				let performanceAdjustment = 0
+				if (
+					taskDurations.length >= 5 &&
+					timeSinceLastAdjustment > 5000
+				) {
+					// Calculate average and median task duration
+					const sorted = [...taskDurations].sort((a, b) => a - b)
+					const avgDuration =
+						taskDurations.reduce((a, b) => a + b, 0) /
+						taskDurations.length
+					const medianDuration = sorted[Math.floor(sorted.length / 2)]
+
+					// Use median to avoid outliers, but also consider average
+					const typicalDuration = (avgDuration + medianDuration) / 2
+
+					// If tasks are taking > 4 seconds on average, reduce concurrency (I/O contention)
+					if (typicalDuration > 4000 && currentConcurrency > 10) {
+						performanceAdjustment = -3
+					} else if (
+						typicalDuration > 3000 &&
+						currentConcurrency > 15
+					) {
+						performanceAdjustment = -2
+					} else if (
+						typicalDuration < 2000 &&
+						currentConcurrency < resourceConcurrency
+					) {
+						// If tasks are completing quickly (< 2s), we can increase
+						performanceAdjustment = 2
+					} else if (
+						typicalDuration < 1500 &&
+						currentConcurrency < resourceConcurrency
+					) {
+						// Very fast completion, be more aggressive
+						performanceAdjustment = 3
+					}
+				}
+
+				// Apply adjustments
+				const newConcurrency = Math.max(
+					10,
+					Math.min(100, resourceConcurrency + performanceAdjustment),
+				)
+
+				if (newConcurrency !== currentConcurrency) {
+					currentConcurrency = newConcurrency
+					lastAdjustmentTime = now
+					// Clear duration history when adjusting to get fresh metrics
+					taskDurations.length = 0
+				}
+			}, 3000) // Check every 3 seconds
+		: null
+
+	return new Promise((resolve) => {
+		function runNext(): void {
+			// Start as many tasks as we can
+			while (running < currentConcurrency && index < tasks.length) {
+				running++
+				const currentIndex = index++
+				const task = tasks[currentIndex]
+				const taskStart = Date.now()
+
+				task()
+					.then((result) => {
+						results[currentIndex] = result
+					})
+					.catch((error) => {
+						// Store error as result, caller can check
+						results[currentIndex] = error as T
+					})
+					.finally(() => {
+						completedCount++
+						const taskDuration = Date.now() - taskStart
+						taskDurations.push(taskDuration)
+						// Keep only recent durations
+						if (taskDurations.length > maxDurationHistory) {
+							taskDurations.shift()
+						}
+						running--
+						runNext()
+					})
+			}
+
+			// If all tasks are done, resolve
+			if (running === 0 && index >= tasks.length) {
+				if (adjustInterval) {
+					clearInterval(adjustInterval)
+				}
+				resolve(results)
+			}
+		}
+
+		// Start initial batch
+		runNext()
+	})
 }
 
 global.metaTypes = {
@@ -175,7 +538,9 @@ global.metaTypes = {
 global.runType = null
 
 let types: string[] = []
-const packageDir = getRootPath()
+let packageDir: string = ''
+let packageDirInitialized = false
+let packageDirPromise: Promise<string> | null = null
 
 const errorMessage = clc.red(
 	'Please specify the action of ' +
@@ -186,7 +551,7 @@ const errorMessage = clc.red(
 )
 let addPkg: packageUtil.Package
 let desPkg: packageUtil.Package
-displayHeader()
+// Don't display header here - it will be shown in TUI or at the end
 
 let checkYargs = false
 
@@ -340,8 +705,8 @@ yargs(hideBin(process.argv))
 										existsSync: fs.existsSync,
 										spawn,
 									})
-									diff.then((data) => {
-										gitFiles(data)
+									diff.then(async (data) => {
+										await gitFiles(data)
 										resolve(true)
 									}).catch((error) => {
 										global.logger?.error(error)
@@ -361,8 +726,8 @@ yargs(hideBin(process.argv))
 							existsSync: fs.existsSync,
 							spawn,
 						})
-						diff.then((data) => {
-							gitFiles(data)
+						diff.then(async (data) => {
+							await gitFiles(data)
 							resolve(true)
 						}).catch((error) => {
 							global.logger?.error(error)
@@ -503,6 +868,21 @@ function yargCheck(argv: Yargs.Arguments, _options: Yargs.Options): boolean {
 		...Object.keys(yargOptions.splitOptions),
 		...Object.keys(yargOptions.combineOptions),
 	])
+	// Also include aliases as valid keys
+	const allOptions = {
+		...yargOptions.splitOptions,
+		...yargOptions.combineOptions,
+	}
+	Object.values(allOptions).forEach((option) => {
+		if (option && typeof option === 'object' && option !== null) {
+			const alias = (option as { alias?: string | string[] }).alias
+			if (typeof alias === 'string') {
+				validKeys.add(alias)
+			} else if (Array.isArray(alias)) {
+				alias.forEach((a: string) => validKeys.add(a))
+			}
+		}
+	})
 	const invalidKeys = argvKeys.filter(
 		(key) => !['_', '$0'].includes(key) && !validKeys.has(key),
 	)
@@ -627,11 +1007,20 @@ function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
 	})
 }
 
-function processSplit(
+async function processSplit(
 	typeItem: string,
 	argv: SplitCombineArgv,
 ): Promise<boolean> {
-	return new Promise((resolve, _reject) => {
+	// Ensure packageDir is initialized
+	if (!packageDirInitialized) {
+		if (!packageDirPromise) {
+			packageDirPromise = getRootPath()
+		}
+		packageDir = await packageDirPromise
+		packageDirInitialized = true
+	}
+
+	return new Promise(async (resolve, _reject) => {
 		const processed: ProcessedStats = {
 			total: 0,
 			errors: 0,
@@ -685,18 +1074,24 @@ function processSplit(
 
 		if (!all && name) {
 			let metaFilePath = path.join(metaDirPath, name)
-			if (!fileUtils.fileExists({ filePath: metaFilePath, fs })) {
+			if (!(await fileUtils.fileExists({ filePath: metaFilePath, fs }))) {
 				name += metaExtension
 				metaFilePath = path.join(metaDirPath, name)
-				if (!fileUtils.fileExists({ filePath: metaFilePath, fs })) {
+				if (
+					!(await fileUtils.fileExists({
+						filePath: metaFilePath,
+						fs,
+					}))
+				) {
 					global.logger?.error('File not found: ' + metaFilePath)
 					process.exit(1)
 				}
 			}
 			fileList.push(name)
 		} else {
-			if (fileUtils.directoryExists({ dirPath: sourceDir, fs })) {
-				fileUtils.getFiles(sourceDir, metaExtension).forEach((file) => {
+			if (await fileUtils.directoryExists({ dirPath: sourceDir, fs })) {
+				const files = await fileUtils.getFiles(sourceDir, metaExtension)
+				files.forEach((file) => {
 					fileList.push(file)
 				})
 			}
@@ -709,58 +1104,204 @@ function processSplit(
 			return
 		}
 
-		console.log(`${clc.bgBlackBright('Source path:')} ${sourceDir}`)
-		console.log(`${clc.bgBlackBright('Target path:')} ${targetDir}`)
-		console.log()
-		console.log(`Splitting a total of ${processed.total} file(s)`)
-		console.log()
+		// Resource-aware concurrency calculation
+		const resourceManager = new ResourceManager()
+		const stats = resourceManager.getResourceStats()
+		const concurrency = resourceManager.calculateOptimalConcurrency(
+			processed.total,
+		)
 
-		const promList: Promise<boolean>[] = []
-		fileList.forEach((metaFile) => {
-			const metadataItem = new Split({
-				metadataDefinition: typeObj.definition,
-				sourceDir: sourceDir,
-				targetDir: targetDir,
-				metaFilePath: path.join(sourceDir, metaFile),
-				sequence: promList.length + 1,
-				total: processed.total,
-			})
-			const metadataItemProm = metadataItem.split()
-			promList.push(metadataItemProm)
-			metadataItemProm.then((resolveVal) => {
-				if (resolveVal === false) {
-					processed.errors++
-					processed.current--
-				} else {
-					processed.current++
-				}
-			})
+		// Initialize write batcher for optimized file writes
+		// Use very small batches (2-3 files) even with memory pressure to get I/O batching benefits
+		// With low concurrency, use smaller batches and shorter delays to prevent blocking
+		// With high concurrency, use larger batches to reduce I/O overhead
+		const freeMemory = stats.freeMemory
+		const criticalMemory = freeMemory < 200 * 1024 * 1024 // <200MB free
+		let writeBatcherMsg = ''
+
+		if (criticalMemory) {
+			// Use very small batches (2-3 files) even with critical memory
+			// This provides I/O batching benefits with minimal memory overhead (~few MB)
+			const batchSize = 2 // Very small batch to minimize memory usage
+			const batchDelay = 1 // Minimal delay for immediate flushing
+			fileUtils.initWriteBatcher(batchSize, batchDelay)
+			writeBatcherMsg = `Write batcher initialized with minimal batch size: ${batchSize} (critical memory: ${(freeMemory / 1024 / 1024).toFixed(2)}MB free)`
+		} else {
+			const batchSize =
+				concurrency < 5
+					? Math.max(5, Math.min(10, concurrency * 2)) // Smaller batches for low concurrency
+					: Math.max(15, Math.min(40, Math.floor(concurrency * 1.2))) // Larger batches for high concurrency
+			const batchDelay = concurrency < 5 ? 1 : 3 // Very short delays to prevent blocking
+			fileUtils.initWriteBatcher(batchSize, batchDelay)
+			writeBatcherMsg = `Write batcher initialized with batch size: ${batchSize}, delay: ${batchDelay}ms`
+		}
+
+		// Read queue disabled - it was adding overhead and slowing down reads
+		// The stat optimization (combining fileExists + stat) is sufficient
+		// Direct reads with processing concurrency work better than limiting reads separately
+
+		// Use TUI for beautiful real-time progress display
+		const progress = new TUIProgressTracker(processed.total, 'Split')
+
+		// Set startup information in TUI instead of console.log
+		progress.setStartupInfo({
+			sourcePath: sourceDir,
+			targetPath: targetDir,
+			totalFiles: processed.total,
+			systemResources: `System resources: ${stats.cpuCores} CPU cores, ${(stats.totalMemory / 1024 / 1024 / 1024).toFixed(2)}GB total RAM, ${(stats.freeMemory / 1024 / 1024 / 1024).toFixed(2)}GB free (${stats.memoryUsagePercent.toFixed(1)}% used)`,
+			concurrency: `Processing ${processed.total} file(s) with concurrency: ${concurrency} (processing ${concurrency} file(s) simultaneously)`,
+			writeBatcher: writeBatcherMsg,
 		})
-		Promise.allSettled(promList).then((_results) => {
-			const message = `Split ${clc.bgBlackBright(
-				processed.current > promList.length
-					? promList.length
-					: processed.current,
-			)} file(s) ${
-				processed.errors > 0
-					? 'with ' +
-						clc.bgBlackBright.red(processed.errors) +
-						' error(s) '
-					: ''
-			}in `
-			displayMessageAndDuration(startTime, message)
-			if (processed.errors > 0) {
-				resolve(false)
-			} else {
-				resolve(true)
+
+		// Set up queue stats getter for TUI
+		progress.setQueueStatsGetter(() => {
+			const writeBatcher = fileUtils.getWriteBatcher()
+			if (writeBatcher) {
+				return writeBatcher.getQueueStats()
+			}
+			return null
+		})
+
+		// Update resource stats in TUI
+		progress.updateResourceStats({
+			...stats,
+			concurrency,
+		})
+
+		const perfLogFile = path.join(logDir, 'performance.log')
+		const perfLogger = new PerformanceLogger(perfLogFile)
+		setPerformanceLogger(perfLogger)
+
+		// Create tasks for all files
+		const queueStartTime = process.hrtime.bigint()
+		const tasks = fileList.map((metaFile, index) => {
+			return async (): Promise<boolean> => {
+				const filePath = path.join(sourceDir, metaFile)
+				// Track queue wait time
+				const queueWaitTime =
+					Number(process.hrtime.bigint() - queueStartTime) / 1_000_000
+				perfLogger.setQueueWaitTime(filePath, queueWaitTime)
+
+				progress.addActive(metaFile)
+
+				try {
+					const metadataItem = new Split({
+						metadataDefinition: typeObj.definition,
+						sourceDir: sourceDir,
+						targetDir: targetDir,
+						metaFilePath: filePath,
+						sequence: index + 1,
+						total: processed.total,
+					})
+					const result = await metadataItem.split()
+
+					if (result === false) {
+						processed.errors++
+						progress.readComplete(metaFile, false)
+						progress.writeComplete(metaFile, false)
+						return false
+					}
+
+					// Read/parse is complete when split() returns
+					progress.readComplete(metaFile, true)
+					// Write is queued/complete when split() returns (may still be in batch queue)
+					progress.writeComplete(metaFile, true)
+					return true
+				} catch (error) {
+					processed.errors++
+					progress.readComplete(metaFile, false)
+					progress.writeComplete(metaFile, false)
+					global.logger?.error(
+						`Failed to split ${metaFile}: ${error instanceof Error ? error.message : String(error)}`,
+					)
+					return false
+				}
 			}
 		})
+
+		// Update resource stats periodically during processing
+		const resourceUpdateInterval = setInterval(() => {
+			const currentStats = resourceManager.getResourceStats()
+			const currentConcurrency =
+				resourceManager.calculateOptimalConcurrency(processed.total)
+			progress.updateResourceStats({
+				...currentStats,
+				concurrency: currentConcurrency,
+			})
+		}, 2000) // Update every 2 seconds
+
+		// Process all files with resource-aware concurrency control
+		await limitConcurrency(tasks, concurrency, resourceManager)
+
+		// Clear resource update interval
+		clearInterval(resourceUpdateInterval)
+
+		// Flush all batched writes before completion (only if batching was enabled)
+		// Check if write batcher exists (it won't if memory was critical)
+		const writeBatcher = fileUtils.getWriteBatcher()
+		if (writeBatcher) {
+			let remainingWrites = fileUtils.getWriteBatcherQueueLength()
+			if (remainingWrites > 0) {
+				// Show flushing progress - update during flush to show remaining writes
+				const flushInterval = setInterval(() => {
+					const currentRemaining =
+						fileUtils.getWriteBatcherQueueLength()
+					if (currentRemaining > 0) {
+						progress.flushing(currentRemaining)
+					} else {
+						clearInterval(flushInterval)
+					}
+				}, 200) // Update every 200ms during flush to reduce overhead
+
+				// Flush all remaining writes (flushAll is more efficient than multiple small flushes)
+				await fileUtils.flushWriteBatcher()
+
+				// Clear the interval and verify all writes completed
+				clearInterval(flushInterval)
+				remainingWrites = fileUtils.getWriteBatcherQueueLength()
+				if (remainingWrites > 0) {
+					global.logger?.warn(
+						`Warning: ${remainingWrites} writes still pending after flush`,
+					)
+				}
+			}
+		}
+
+		// Wait for all writes to complete before marking as done
+		// doneWithWrites() will cleanup the TUI, then we can safely output console messages
+		await progress.doneWithWrites()
+
+		// Now safe to output console messages after TUI is cleaned up
+		// Show app name and version in ANSI box like before
+		displayHeader()
+		console.log(
+			`Split operation completed: ${processed.total - processed.errors} successful, ${processed.errors} failed`,
+		)
+
+		// Print performance summary - use same startTime to avoid discrepancy
+		perfLogger.printSummary(startTime)
+
+		const message = `Split ${clc.bgBlackBright(
+			processed.total - processed.errors,
+		)} file(s) ${
+			processed.errors > 0
+				? 'with ' +
+					clc.bgBlackBright.red(processed.errors) +
+					' error(s) '
+				: ''
+		}in `
+		displayMessageAndDuration(startTime, message)
+		if (processed.errors > 0) {
+			resolve(false)
+		} else {
+			resolve(true)
+		}
 	})
 }
 
 function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 	const combine = processCombine(types[0], argv)
-	combine.then((resolveVal) => {
+	combine.then(async (resolveVal) => {
 		if (resolveVal === false) {
 			global.logger?.error(
 				'Will not continue due to YAML format issues. Please correct and try again.',
@@ -773,7 +1314,7 @@ function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 			combineHandler(argv, startTime)
 		} else {
 			if (global.git!.latestCommit !== undefined) {
-				git.updateLastCommit({
+				await git.updateLastCommit({
 					dir: global.__basedir!,
 					latest: global.git!.latestCommit,
 					fileUtils,
@@ -781,8 +1322,8 @@ function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 				})
 			}
 			if (global.git!.enabled) {
-				addPkg.savePackage(xml2js, fileUtils)
-				desPkg.savePackage(xml2js, fileUtils)
+				await addPkg.savePackage({ XMLBuilder }, fileUtils)
+				await desPkg.savePackage({ XMLBuilder }, fileUtils)
 			}
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
 				const message = `Combine completed in `
@@ -801,11 +1342,20 @@ function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 	})
 }
 
-function processCombine(
+async function processCombine(
 	typeItem: string,
 	argv: SplitCombineArgv,
 ): Promise<boolean> {
-	return new Promise((resolve, _reject) => {
+	// Ensure packageDir is initialized
+	if (!packageDirInitialized) {
+		if (!packageDirPromise) {
+			packageDirPromise = getRootPath()
+		}
+		packageDir = await packageDirPromise
+		packageDirInitialized = true
+	}
+
+	return new Promise(async (resolve, _reject) => {
 		const processed: ProcessedStats = {
 			total: 0,
 			errors: 0,
@@ -866,7 +1416,11 @@ function processCombine(
 			}
 		} else if (!all) {
 			const metaDirPath = path.join(sourceDir, name || '')
-			if (!fileUtils.directoryExists({ dirPath: metaDirPath, fs })) {
+			const dirExists = await fileUtils.directoryExists({
+				dirPath: metaDirPath,
+				fs,
+			})
+			if (!dirExists) {
 				global.logger?.error('Directory not found: ' + metaDirPath)
 				process.exit(1)
 			}
@@ -880,7 +1434,7 @@ function processCombine(
 					]),
 				]
 			} else {
-				processList = fileUtils.getDirectories(sourceDir)
+				processList = await fileUtils.getDirectories(sourceDir)
 			}
 		}
 
@@ -897,57 +1451,129 @@ function processCombine(
 		}
 
 		console.log()
-		console.log(`${clc.bgBlackBright('Source path:')} ${sourceDir}`)
-		console.log(`${clc.bgBlackBright('Target path:')} ${targetDir}`)
+		// Source and target paths will be shown in TUI
 		console.log()
 
-		const promList: Promise<boolean | string>[] = []
-		processList.forEach((metaDir) => {
-			const metadataItem = new Combine({
-				metadataDefinition: typeObj.definition,
-				sourceDir,
-				targetDir,
-				metaDir,
-				sequence: promList.length + 1,
-				total: processed.total,
-				addPkg,
-				desPkg,
-			})
-			const metadataItemProm = metadataItem.combine()
-			promList.push(metadataItemProm)
-			metadataItemProm.then(() => {
-				processed.current++
-			})
+		// Resource-aware concurrency calculation
+		const resourceManager = new ResourceManager()
+		const stats = resourceManager.getResourceStats()
+		const concurrency = resourceManager.calculateOptimalConcurrency(
+			processed.total,
+		)
+
+		console.log(
+			`System resources: ${stats.cpuCores} CPU cores, ${(stats.totalMemory / 1024 / 1024 / 1024).toFixed(2)}GB total RAM, ${(stats.freeMemory / 1024 / 1024 / 1024).toFixed(2)}GB free (${stats.memoryUsagePercent.toFixed(1)}% used)`,
+		)
+		console.log(
+			`Processing ${processed.total} file(s) with concurrency: ${concurrency} (processing ${concurrency} file(s) simultaneously)`,
+		)
+
+		// Use TUI for beautiful real-time progress display
+		const progress = new TUIProgressTracker(processed.total, 'Combine')
+
+		// Set startup information in TUI instead of console.log
+		progress.setStartupInfo({
+			sourcePath: sourceDir,
+			targetPath: targetDir,
+			totalFiles: processed.total,
+			systemResources: `System resources: ${stats.cpuCores} CPU cores, ${(stats.totalMemory / 1024 / 1024 / 1024).toFixed(2)}GB total RAM, ${(stats.freeMemory / 1024 / 1024 / 1024).toFixed(2)}GB free (${stats.memoryUsagePercent.toFixed(1)}% used)`,
+			concurrency: `Processing ${processed.total} file(s) with concurrency: ${concurrency} (processing ${concurrency} file(s) simultaneously)`,
 		})
 
-		Promise.allSettled(promList).then((results) => {
-			let successes = 0
-			let errors = processed.errors++
-			results.forEach((result) => {
-				if (result.status === 'fulfilled') {
-					if (result.value === true) {
-						successes++
-					} else if (result.value === false) {
-						errors++
+		// Update resource stats in TUI
+		progress.updateResourceStats({
+			...stats,
+			concurrency,
+		})
+
+		const perfLogFile = path.join(logDir, 'performance.log')
+		const perfLogger = new PerformanceLogger(perfLogFile)
+		setPerformanceLogger(perfLogger)
+
+		// Create tasks for all directories
+		const tasks = processList.map((metaDir, index) => {
+			return async (): Promise<boolean> => {
+				progress.addActive(metaDir)
+				const fileStartTime = process.hrtime.bigint()
+
+				try {
+					const metadataItem = new Combine({
+						metadataDefinition: typeObj.definition,
+						sourceDir,
+						targetDir,
+						metaDir,
+						sequence: index + 1,
+						total: processed.total,
+						addPkg,
+						desPkg,
+					})
+					const result = await metadataItem.combine()
+
+					const fileEndTime = process.hrtime.bigint()
+					const duration = convertHrtime(fileEndTime - fileStartTime)
+					const durationStr = `${duration.seconds}.${duration.milliseconds}s`
+
+					if (result === false) {
+						processed.errors++
+						progress.complete(metaDir, durationStr, false)
+						return false
 					}
-				} else if (result.status === 'rejected') {
-					errors++
+
+					progress.complete(metaDir, durationStr, true)
+					return true
+				} catch (error) {
+					processed.errors++
+					const fileEndTime = process.hrtime.bigint()
+					const duration = convertHrtime(fileEndTime - fileStartTime)
+					const durationStr = `${duration.seconds}.${duration.milliseconds}s`
+					progress.complete(metaDir, durationStr, false)
+					global.logger?.error(
+						`Failed to combine ${metaDir}: ${error instanceof Error ? error.message : String(error)}`,
+					)
+					return false
 				}
-			})
-			const message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
-				errors > 0
-					? 'with ' +
-						clc.bgBlackBright.red(processed.errors) +
-						' error(s) '
-					: ''
-			}in `
-			displayMessageAndDuration(startTime, message)
-			if (errors > 0) {
-				resolve(false)
-			} else {
-				resolve(true)
 			}
 		})
+
+		// Update resource stats periodically during processing
+		const resourceUpdateInterval = setInterval(() => {
+			const currentStats = resourceManager.getResourceStats()
+			const currentConcurrency =
+				resourceManager.calculateOptimalConcurrency(processed.total)
+			progress.updateResourceStats({
+				...currentStats,
+				concurrency: currentConcurrency,
+			})
+		}, 2000) // Update every 2 seconds
+
+		// Process all directories with resource-aware concurrency control
+		await limitConcurrency(tasks, concurrency, resourceManager)
+
+		// Clear resource update interval
+		clearInterval(resourceUpdateInterval)
+
+		// Wait for TUI cleanup before console output
+		await progress.doneWithWrites()
+
+		// Print performance summary - use same startTime to avoid discrepancy
+		perfLogger.printSummary(startTime)
+
+		const successes = processed.total - processed.errors
+		// Show app name and version in ANSI box like before
+		displayHeader()
+		const message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
+			processed.errors > 0
+				? 'with ' +
+					clc.bgBlackBright.red(processed.errors) +
+					' error(s) '
+				: ''
+		}in `
+		displayMessageAndDuration(startTime, message)
+		if (processed.errors > 0) {
+			resolve(false)
+		} else {
+			resolve(true)
+		}
 	})
 }
 
@@ -956,7 +1582,16 @@ interface GitFileItem {
 	action: string
 }
 
-function gitFiles(data: GitFileItem[]): void {
+async function gitFiles(data: GitFileItem[]): Promise<void> {
+	// Ensure packageDir is initialized
+	if (!packageDirInitialized) {
+		if (!packageDirPromise) {
+			packageDirPromise = getRootPath()
+		}
+		packageDir = await packageDirPromise
+		packageDirInitialized = true
+	}
+
 	data.forEach((item) => {
 		if (item.path.indexOf(packageDir + '-party/') === 0) {
 			const pathArray = item.path.split('/')
@@ -1069,11 +1704,12 @@ function displayHeader(): void {
 	console.log()
 }
 
-function getRootPath(packageDir?: string): string {
-	const rootPath = fileUtils.find('sfdx-project.json')
+async function getRootPath(packageDir?: string): Promise<string> {
+	const rootPath = await fileUtils.find('sfdx-project.json')
 	let defaultDir: string | undefined
 	if (rootPath) {
-		global.__basedir = fileUtils.fileInfo(rootPath).dirname
+		const fileInfoResult = await fileUtils.fileInfo(rootPath)
+		global.__basedir = fileInfoResult.dirname
 		let projectJSON:
 			| {
 					packageDirectories?: Array<{
@@ -1083,7 +1719,9 @@ function getRootPath(packageDir?: string): string {
 			  }
 			| undefined
 		try {
-			projectJSON = JSON.parse(fs.readFileSync(rootPath, 'utf8')) as {
+			// SEC-002: Use safe JSON parser to prevent prototype pollution
+			const fileContent = await fs.promises.readFile(rootPath, 'utf8')
+			projectJSON = fileUtils.safeJSONParse(fileContent) as {
 				packageDirectories?: Array<{ default?: boolean; path: string }>
 			}
 		} catch (error) {

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="https://soap.sforce.com/2006/04/metadata">
+  <alerts>
+    <fullName>Key_Order_Test</fullName>
+    <unknownField>This field is not in keyOrder</unknownField>
+    <description>Test description field</description>
+    <protected>false</protected>
+    <anotherUnknownField>Another unknown field</anotherUnknownField>
+    <senderType>CurrentUser</senderType>
+    <template>Test_Template</template>
+  </alerts>
+  <rules>
+    <fullName>Rule_Key_Order_Test</fullName>
+    <unknownRuleField>Unknown rule field</unknownRuleField>
+    <description>Rule description</description>
+    <active>true</active>
+    <triggerType>onCreateOrTriggeringRecordUpdate</triggerType>
+  </rules>
+</Workflow>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="https://soap.sforce.com/2006/04/metadata">
+  <alerts>
+    <fullName>Boolean_Conversion_Test</fullName>
+    <description>Test boolean conversion scenarios</description>
+    <protected>true</protected>
+    <booleanTrue>true</booleanTrue>
+    <booleanFalse>false</booleanFalse>
+    <stringTrue>true</stringTrue>
+    <stringFalse>false</stringFalse>
+    <senderType>CurrentUser</senderType>
+    <template>Test_Template</template>
+  </alerts>
+</Workflow>

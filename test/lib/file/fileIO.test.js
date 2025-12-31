@@ -1,3 +1,4 @@
+import * as yaml from 'js-yaml'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
 	fileInfo,
@@ -6,6 +7,14 @@ import {
 	writeFile,
 } from '../../../src/lib/fileUtils.js'
 
+// Mock js-yaml - use actual implementation by default, can be overridden in tests
+vi.mock('js-yaml', async () => {
+	const actual = await vi.importActual('js-yaml')
+	return {
+		...actual,
+		load: vi.fn((...args) => actual.load(...args)),
+	}
+})
 describe('fileInfo', () => {
 	let mockFs
 	beforeEach(() => {
@@ -39,7 +48,9 @@ describe('saveFile', () => {
 		mockFs = {
 			writeFileSync: vi.fn(),
 		}
-		global.logger = { error: vi.fn() }
+		global.logger = {
+			error: vi.fn(),
+		}
 	})
 	it('should save JSON file with tabs', () => {
 		const data = { key: 'value', nested: { prop: 123 } }
@@ -81,7 +92,9 @@ describe('readFile', () => {
 			statSync: vi.fn(),
 			readFileSync: vi.fn(),
 		}
-		global.logger = { error: vi.fn() }
+		global.logger = {
+			error: vi.fn(),
+		}
 	})
 	it('should read and parse JSON file', () => {
 		mockFs.existsSync.mockReturnValue(true)
@@ -132,7 +145,9 @@ describe('writeFile', () => {
 			writeFileSync: vi.fn(),
 			utimesSync: vi.fn(),
 		}
-		global.logger = { error: vi.fn() }
+		global.logger = {
+			error: vi.fn(),
+		}
 	})
 	it('should write file with custom timestamps', () => {
 		const atime = new Date('2024-01-01')
@@ -150,12 +165,35 @@ describe('writeFile', () => {
 		)
 	})
 	it('should use current date when timestamps are undefined', () => {
+		// Test lines 343-344: finalAtime and finalMtime when atime/mtime are undefined
+		// When explicitly passing undefined (not omitting the parameter), the default parameter doesn't apply
+		// and the parameter is actually undefined, triggering lines 343-344
 		writeFile('/test/file.txt', 'content', undefined, undefined, mockFs)
 		expect(mockFs.writeFileSync).toHaveBeenCalled()
 		expect(mockFs.utimesSync).toHaveBeenCalled()
 		const [, atime, mtime] = mockFs.utimesSync.mock.calls[0]
 		expect(atime).toBeInstanceOf(Date)
 		expect(mtime).toBeInstanceOf(Date)
+		// Verify that new Date() was called (lines 343-344)
+		expect(atime.getTime()).toBeGreaterThan(0)
+		expect(mtime.getTime()).toBeGreaterThan(0)
+		// Verify these are new Date() instances, not the undefined we passed
+		expect(atime).not.toBeUndefined()
+		expect(mtime).not.toBeUndefined()
+	})
+	it('should use provided timestamps when defined', () => {
+		// Test lines 343-344: when atime and mtime are defined (not undefined)
+		const atime = new Date('2024-01-01')
+		const mtime = new Date('2024-01-02')
+		writeFile('/test/file.txt', 'content', atime, mtime, mockFs)
+		expect(mockFs.utimesSync).toHaveBeenCalledWith(
+			'/test/file.txt',
+			atime,
+			mtime,
+		)
+		// Verify the provided dates are used (not new Date())
+		expect(mockFs.utimesSync.mock.calls[0][1]).toBe(atime)
+		expect(mockFs.utimesSync.mock.calls[0][2]).toBe(mtime)
 	})
 	it('should throw error on write failure', () => {
 		mockFs.writeFileSync.mockImplementation(() => {
@@ -171,6 +209,58 @@ describe('writeFile', () => {
 			),
 		).toThrow('Write failed')
 	})
+	it('should validate path when global.__basedir is set', () => {
+		// Test line 334: writeFile with global.__basedir
+		global.__basedir = '/workspace'
+		const atime = new Date('2024-01-01')
+		const mtime = new Date('2024-01-02')
+		writeFile('file.txt', 'content', atime, mtime, mockFs)
+		expect(mockFs.writeFileSync).toHaveBeenCalled()
+		global.__basedir = undefined
+	})
+	it('should sanitize error paths in error messages', () => {
+		// Test lines 355-362: writeFile error handling with path sanitization
+		global.__basedir = '/workspace'
+		global.logger = {
+			error: vi.fn(),
+		}
+		mockFs.writeFileSync.mockImplementation(() => {
+			throw new Error('Error writing to /workspace/path/to/file.txt')
+		})
+		try {
+			writeFile(
+				'path/to/file.txt',
+				'content',
+				undefined,
+				undefined,
+				mockFs,
+			)
+			expect.fail('Should have thrown an error')
+		} catch (error) {
+			expect(error).toBeInstanceOf(Error)
+			expect(error.message).toContain('<workspace>')
+			expect(global.logger?.error).toHaveBeenCalled()
+		}
+		global.__basedir = undefined
+	})
+	it('should handle errors without path in message', () => {
+		global.logger = {
+			error: vi.fn(),
+		}
+		mockFs.writeFileSync.mockImplementation(() => {
+			throw new Error('Generic error')
+		})
+		expect(() =>
+			writeFile(
+				'/test/file.txt',
+				'content',
+				undefined,
+				undefined,
+				mockFs,
+			),
+		).toThrow('Generic error')
+		expect(global.logger?.error).toHaveBeenCalled()
+	})
 })
 describe('readFile - XML error handling', () => {
 	let mockFs
@@ -180,7 +270,9 @@ describe('readFile - XML error handling', () => {
 			statSync: vi.fn(),
 			readFileSync: vi.fn(),
 		}
-		global.logger = { error: vi.fn() }
+		global.logger = {
+			error: vi.fn(),
+		}
 	})
 	it('should reject on invalid XML', async () => {
 		// Test for fileUtils.js line 186 - error handling in convertXML
@@ -189,6 +281,67 @@ describe('readFile - XML error handling', () => {
 		mockFs.readFileSync.mockReturnValue('<root><unclosed>')
 		const result = readFile('/test/file.xml', true, mockFs)
 		await expect(result).rejects.toThrow()
+	})
+	it('should validate path when global.__basedir is set in readFile', () => {
+		// Test line 249: readFile with global.__basedir
+		global.__basedir = '/workspace'
+		mockFs.existsSync.mockReturnValue(true)
+		mockFs.statSync.mockReturnValue({ isFile: () => true })
+		mockFs.readFileSync.mockReturnValue('{"key":"value"}')
+		const result = readFile('file.json', true, mockFs)
+		expect(result).toEqual({ key: 'value' })
+		global.__basedir = undefined
+	})
+	it('should handle YAML parsing warnings', () => {
+		// Test line 265: YAML onWarning callback
+		mockFs.existsSync.mockReturnValue(true)
+		mockFs.statSync.mockReturnValue({ isFile: () => true })
+		mockFs.readFileSync.mockReturnValue('key: value')
+		// Mock yaml.load to call onWarning callback
+		vi.mocked(yaml.load).mockImplementation((_data, options) => {
+			if (options && 'onWarning' in options && options.onWarning) {
+				// Call onWarning to trigger the error path (line 265)
+				// The actual onWarning receives a YAMLException object
+				// Create a mock that stringifies to the message
+				class MockYAMLException {
+					message = 'Test YAML warning message'
+					toString() {
+						return this.message
+					}
+				}
+				const mockWarning = new MockYAMLException()
+				options.onWarning.call(null, mockWarning)
+			}
+			// Don't return since onWarning throws
+			return { key: 'value' }
+		})
+		// The onWarning callback should throw an error
+		expect(() => {
+			readFile('/test/file.yaml', true, mockFs)
+		}).toThrow('YAML parsing file.yaml: Test YAML warning message')
+		// Reset mock for other tests
+		vi.mocked(yaml.load).mockReset()
+	})
+	it('should sanitize error paths in readFile error messages', () => {
+		// Test lines 287-294: readFile error handling with path sanitization
+		global.__basedir = '/workspace'
+		global.logger = {
+			error: vi.fn(),
+		}
+		mockFs.existsSync.mockReturnValue(true)
+		mockFs.statSync.mockReturnValue({ isFile: () => true })
+		mockFs.readFileSync.mockImplementation(() => {
+			throw new Error('Error reading /workspace/path/to/file.yaml')
+		})
+		try {
+			readFile('path/to/file.yaml', true, mockFs)
+			expect.fail('Should have thrown an error')
+		} catch (error) {
+			expect(error).toBeInstanceOf(Error)
+			expect(error.message).toContain('<workspace>')
+			expect(global.logger?.error).toHaveBeenCalled()
+		}
+		global.__basedir = undefined
 	})
 })
 //# sourceMappingURL=fileIO.test.js.map

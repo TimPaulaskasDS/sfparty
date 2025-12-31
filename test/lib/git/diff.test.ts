@@ -67,7 +67,7 @@ test('rejects when git is not installed', async () => {
 				callback(new Error('Command failed'))
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	vi.mocked(spawn).mockReturnValueOnce(git)
 
 	try {
@@ -89,7 +89,7 @@ test('resolves with files when git diff command is successful', async () => {
 				callback(0)
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
 		stdout: {
 			setEncoding: vi.fn(),
@@ -108,7 +108,7 @@ test('resolves with files when git diff command is successful', async () => {
 				}
 			}),
 		},
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
@@ -127,7 +127,7 @@ test('rejects when git diff command fails', async () => {
 				callback(0)
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
 		stderr: {
 			on: vi.fn(),
@@ -136,10 +136,21 @@ test('rejects when git diff command fails', async () => {
 			setEncoding: vi.fn(),
 			on: vi.fn(),
 		},
-	} as ReturnType<typeof spawn>
-	vi.mocked(gitDiff.stderr.on).mockImplementation(
-		(_: string, cb: (err: string) => void) => cb('Command failed'),
-	)
+	} as unknown as ReturnType<typeof spawn>
+	if (gitDiff.stderr && gitDiff.stderr.on) {
+		vi.mocked(gitDiff.stderr.on).mockImplementation(((
+			_: string,
+			cb: (err: string) => void,
+		) => {
+			cb('Command failed')
+			return {} as unknown as ReturnType<
+				typeof import('stream').Readable.prototype.on
+			>
+		}) as unknown as (
+			event: string | symbol,
+			listener: (...args: unknown[]) => void,
+		) => ReturnType<typeof import('stream').Readable.prototype.on>)
+	}
 	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 
 	try {
@@ -161,7 +172,7 @@ test('ignores files when git diff output does not have a tab character', async (
 				callback(0)
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
 		stderr: {
 			on: vi.fn(),
@@ -177,7 +188,7 @@ test('ignores files when git diff output does not have a tab character', async (
 				}
 			}),
 		},
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
@@ -195,7 +206,7 @@ test('rejects when git --version command fails', async () => {
 				callback(1)
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	vi.mocked(spawn).mockReturnValueOnce(git)
 
 	try {
@@ -217,7 +228,7 @@ test('rejects when git diff command fails', async () => {
 				callback(0)
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
 		stderr: {
 			on: vi.fn(),
@@ -230,7 +241,7 @@ test('rejects when git diff command fails', async () => {
 				}
 			}),
 		},
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 
 	try {
@@ -254,7 +265,7 @@ test('handles unknown status type with default action', async () => {
 				callback(0)
 			}
 		}),
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
 		stdout: {
 			setEncoding: vi.fn(),
@@ -270,7 +281,7 @@ test('handles unknown status type with default action', async () => {
 		stderr: {
 			on: vi.fn(),
 		},
-	} as ReturnType<typeof spawn>
+	} as unknown as ReturnType<typeof spawn>
 	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })

@@ -1,2 +1,2 @@
-declare const sum: (a: number, b: number) => number
+export {}
 //# sourceMappingURL=root.test.d.ts.map

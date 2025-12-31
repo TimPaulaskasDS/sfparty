@@ -235,66 +235,64 @@ interface LastCommitResult {
 	latestCommit: string
 }
 
-export function lastCommit({
+export async function lastCommit({
 	dir,
 	fileName = 'index.yaml',
 	existsSync,
 	execFileSync: execFileSyncStub = execFileSync,
 	fileUtils,
 }: LastCommitOptions): Promise<LastCommitResult> {
-	return new Promise((resolve, reject) => {
-		try {
-			const folder = path.resolve(dir, '.sfdx', 'sfparty')
-			const filePath = path.resolve(folder, fileName)
-			let branchSpecificLastCommit: string | undefined
+	try {
+		const folder = path.resolve(dir, '.sfdx', 'sfparty')
+		const filePath = path.resolve(folder, fileName)
+		let branchSpecificLastCommit: string | undefined
 
-			// Ensure the folder exists
-			fileUtils.createDirectory(folder)
+		// Ensure the folder exists
+		await fileUtils.createDirectory(folder)
 
-			if (existsSync(filePath)) {
-				const data = fileUtils.readFile(filePath) as GitDefinition
+		if (existsSync(filePath)) {
+			const data = (await fileUtils.readFile(filePath)) as GitDefinition
 
-				// Determine the current branch name
-				// Security: Use execFileSync with array arguments
-				const currentBranch = execFileSyncStub(
-					'git',
-					['rev-parse', '--abbrev-ref', 'HEAD'],
-					{
-						cwd: dir,
-						encoding: 'utf-8',
-					},
-				).trim()
-
-				// Check if branch-specific last commit exists
-				if (
-					data.git.branches &&
-					data.git.branches[currentBranch] !== undefined
-				) {
-					branchSpecificLastCommit = data.git.branches[currentBranch]
-				} else {
-					// Fallback to top-level lastCommit if branch-specific commit doesn't exist
-					branchSpecificLastCommit = data.git.lastCommit
-				}
-			}
-
+			// Determine the current branch name
 			// Security: Use execFileSync with array arguments
-			const latestCommit = execFileSyncStub(
+			const currentBranch = execFileSyncStub(
 				'git',
-				['log', '--format=format:%H', '-1'],
+				['rev-parse', '--abbrev-ref', 'HEAD'],
 				{
 					cwd: dir,
 					encoding: 'utf-8',
 				},
-			)
+			).trim()
 
-			resolve({
-				lastCommit: branchSpecificLastCommit,
-				latestCommit: latestCommit,
-			})
-		} catch (error) {
-			reject(error)
+			// Check if branch-specific last commit exists
+			if (
+				data.git.branches &&
+				data.git.branches[currentBranch] !== undefined
+			) {
+				branchSpecificLastCommit = data.git.branches[currentBranch]
+			} else {
+				// Fallback to top-level lastCommit if branch-specific commit doesn't exist
+				branchSpecificLastCommit = data.git.lastCommit
+			}
 		}
-	})
+
+		// Security: Use execFileSync with array arguments
+		const latestCommit = execFileSyncStub(
+			'git',
+			['log', '--format=format:%H', '-1'],
+			{
+				cwd: dir,
+				encoding: 'utf-8',
+			},
+		)
+
+		return {
+			lastCommit: branchSpecificLastCommit,
+			latestCommit: latestCommit,
+		}
+	} catch (error) {
+		throw error
+	}
 }
 
 interface UpdateLastCommitOptions {
@@ -304,12 +302,12 @@ interface UpdateLastCommitOptions {
 	fs: typeof fs
 }
 
-export function updateLastCommit({
+export async function updateLastCommit({
 	dir,
 	latest,
 	fileUtils,
 	fs,
-}: UpdateLastCommitOptions): void {
+}: UpdateLastCommitOptions): Promise<void> {
 	if (typeof latest !== 'string' && typeof latest !== 'undefined')
 		throw new Error(
 			`updateLastCommit received a ${typeof latest} instead of string`,
@@ -320,8 +318,8 @@ export function updateLastCommit({
 		const fileName = path.join(folder, 'index.yaml')
 		let data: GitDefinition | undefined = undefined
 
-		if (fileUtils.fileExists({ filePath: fileName, fs })) {
-			data = fileUtils.readFile(fileName) as GitDefinition
+		if (await fileUtils.fileExists({ filePath: fileName, fs })) {
+			data = (await fileUtils.readFile(fileName)) as GitDefinition
 		}
 
 		if (data === undefined) {

@@ -288,11 +288,13 @@ describe('writeFile', () => {
 
 	it('should use current date when timestamps are undefined', () => {
 		// Test lines 343-344: finalAtime and finalMtime when atime/mtime are undefined
+		// When explicitly passing undefined (not omitting the parameter), the default parameter doesn't apply
+		// and the parameter is actually undefined, triggering lines 343-344
 		writeFile(
 			'/test/file.txt',
 			'content',
-			undefined,
-			undefined,
+			undefined as unknown as Date,
+			undefined as unknown as Date,
 			mockFs as unknown as typeof fs,
 		)
 
@@ -304,6 +306,9 @@ describe('writeFile', () => {
 		// Verify that new Date() was called (lines 343-344)
 		expect(atime.getTime()).toBeGreaterThan(0)
 		expect(mtime.getTime()).toBeGreaterThan(0)
+		// Verify these are new Date() instances, not the undefined we passed
+		expect(atime).not.toBeUndefined()
+		expect(mtime).not.toBeUndefined()
 	})
 
 	it('should use provided timestamps when defined', () => {

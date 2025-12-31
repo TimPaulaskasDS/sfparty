@@ -223,6 +223,30 @@ describe('deleteDirectory', () => {
 		expect(mockFs.existsSync).toHaveBeenCalled()
 		expect(mockFs.rmdirSync).toHaveBeenCalledWith('/test/path')
 	})
+
+	it('should handle existsSync returning false in else block', () => {
+		// Test line 125: when directoryExists returns true but existsSync on line 125 returns false
+		// This tests the branch where the if block on line 125 is skipped
+		// directoryExists calls existsSync and statSync, so we need to mock those for directoryExists to return true
+		// Then on line 125, existsSync should return false
+		mockFs.existsSync
+			.mockReturnValueOnce(true) // For directoryExists check
+			.mockReturnValueOnce(false) // For line 125 check
+		mockFs.statSync.mockReturnValue({ isDirectory: () => true })
+
+		const result = deleteDirectory(
+			'/test/path',
+			false,
+			mockFs as unknown as typeof fs,
+		)
+
+		// Verify existsSync was called twice (once for directoryExists, once on line 125)
+		expect(mockFs.existsSync).toHaveBeenCalledTimes(2)
+		// When existsSync returns false on line 125, the function returns nothing (void)
+		expect(result).toBeUndefined()
+		// rmdirSync should not be called since the if block was skipped
+		expect(mockFs.rmdirSync).not.toHaveBeenCalled()
+	})
 })
 
 describe('deleteFile', () => {

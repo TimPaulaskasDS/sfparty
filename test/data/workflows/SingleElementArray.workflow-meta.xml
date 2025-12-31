@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="https://soap.sforce.com/2006/04/metadata">
+  <alerts>
+    <fullName>Single_Element_Test</fullName>
+    <description>Test with single element that becomes array</description>
+    <protected>false</protected>
+    <singleValue>
+      <item>onlyValue</item>
+    </singleValue>
+    <singleBoolean>true</singleBoolean>
+    <singleString>test</singleString>
+    <senderType>CurrentUser</senderType>
+    <template>Test_Template</template>
+  </alerts>
+  <fieldUpdates>
+    <fullName>Single_Field_Update</fullName>
+    <field>Test_Field__c</field>
+    <operation>Literal</operation>
+    <protected>false</protected>
+    <singleMember>
+      <value>single</value>
+    </singleMember>
+  </fieldUpdates>
+</Workflow>

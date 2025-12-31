@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import { existsSync } from 'fs'
-import { diff } from '../../../src/lib/gitUtils'
+import { beforeEach, expect, test, vi } from 'vitest'
+import { diff } from '../../../src/lib/gitUtils.js'
 
 vi.mock('fs', () => ({
 	existsSync: vi.fn(),
@@ -23,30 +24,37 @@ beforeEach(() => {
 	vi.clearAllMocks()
 })
 test('rejects if directory does not exist', async () => {
-	const existsSync = vi.fn().mockReturnValueOnce(false)
-	const spawn = vi.fn()
+	vi.mocked(existsSync).mockReturnValueOnce(false)
+	const spawnMock = vi.fn()
 	try {
-		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
-		fail('Expected function to throw an error')
+		await diff({
+			dir: '/path/to/dir',
+			gitRef,
+			existsSync,
+			spawn: spawnMock,
+		})
+		throw new Error('Expected function to throw an error')
 	} catch (error) {
+		expect(error).toBeInstanceOf(Error)
 		expect(error.message).toEqual(
 			'The directory "/path/to/dir" does not exist',
 		)
 	}
 })
 test('rejects if .git directory does not exist', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(false)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(false)
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
-		fail('Expected function to throw an error')
+		throw new Error('Expected function to throw an error')
 	} catch (error) {
+		expect(error).toBeInstanceOf(Error)
 		expect(error.message).toEqual(
 			`The directory "/path/to/dir" is not a git repository`,
 		)
 	}
 })
 test('rejects when git is not installed', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn().mockImplementationOnce((event, callback) => {
 			if (event === 'error') {
@@ -54,16 +62,17 @@ test('rejects when git is not installed', async () => {
 			}
 		}),
 	}
-	spawn.mockReturnValueOnce(git)
+	vi.mocked(spawn).mockReturnValueOnce(git)
 	try {
 		await diff({ dir: '/path/to/dir', existsSync, spawn })
-		fail('Expected function to throw an error')
+		throw new Error('Expected function to throw an error')
 	} catch (error) {
+		expect(error).toBeInstanceOf(Error)
 		expect(error.message).toEqual('Git is not installed on this machine')
 	}
 })
 test('resolves with files when git diff command is successful', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -90,7 +99,7 @@ test('resolves with files when git diff command is successful', async () => {
 			}),
 		},
 	}
-	spawn.mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
 	expect(files).toEqual([
 		{ type: 'add', path: 'file1.txt', action: 'add' },
@@ -99,7 +108,7 @@ test('resolves with files when git diff command is successful', async () => {
 	])
 })
 test('rejects when git diff command fails', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -116,19 +125,25 @@ test('rejects when git diff command fails', async () => {
 			on: vi.fn(),
 		},
 	}
-	gitDiff.stderr.on.mockImplementation((_, cb) => cb('Command failed'))
-	spawn.mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	if (gitDiff.stderr && gitDiff.stderr.on) {
+		vi.mocked(gitDiff.stderr.on).mockImplementation((_, cb) => {
+			cb('Command failed')
+			return {}
+		})
+	}
+	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
-		fail('Expected function to throw an error')
+		throw new Error('Expected function to throw an error')
 	} catch (error) {
+		expect(error).toBeInstanceOf(Error)
 		expect(error.message).toEqual(
 			'git diff command failed with error: Command failed',
 		)
 	}
 })
 test('ignores files when git diff output does not have a tab character', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -152,7 +167,7 @@ test('ignores files when git diff output does not have a tab character', async (
 			}),
 		},
 	}
-	spawn.mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
 	expect(files).toEqual([
 		{ type: 'add', path: 'file1.txt', action: 'add' },
@@ -160,7 +175,7 @@ test('ignores files when git diff output does not have a tab character', async (
 	])
 })
 test('rejects when git --version command fails', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -168,18 +183,19 @@ test('rejects when git --version command fails', async () => {
 			}
 		}),
 	}
-	spawn.mockReturnValueOnce(git)
+	vi.mocked(spawn).mockReturnValueOnce(git)
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
-		fail('Expected function to throw an error')
+		throw new Error('Expected function to throw an error')
 	} catch (error) {
+		expect(error).toBeInstanceOf(Error)
 		expect(error.message).toEqual(
 			'git --version command failed with code 1',
 		)
 	}
 })
 test('rejects when git diff command fails', async () => {
-	existsSync.mockReturnValueOnce(true).mockReturnValueOnce(true)
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -200,12 +216,45 @@ test('rejects when git diff command fails', async () => {
 			}),
 		},
 	}
-	spawn.mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
-		fail('Expected function to throw an error')
+		throw new Error('Expected function to throw an error')
 	} catch (error) {
+		expect(error).toBeInstanceOf(Error)
 		expect(error.message).toEqual('git diff command failed with code 1')
 	}
+})
+test('handles unknown status type with default action', async () => {
+	// Test lines 174-178: statusType undefined branch
+	// Use a status code that's definitely not in the status object
+	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	const git = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
+	}
+	const gitDiff = {
+		stdout: {
+			setEncoding: vi.fn(),
+			on: vi.fn((event, callback) => {
+				if (event === 'data') {
+					// Use '!' which is not in status object (A,C,D,M,R,T,U,X are the only ones)
+					callback('!\tfile1.txt\n')
+				} else if (event === 'close') {
+					callback(0)
+				}
+			}),
+		},
+		stderr: {
+			on: vi.fn(),
+		},
+	}
+	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
+	// When statusType is undefined, should default to type 'A' (line 176) and action 'add' (line 180)
+	expect(files).toEqual([{ type: 'A', path: 'file1.txt', action: 'add' }])
 })
 //# sourceMappingURL=diff.test.js.map

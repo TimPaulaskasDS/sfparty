@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="https://soap.sforce.com/2006/04/metadata">
+  <alerts>
+    <fullName>ASR_Approval_Rejection_Status_Email_To_CM_and_AM</fullName>
+    <description>ASR Approval/Rejection Status Email To CM and AM</description>
+    <protected>false</protected>
+    <recipients>
+      <type>owner</type>
+    </recipients>
+    <recipients>
+      <field>Submitter__c</field>
+      <type>userLookup</type>
+    </recipients>
+    <senderType>CurrentUser</senderType>
+    <template>All_Templates/ASR_Approval_Rejection_Status_Email_To_CM_and_AM</template>
+  </alerts>
+  <alerts>
+    <fullName>ASR_Rejection_Status_Email_To_CM_and_AM</fullName>
+    <description>ASR Rejection Status Email To CM and AM</description>
+    <protected>false</protected>
+    <recipients>
+      <type>creator</type>
+    </recipients>
+    <recipients>
+      <type>owner</type>
+    </recipients>
+    <senderType>CurrentUser</senderType>
+    <template>All_Templates/ASR_Rejection_Status_Email_To_CM_and_AM</template>
+  </alerts>
+  <fieldUpdates>
+    <fullName>ACV_at_Case_Creation</fullName>
+    <description>Populate the case field ACV at case creation</description>
+    <field>ACV_at_case_creation__c</field>
+    <formula>Account.Annual_Contract_Value_ACV__c</formula>
+    <name>ACV at Case Creation</name>
+    <notifyAssignee>false</notifyAssignee>
+    <operation>Formula</operation>
+    <protected>false</protected>
+    <reevaluateOnChange>false</reevaluateOnChange>
+  </fieldUpdates>
+  <fieldUpdates>
+    <fullName>ASR_Approval_StatusDetail_Update</fullName>
+    <field>Support_Status_Detail__c</field>
+    <literalValue>Pending Order</literalValue>
+    <name>ASR Approval StatusDetail Update</name>
+    <notifyAssignee>false</notifyAssignee>
+    <operation>Literal</operation>
+    <protected>false</protected>
+    <reevaluateOnChange>false</reevaluateOnChange>
+  </fieldUpdates>
+  <rules>
+    <fullName>AI Activation Strategy Case Submission</fullName>
+    <actions>
+      <name>ACV_at_Case_Creation</name>
+      <type>FieldUpdate</type>
+    </actions>
+    <actions>
+      <name>Activation_Strategy_Request_RT_Update</name>
+      <type>FieldUpdate</type>
+    </actions>
+    <actions>
+      <name>Email_notification_for_AM_upon_case_submission</name>
+      <type>Alert</type>
+    </actions>
+    <active>true</active>
+    <booleanFilter>1 AND 2</booleanFilter>
+    <criteriaItems>
+      <field>RecordType.DeveloperName</field>
+      <operation>equals</operation>
+      <value>Activation_Strategy_Request</value>
+    </criteriaItems>
+    <criteriaItems>
+      <field>Status</field>
+      <operation>equals</operation>
+      <value>New</value>
+    </criteriaItems>
+    <description>AI Activation Strategy Case Submission</description>
+    <formula>1 AND 2</formula>
+    <triggerType>onCreateOrTriggeringRecordUpdate</triggerType>
+  </rules>
+  <rules>
+    <fullName>AI Activation Strategy Self Service Case Submission</fullName>
+    <actions>
+      <name>ACV_at_Case_Creation</name>
+      <type>FieldUpdate</type>
+    </actions>
+    <active>true</active>
+    <description>AI Activation Strategy Self Service Case Submission</description>
+    <triggerType>onCreateOrTriggeringRecordUpdate</triggerType>
+  </rules>
+  <outboundMessages>
+    <fullName>Case_Outbound_Message</fullName>
+    <apiVersion>58.0</apiVersion>
+    <description>Case Outbound Message</description>
+    <endpointUrl>https://example.com/webhook</endpointUrl>
+    <includeSessionId>true</includeSessionId>
+    <protected>false</protected>
+    <useDeadLetterQueue>true</useDeadLetterQueue>
+  </outboundMessages>
+  <tasks>
+    <fullName>Case_Task</fullName>
+    <assignedToType>user</assignedToType>
+    <description>Case Task</description>
+    <notifyAssignee>true</notifyAssignee>
+    <priority>Normal</priority>
+    <protected>false</protected>
+    <status>NotStarted</status>
+    <subject>Case Task Subject</subject>
+  </tasks>
+</Workflow>

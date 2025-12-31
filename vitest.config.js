@@ -11,7 +11,6 @@ export default defineConfig({
 			reporter: ['text', 'html', 'clover', 'json'],
 			include: ['src/**/*.ts'],
 			exclude: [
-				'src/lib/pkgObj.cjs',
 				'src/index.ts', // CLI entry point - requires integration testing
 			],
 		},

@@ -17,7 +17,6 @@ describe('index.ts CLI Structure', () => {
 		it('should use strict mode', async () => {
 			// TypeScript strict mode is enforced by tsconfig.json compiler options
 			const indexPath = path.resolve(process.cwd(), 'src/index.ts')
-			const content = fs.readFileSync(indexPath, 'utf8')
 			// TypeScript doesn't need 'use strict' - it's implied by ES modules
 			expect(indexPath).toContain('index.ts')
 		})

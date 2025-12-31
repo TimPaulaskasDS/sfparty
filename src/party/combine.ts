@@ -1,16 +1,14 @@
 import ci from 'ci-info'
 import clc from 'cli-color'
-import cliSpinners from 'cli-spinners'
 import convertHrtime from 'convert-hrtime'
+import { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
-import logUpdate from 'log-update'
+import type { ListrTaskWrapper } from 'listr2'
 import path from 'path'
-import * as xml2js from 'xml2js'
 import * as fileUtils from '../lib/fileUtils.js'
 import type { Package } from '../lib/packageUtil.js'
 import type { MetadataDefinition } from '../types/metadata.js'
 
-const spinner = cliSpinners['dots']
 const processed = {
 	total: 0,
 	errors: 0,
@@ -24,9 +22,38 @@ interface FileNameInfo {
 	profileName: string | undefined
 }
 
-interface FileStats {
+export interface FileStats {
 	atime: Date | undefined
 	mtime: Date | undefined
+}
+
+/**
+ * Updates file stats with the latest access and modification times
+ * @param fileStats Current file stats to update
+ * @param stats File system stats to compare against
+ * @returns Updated file stats with latest atime and mtime
+ */
+export function updateFileStats(
+	fileStats: FileStats,
+	stats: fs.Stats | undefined,
+): FileStats {
+	try {
+		if (!stats) return fileStats
+
+		const updated: FileStats = { ...fileStats }
+
+		if (updated.atime === undefined || stats.atime > updated.atime) {
+			updated.atime = stats.atime
+		}
+
+		if (updated.mtime === undefined || stats.mtime > updated.mtime) {
+			updated.mtime = stats.mtime
+		}
+
+		return updated
+	} catch (error) {
+		return fileStats
+	}
 }
 
 interface FileObj {
@@ -43,6 +70,8 @@ interface CombineConfig {
 	total: number
 	addPkg: Package
 	desPkg: Package
+	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
+	task?: ListrTaskWrapper<any, any, any>
 }
 
 interface GlobalContext {
@@ -83,7 +112,6 @@ declare const global: GlobalContext & typeof globalThis
 export class Combine {
 	#type: string | undefined = undefined
 	#root: string | undefined = undefined
-	#spinnerMessage = ''
 	#startTime: bigint = BigInt(0)
 	#fileName: FileNameInfo = {
 		fullName: undefined,
@@ -91,7 +119,6 @@ export class Combine {
 		profileName: undefined,
 	}
 	#errorMessage = ''
-	#frameIndex = 0
 	#types: string[] = []
 	#fileStats: FileStats = {
 		atime: undefined,
@@ -102,6 +129,8 @@ export class Combine {
 	#addedFiles: string[] = []
 	#deletedFiles: string[] = []
 	#mainDeleted = false
+	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
+	#task?: ListrTaskWrapper<any, any, any>
 
 	private _metadataDefinition!: MetadataDefinition
 	sourceDir!: string
@@ -121,6 +150,7 @@ export class Combine {
 		this.total = config.total
 		this.addPkg = config.addPkg
 		this.desPkg = config.desPkg
+		this.#task = config.task
 	}
 
 	get metadataDefinition(): MetadataDefinition {
@@ -158,41 +188,45 @@ export class Combine {
 		this._sequence = sequence
 	}
 
-	combine(): Promise<boolean | string> {
-		return new Promise((resolve, reject) => {
-			const that = this
+	async combine(): Promise<boolean | string> {
+		const that = this
 
-			if (!fileUtils.directoryExists({ dirPath: that.sourceDir, fs }))
-				reject(new Error(`Path does not exist: ${that.sourceDir}`))
-			const types = ['directories', 'singleFiles', 'main']
-			types.forEach((type) => {
-				const metaType = type as keyof MetadataDefinition
-				if (that.metadataDefinition[metaType] !== undefined) {
-					const values = that.metadataDefinition[metaType]
-					if (Array.isArray(values)) {
-						that.#types = that.#types.concat(values)
-					}
+		const exists = await fileUtils.directoryExists({
+			dirPath: that.sourceDir,
+			fs,
+		})
+		if (!exists) {
+			throw new Error(`Path does not exist: ${that.sourceDir}`)
+		}
+
+		const types = ['directories', 'singleFiles', 'main']
+		types.forEach((type) => {
+			const metaType = type as keyof MetadataDefinition
+			if (that.metadataDefinition[metaType] !== undefined) {
+				const values = that.metadataDefinition[metaType]
+				if (Array.isArray(values)) {
+					that.#types = that.#types.concat(values)
 				}
-			})
-
-			that.#types.sort((a, b) => {
-				if (a === '$') return -1
-				if (that.metadataDefinition.xmlFirst !== undefined) {
-					if (a === that.metadataDefinition.xmlFirst) return -1
-				}
-				if (a < b) return -1
-				if (a > b) return 1
-				return 0
-			})
-
-			that.#types.forEach((key) => {
-				that.#json[key] = undefined
-			})
-
-			resolve(processStart(that))
+			}
 		})
 
-		function processStart(that: Combine): boolean | string {
+		that.#types.sort((a, b) => {
+			if (a === '$') return -1
+			if (that.metadataDefinition.xmlFirst !== undefined) {
+				if (a === that.metadataDefinition.xmlFirst) return -1
+			}
+			if (a < b) return -1
+			if (a > b) return 1
+			return 0
+		})
+
+		that.#types.forEach((key) => {
+			that.#json[key] = undefined
+		})
+
+		return processStart(that)
+
+		async function processStart(that: Combine): Promise<boolean | string> {
 			// set delta based on metadata definition if git delta enabled
 			that.#delta =
 				that.metadataDefinition.delta === true &&
@@ -228,7 +262,7 @@ export class Combine {
 				)
 			}
 
-			const success = processParts(that)
+			const success = await processParts(that)
 			// Ensure we only match existing metadata type directory and item
 
 			if (success === true) {
@@ -251,7 +285,7 @@ export class Combine {
 						)
 					}
 				}
-				saveXML(that)
+				await saveXML(that)
 				return true
 			} else if (
 				success &&
@@ -286,25 +320,10 @@ export class Combine {
 					return true
 				}
 
-				logUpdate(
-					that.#spinnerMessage
-						.replace(
-							'[%1]',
-							that.sequence
-								.toString()
-								.padStart(that.total.toString().length, ' '),
-						)
-						.replace(
-							'[%2]',
-							`. ${clc.redBright(
-								'source not found - removing XML file',
-							)}`,
-						)
-						.replace('[%3]', ``)
-						.replace('[%4]', `${global.icons?.delete || ''} `)
-						.replace('[%5]', that.#fileName.shortName || ''),
+				// Suppress verbose output - log via global.logger instead
+				global.logger?.warn(
+					`Source not found for ${that.#fileName.shortName || 'unknown'} - removing XML file`,
 				)
-				logUpdate.done()
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git?.enabled
@@ -315,13 +334,15 @@ export class Combine {
 					)
 				}
 				try {
-					deleteFile(that, that.#fileName.fullName || '')
+					await deleteFile(that, that.#fileName.fullName || '')
 				} catch (error) {}
 				return 'deleted'
 			}
 		}
 
-		function processParts(that: Combine): boolean | string | Error {
+		async function processParts(
+			that: Combine,
+		): Promise<boolean | string | Error> {
 			if (processed.type !== that.#root) {
 				processed.current = 0
 				processed.type = that.#root
@@ -329,37 +350,14 @@ export class Combine {
 			processed.current++
 
 			that.#startTime = process.hrtime.bigint()
-			that.#spinnerMessage = `[%1] of ${that.total} - ${
-				that.#root
-			}: [%4]${clc.yellowBright('[%5]')}[%2][%3]`
 
 			try {
-				that.#types.forEach((key) => {
+				for (const key of that.#types) {
 					// display message
-					logUpdate(
-						that.#spinnerMessage
-							.replace(
-								'[%1]',
-								that.sequence
-									.toString()
-									.padStart(
-										that.total.toString().length,
-										' ',
-									),
-							)
-							.replace(
-								'[%2]',
-								`\n${clc.magentaBright(
-									nextFrame(that),
-								)} ${key}`,
-							)
-							.replace('[%3]', `${that.#errorMessage}`)
-							.replace('[%4]', `${global.icons?.working || ''} `)
-							.replace(
-								'[%5]',
-								`${that.#fileName.shortName || ''} `,
-							),
-					)
+					if (that.#task) {
+						that.#task.output = [`Processing ${key}...`]
+					}
+					// Suppress verbose output - main progress is handled by ProgressTracker
 
 					if (that.metadataDefinition.main?.includes(key)) {
 						const fileObj: FileObj = {
@@ -370,7 +368,12 @@ export class Combine {
 								`main.${global.format}`,
 							),
 						}
-						const success = processFile(that, key, fileObj, 'main')
+						const success = await processFile(
+							that,
+							key,
+							fileObj,
+							'main',
+						)
 						if (!success) {
 							throw new Error('delete XML')
 						}
@@ -383,17 +386,17 @@ export class Combine {
 					} else if (
 						that.metadataDefinition.singleFiles?.includes(key)
 					) {
-						processSingleFile(that, key)
+						await processSingleFile(that, key)
 					} else if (
 						that.metadataDefinition.directories?.includes(key)
 					) {
-						processDirectory(that, key)
+						await processDirectory(that, key)
 					} else {
 						global.logger?.warn(
 							`Unexpected metadata type: ${clc.redBright(key)}`,
 						)
 					}
-				})
+				}
 				return true
 			} catch (error) {
 				if (error instanceof Error && error.message === 'delete XML') {
@@ -413,7 +416,10 @@ export class Combine {
 			}
 		}
 
-		function processSingleFile(that: Combine, key: string): void {
+		async function processSingleFile(
+			that: Combine,
+			key: string,
+		): Promise<void> {
 			const fileObj: FileObj = {
 				shortName: key,
 				fullName: path.join(
@@ -422,50 +428,38 @@ export class Combine {
 					key + `.${global.format}`,
 				),
 			}
-			processFile(that, key, fileObj)
+			await processFile(that, key, fileObj)
 		}
 
-		function processDirectory(that: Combine, key: string): boolean {
+		async function processDirectory(
+			that: Combine,
+			key: string,
+		): Promise<boolean> {
 			// Process the directory sourceDir/metaDir/key
 			const currentDir = path.join(that.sourceDir, that.metaDir, key)
 			// ensure the directory exists
-			if (fileUtils.directoryExists({ dirPath: currentDir, fs })) {
-				const fileList = fileUtils.getFiles(currentDir, global.format)
+			const dirExists = await fileUtils.directoryExists({
+				dirPath: currentDir,
+				fs,
+			})
+			if (dirExists) {
+				const fileList = await fileUtils.getFiles(
+					currentDir,
+					global.format,
+				)
 				fileList.sort() // process files alphabetically
 				that.#json[key] = []
 
 				// iterate over fileList
-				fileList.forEach((file, index) => {
+				for (let index = 0; index < fileList.length; index++) {
+					const file = fileList[index]
 					if (!ci.isCI) {
-						logUpdate(
-							that.#spinnerMessage
-								.replace(
-									'[%1]',
-									that.sequence
-										.toString()
-										.padStart(
-											that.total.toString().length,
-											' ',
-										),
-								)
-								.replace(
-									'[%2]',
-									`\n${clc.magentaBright(
-										nextFrame(that),
-									)} ${key} - ${index + 1} of ${
-										fileList.length
-									} - ${clc.magentaBright(file)}`,
-								)
-								.replace('[%3]', `${that.#errorMessage}`)
-								.replace(
-									'[%4]',
-									`${global.icons?.working || ''} `,
-								)
-								.replace(
-									'[%5]',
-									`${that.#fileName.shortName} `,
-								),
-						)
+						if (that.#task) {
+							that.#task.output = [
+								`${key} - ${index + 1} of ${fileList.length} - ${file}`,
+							]
+						}
+						// Suppress verbose output - main progress is handled by ProgressTracker
 					}
 
 					const fileObj: FileObj = {
@@ -477,8 +471,8 @@ export class Combine {
 							file,
 						),
 					}
-					processFile(that, key, fileObj)
-				})
+					await processFile(that, key, fileObj)
+				}
 			}
 
 			const filteredArray = (
@@ -489,28 +483,33 @@ export class Combine {
 					path.join(that.sourceDir, that.metaDir, key),
 				),
 			)
-			filteredArray.forEach((file) => {
+			for (const file of filteredArray) {
 				const fileObj: FileObj = {
 					shortName: path.basename(file),
 					fullName: file,
 				}
-				processFile(that, key, fileObj)
-			})
+				await processFile(that, key, fileObj)
+			}
 
 			return true
 		}
 
-		function deleteFile(that: Combine, fileName: string): void {
-			fileUtils.deleteFile(fileName)
-			fileUtils.deleteDirectory(path.join(that.sourceDir, that.metaDir))
+		async function deleteFile(
+			that: Combine,
+			fileName: string,
+		): Promise<void> {
+			await fileUtils.deleteFile(fileName)
+			await fileUtils.deleteDirectory(
+				path.join(that.sourceDir, that.metaDir),
+			)
 		}
 
-		function processFile(
+		async function processFile(
 			that: Combine,
 			key: string,
 			fileObj: FileObj,
 			rootKey?: string,
-		): boolean {
+		): Promise<boolean> {
 			if (
 				fileObj === undefined ||
 				typeof fileObj !== 'object' ||
@@ -549,12 +548,12 @@ export class Combine {
 					`.${global.format}`,
 					`-sandbox.${global.format}`,
 				)
-				loginIpRangesSandbox = fileUtils.fileExists({
+				loginIpRangesSandbox = await fileUtils.fileExists({
 					filePath: loginIpRangesSandboxFile,
 					fs,
 				})
 			}
-			const fileExists = fileUtils.fileExists({
+			const fileExists = await fileUtils.fileExists({
 				filePath: fileObj.fullName,
 				fs,
 			})
@@ -637,11 +636,11 @@ export class Combine {
 					let loginIpRangesResult: unknown
 					let loginIpRangesSandboxResult: unknown
 					if (fileExists)
-						loginIpRangesResult = fileUtils.readFile(
+						loginIpRangesResult = await fileUtils.readFile(
 							fileObj.fullName,
 						)
 					if (loginIpRangesSandbox && loginIpRangesSandboxFile)
-						loginIpRangesSandboxResult = fileUtils.readFile(
+						loginIpRangesSandboxResult = await fileUtils.readFile(
 							loginIpRangesSandboxFile,
 						)
 					if (fileExists && loginIpRangesSandbox) {
@@ -657,11 +656,13 @@ export class Combine {
 						result = loginIpRangesSandboxResult
 					}
 				} else {
-					result = fileUtils.readFile(fileObj.fullName)
+					result = await fileUtils.readFile(fileObj.fullName)
 				}
 			} catch (error) {
-				logUpdate(fileObj.fullName)
-				logUpdate.done()
+				// Suppress verbose output - errors are logged via global.logger
+				global.logger?.error(
+					`Error reading file: ${fileObj.fullName}: ${error instanceof Error ? error.message : String(error)}`,
+				)
 				throw error
 			}
 			const resultTyped = result as Record<string, unknown>
@@ -709,19 +710,14 @@ export class Combine {
 						;(that.#json[key] as unknown[]).push(finalResult[key])
 					}
 				} catch (error) {
+					// Re-throw error to propagate up
 					throw error
 				}
 			} else {
-				try {
-					that.#json[key] =
-						rootKey !== undefined
-							? (finalResult[rootKey] as Record<string, unknown>)[
-									key
-								]
-							: finalResult[key]
-				} catch (error) {
-					throw error
-				}
+				that.#json[key] =
+					rootKey !== undefined
+						? (finalResult[rootKey] as Record<string, unknown>)[key]
+						: finalResult[key]
 			}
 
 			if (
@@ -775,10 +771,11 @@ export class Combine {
 				return combined
 			}
 
-			updateFileStats(
+			const fileInfoResult = await fileUtils.fileInfo(fileObj.fullName)
+			updateFileStatsInternal(
 				that,
 				fileObj.fullName,
-				fileUtils.fileInfo(fileObj.fullName).stats,
+				fileInfoResult.stats,
 			)
 			return true
 		}
@@ -792,71 +789,59 @@ export class Combine {
 			const sortKey = that.metadataDefinition.sortKeys[key]
 			const object = json.object as string
 
-			try {
-				;(json[key] as unknown[]).forEach((arrItem: unknown) => {
-					const typedItem = arrItem as Record<string, unknown>
-					typedItem[sortKey] =
-						`${object}.${typedItem[sortKey]}`.replace(
-							'.undefined',
-							'',
-						)
+			;(json[key] as unknown[]).forEach((arrItem: unknown) => {
+				const typedItem = arrItem as Record<string, unknown>
+				typedItem[sortKey] = `${object}.${typedItem[sortKey]}`.replace(
+					'.undefined',
+					'',
+				)
 
-					// add object key if previously existed
-					if (
-						that.metadataDefinition.keyOrder?.[key] !== undefined &&
-						that.metadataDefinition.keyOrder[key].includes('order')
-					) {
-						typedItem.object = object
-					}
-				})
+				// add object key if previously existed
+				if (
+					that.metadataDefinition.keyOrder?.[key] !== undefined &&
+					that.metadataDefinition.keyOrder[key].includes('order')
+				) {
+					typedItem.object = object
+				}
+			})
 
-				// delete object key that we added to the part file
-				delete json.object
-			} catch (error) {
-				throw error
-			}
+			// delete object key that we added to the part file
+			delete json.object
 
 			return json
 		}
 
-		function updateFileStats(
+		function updateFileStatsInternal(
 			that: Combine,
 			_fileName: string,
 			stats: fs.Stats | undefined,
 		): void {
-			try {
-				if (!stats) return
-
-				if (
-					that.#fileStats.atime === undefined ||
-					stats.atime > that.#fileStats.atime
-				) {
-					that.#fileStats.atime = stats.atime
-				}
-
-				if (
-					that.#fileStats.mtime === undefined ||
-					stats.mtime > that.#fileStats.mtime
-				) {
-					that.#fileStats.mtime = stats.mtime
-				}
-			} catch (error) {}
+			that.#fileStats = updateFileStats(that.#fileStats, stats)
 		}
 
-		function saveXML(that: Combine): void {
-			const builder = new xml2js.Builder({
-				cdata: false,
-				rootName: that.#root,
-				xmldec: { version: '1.0', encoding: 'UTF-8' },
+		async function saveXML(that: Combine): Promise<void> {
+			// Configure builder to match xml2js output format
+			const builder = new XMLBuilder({
+				ignoreAttributes: false, // Keep attributes
+				attributesGroupName: '$', // Group attributes in $ object (matches xml2js format)
+				attributeNamePrefix: '', // No prefix needed when using attributesGroupName
+				format: true, // Pretty print
+				suppressEmptyNode: false, // Keep empty nodes
 			})
-			fileUtils.createDirectory(that.targetDir)
+			await fileUtils.createDirectory(that.targetDir)
 
 			Object.keys(that.#json).forEach((key) => {
 				if (that.#json[key] === undefined) delete that.#json[key]
 			})
-			const xml = builder.buildObject(that.#json)
+			// Build XML from JSON object - wrap in root if needed
+			const jsonToBuild =
+				that.#root && that.#json[that.#root]
+					? { [that.#root]: that.#json[that.#root] }
+					: that.#json
+			// Add XML declaration manually since fast-xml-parser doesn't have xmlDeclaration option
+			const xml = `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build(jsonToBuild)}`
 
-			fileUtils.writeFile(
+			await fileUtils.writeFile(
 				that.#fileName.fullName || '',
 				xml,
 				that.#fileStats.atime,
@@ -870,31 +855,16 @@ export class Combine {
 		function finishMessage(that: Combine): void {
 			const executionTime = getTimeDiff(that.#startTime)
 			const durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
-			const stateIcon =
-				that.#errorMessage === ''
-					? global.icons?.success
-					: global.icons?.fail
-
-			logUpdate(
-				that.#spinnerMessage
-					.replace(
-						'[%1]',
-						that.sequence
-							.toString()
-							.padStart(that.total.toString().length, ' '),
-					)
-					.replace('[%2]', `. Processed in ${durationMessage}.`)
-					.replace('[%3]', `${that.#errorMessage}`)
-					.replace('[%4]', `${stateIcon || ''} `)
-					.replace('[%5]', that.#fileName.shortName || ''),
-			)
-			logUpdate.done()
-		}
-
-		function nextFrame(that: Combine): string {
-			return spinner.frames[
-				(that.#frameIndex = ++that.#frameIndex % spinner.frames.length)
-			]
+			if (that.#task) {
+				that.#task.title = `${that.#fileName.shortName || ''} - Processed in ${durationMessage}`
+			}
+			// Suppress verbose output - main progress is handled by ProgressTracker
+			// Errors are logged via global.logger
+			if (that.#errorMessage !== '') {
+				global.logger?.error(
+					`Error processing ${that.#fileName.shortName || 'unknown'}: ${that.#errorMessage}`,
+				)
+			}
 		}
 
 		// end of functions
@@ -904,7 +874,13 @@ export class Combine {
 	// end of class
 }
 
-function sortJSON(json: unknown, key: string | undefined): unknown {
+/**
+ * Sorts a JSON array by a specified key
+ * @param json JSON value (should be an array)
+ * @param key Key to sort by
+ * @returns Sorted JSON array
+ */
+export function sortJSON(json: unknown, key: string | undefined): unknown {
 	if (Array.isArray(json) && key !== undefined) {
 		json.sort((a, b) => {
 			if (a[key] < b[key]) return -1
@@ -968,6 +944,32 @@ function sortAndArrange(
 	return json
 }
 
+/**
+ * Compares two keys for sorting based on xmlOrder
+ * @param a First key
+ * @param b Second key
+ * @param xmlOrder Array defining the order of keys
+ * @returns Comparison result: -1 if a < b, 1 if a > b, 0 if equal
+ */
+export function compareKeysForXmlOrder(
+	a: string,
+	b: string,
+	xmlOrder: string[] | undefined,
+): number {
+	if (xmlOrder !== undefined) {
+		let aIndex = xmlOrder.indexOf(a)
+		let bIndex = xmlOrder.indexOf(b)
+		if (aIndex === -1) aIndex = 99
+		if (bIndex === -1) bIndex = 99
+
+		if (aIndex < bIndex && aIndex !== 99) return -1
+		if (aIndex > bIndex && bIndex !== 99) return 1
+	}
+	if (a < b) return -1
+	if (a > b) return 1
+	return 0
+}
+
 function arrangeKeys(
 	that: Combine,
 	json: unknown,
@@ -977,25 +979,9 @@ function arrangeKeys(
 		return json as Record<string, unknown>
 	}
 	const jsonObj = json as Record<string, unknown>
+	const xmlOrderForKey = that.metadataDefinition.xmlOrder?.[key || '']
 	const sortedKeys = Object.keys(jsonObj)
-		.sort((a, b) => {
-			if (that.metadataDefinition.xmlOrder !== undefined) {
-				if (that.metadataDefinition.xmlOrder[key || ''] !== undefined) {
-					let aIndex =
-						that.metadataDefinition.xmlOrder[key || ''].indexOf(a)
-					let bIndex =
-						that.metadataDefinition.xmlOrder[key || ''].indexOf(b)
-					if (aIndex === -1) aIndex = 99
-					if (bIndex === -1) bIndex = 99
-
-					if (aIndex < bIndex && aIndex !== 99) return -1
-					if (aIndex > bIndex && bIndex !== 99) return 1
-				}
-			}
-			if (a < b) return -1
-			if (a > b) return 1
-			return 0
-		})
+		.sort((a, b) => compareKeysForXmlOrder(a, b, xmlOrderForKey))
 		.reduce((accumulator: Record<string, unknown>, keyName) => {
 			accumulator[keyName] = jsonObj[keyName]
 			return accumulator

@@ -1,4 +1,5 @@
-'use strict'
+import { expect, test } from 'vitest'
+
 const sum = (a, b) => {
 	return a + b
 }

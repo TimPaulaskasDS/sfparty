@@ -44,13 +44,13 @@ describe('find', () => {
 	})
 	it('should use process.cwd() when root is not provided', () => {
 		mockFs.statSync.mockReturnValue({ isFile: () => true })
-		const originalCwd = process.cwd()
 		const result = find('package.json', undefined, mockFs)
 		expect(result).toContain('package.json')
 	})
 	it('should handle special characters in filename', () => {
 		mockFs.statSync.mockReturnValue({ isFile: () => true })
 		const result = find('file*.txt', '/test/path', mockFs)
+		void result // Intentionally unused - just testing it doesn't throw
 		// Should replace * with unicode escape
 		expect(mockFs.statSync).toHaveBeenCalledWith(
 			'/test/path/file\u002a.txt',

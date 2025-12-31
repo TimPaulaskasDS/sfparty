@@ -15,7 +15,7 @@ afterEach(() => {
 })
 
 it('should throw an error if latest is not a string', () => {
-	latest = {}
+	latest = {} as unknown as string
 	expect(() =>
 		updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs }),
 	).toThrowError('updateLastCommit received a object instead of string')

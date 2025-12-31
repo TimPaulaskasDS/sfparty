@@ -1,17 +1,32 @@
+import type { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
 import path from 'path'
-import type { Builder } from 'xml2js'
 import * as packageDefinition from '../meta/Package.js'
 
 interface FileUtilsInterface {
-	fileExists: (options: { filePath: string; fs: typeof fs }) => boolean
-	readFile: (filePath: string) => unknown
-	createDirectory: (dirPath: string) => void
-	writeFile: (fileName: string, data: string) => void
+	fileExists: (options: {
+		filePath: string
+		fs: typeof fs
+	}) => Promise<boolean>
+	readFile: (filePath: string) => Promise<unknown>
+	createDirectory: (dirPath: string) => Promise<void>
+	writeFile: (fileName: string, data: string) => Promise<void>
 }
 
-interface XML2JSInterface {
-	Builder: typeof Builder
+interface XMLBuilderInterface {
+	XMLBuilder: new (options?: {
+		ignoreAttributes?: boolean
+		attributesGroupName?: string
+		attributeNamePrefix?: string
+		format?: boolean
+		suppressEmptyNode?: boolean
+		rootNodeName?: string
+		xmlDeclaration?: {
+			include?: boolean
+			encoding?: string
+			version?: string
+		}
+	}) => XMLBuilder
 }
 
 interface PackageNode {
@@ -51,99 +66,65 @@ export class Package {
 		this.packageJSON = undefined
 	}
 
-	getPackageXML(fileUtils: FileUtilsInterface): Promise<string> {
+	async getPackageXML(fileUtils: FileUtilsInterface): Promise<string> {
 		const that = this
-		return new Promise((resolve, reject) => {
-			try {
-				if (that.xmlPath === undefined)
-					throw new Error('Package not initialized')
+		try {
+			if (that.xmlPath === undefined)
+				throw new Error('Package not initialized')
 
-				const fileName = path.resolve(that.xmlPath)
-				if (
-					fileUtils.fileExists({ filePath: fileName, fs }) &&
-					global.git?.append
-				) {
-					const dataPromise = fileUtils.readFile(fileName)
-					if (dataPromise instanceof Promise) {
-						dataPromise
-							.then((json) => {
-								try {
-									let packageJson = json as
-										| PackageJSON
-										| undefined
-									if (
-										packageJson === undefined ||
-										Object.keys(packageJson).length === 0
-									) {
-										packageJson = JSON.parse(
-											JSON.stringify(
-												packageDefinition
-													.metadataDefinition
-													.emptyPackage,
-											),
-										) as PackageJSON
-									}
-									processJSON(that, packageJson, fileUtils)
-									resolve('existing')
-								} catch (error) {
-									reject(error)
-								}
-							})
-							.catch((error) => {
-								reject(error)
-							})
-					} else {
-						try {
-							let packageJson = dataPromise as
-								| PackageJSON
-								| undefined
-							if (
-								packageJson === undefined ||
-								(packageJson &&
-									Object.keys(packageJson).length === 0)
-							) {
-								packageJson = JSON.parse(
-									JSON.stringify(
-										packageDefinition.metadataDefinition
-											.emptyPackage,
-									),
-								) as PackageJSON
-							}
-							processJSON(that, packageJson, fileUtils)
-							resolve('existing')
-						} catch (error) {
-							reject(error)
-						}
-					}
-				} else {
-					try {
-						const json: PackageJSON = JSON.parse(
+			const fileName = path.resolve(that.xmlPath)
+			const exists = await fileUtils.fileExists({
+				filePath: fileName,
+				fs,
+			})
+
+			if (exists && global.git?.append) {
+				const json = await fileUtils.readFile(fileName)
+				try {
+					let packageJson = json as PackageJSON | undefined
+					if (
+						packageJson === undefined ||
+						Object.keys(packageJson).length === 0
+					) {
+						packageJson = JSON.parse(
 							JSON.stringify(
 								packageDefinition.metadataDefinition
 									.emptyPackage,
 							),
-						)
-						processJSON(that, json)
-						resolve('not found')
-					} catch (error) {
-						reject(error)
+						) as PackageJSON
 					}
+					await processJSON(that, packageJson, fileUtils)
+					return 'existing'
+				} catch (error) {
+					throw error
 				}
-			} catch (error) {
-				reject(error)
+			} else {
+				try {
+					const json: PackageJSON = JSON.parse(
+						JSON.stringify(
+							packageDefinition.metadataDefinition.emptyPackage,
+						),
+					)
+					await processJSON(that, json)
+					return 'not found'
+				} catch (error) {
+					throw error
+				}
 			}
-		})
+		} catch (error) {
+			throw error
+		}
 
-		function processJSON(
+		async function processJSON(
 			that: Package,
 			json: PackageJSON,
 			fileUtils?: FileUtilsInterface,
-		): void {
+		): Promise<void> {
 			try {
 				if (fileUtils) {
-					const data = fileUtils.readFile(
+					const data = (await fileUtils.readFile(
 						path.join(global.__basedir || '', 'sfdx-project.json'),
-					) as { sourceApiVersion: string }
+					)) as { sourceApiVersion: string }
 					json.Package.version = data.sourceApiVersion
 				}
 			} catch (error) {
@@ -272,10 +253,10 @@ export class Package {
 		}
 	}
 
-	savePackage(
-		xml2jsModule: XML2JSInterface,
+	async savePackage(
+		xmlBuilderModule: XMLBuilderInterface,
 		fileUtils: FileUtilsInterface,
-	): void {
+	): Promise<void> {
 		const that = this
 		if (!that.packageJSON) {
 			throw new Error('Package JSON is undefined')
@@ -287,17 +268,22 @@ export class Package {
 			delete json.version
 			json.version = version
 
-			const builder = new xml2jsModule.Builder({
-				cdata: false,
-				rootName: 'Package',
-				xmldec: { version: '1.0', encoding: 'UTF-8' },
+			const builder = new xmlBuilderModule.XMLBuilder({
+				ignoreAttributes: false, // Keep attributes
+				attributesGroupName: '$', // Group attributes in $ object (matches xml2js format)
+				attributeNamePrefix: '', // No prefix needed when using attributesGroupName
+				format: true, // Pretty print
+				suppressEmptyNode: false, // Keep empty nodes
 			})
 			const fileName = that.xmlPath
-			fileUtils.createDirectory(path.dirname(fileName))
+			await fileUtils.createDirectory(path.dirname(fileName))
 
-			const xml = builder.buildObject(json)
+			// Build XML from JSON object - wrap in Package root
+			const jsonToBuild = { Package: json }
+			// Add XML declaration manually since fast-xml-parser doesn't have xmlDeclaration option
+			const xml = `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build(jsonToBuild)}`
 
-			fileUtils.writeFile(fileName, xml)
+			await fileUtils.writeFile(fileName, xml)
 		} catch (error) {
 			throw error
 		}

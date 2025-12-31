@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import { beforeEach, expect, it, test, vi } from 'vitest'
 import { lastCommit } from '../../../src/lib/gitUtils.js'
 
 const dir = '/test'
@@ -9,6 +10,7 @@ const fileUtils = {
 		if (filePath.indexOf('project') !== -1) {
 			return { git: { lastCommit: 'lastCommit' } }
 		}
+		return undefined
 	}),
 	fileExists: vi.fn((filePath) => {
 		if (filePath.indexOf('project') !== -1) {
@@ -30,13 +32,13 @@ beforeEach(() => {
 	vi.clearAllMocks()
 })
 test('should return lastCommit and latestCommit if file exists', async () => {
-	fs.existsSync.mockReturnValue(true)
+	vi.mocked(fs.existsSync).mockReturnValue(true)
 	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: 'project',
 		existsSync: fs.existsSync,
 		execFileSync: execFileSyncMock,
-		fileUtils,
+		fileUtils: fileUtils,
 	})
 	expect(result).toEqual({
 		lastCommit: 'lastCommit',
@@ -44,14 +46,14 @@ test('should return lastCommit and latestCommit if file exists', async () => {
 	})
 })
 test('should return only latestCommit if file does not exist', async () => {
-	fs.existsSync.mockReturnValue(false)
-	fileUtils.fileExists.mockReturnValue(false)
+	vi.mocked(fs.existsSync).mockReturnValue(false)
+	vi.mocked(fileUtils.fileExists).mockReturnValue(false)
 	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: __dirname,
 		existsSync: fs.existsSync,
 		execFileSync: execFileSyncMock,
-		fileUtils,
+		fileUtils: fileUtils,
 	})
 	expect(result).toEqual({
 		lastCommit: undefined,
@@ -59,14 +61,14 @@ test('should return only latestCommit if file does not exist', async () => {
 	})
 })
 it('should handle missing file gracefully', async () => {
-	fs.existsSync.mockImplementation(() => false)
+	vi.mocked(fs.existsSync).mockImplementation(() => false)
 	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir,
 		fileName,
 		existsSync: fs.existsSync,
 		execFileSync: execFileSyncMock,
-		fileUtils,
+		fileUtils: fileUtils,
 	})
 	expect(result).toEqual({
 		lastCommit: undefined,
@@ -82,8 +84,7 @@ it('should return only latest commit if lastCommit is undefined', async () => {
 		.mockReturnValueOnce('latestCommit') // Second call for latest commit
 	const result = await lastCommit({
 		dir: '/test',
-		fileUtils,
-		fs,
+		fileUtils: fileUtils,
 		existsSync: fs.existsSync,
 		execFileSync: execFileSyncMock,
 	})
@@ -103,12 +104,12 @@ test('should throw an error when execFileSync returns an error', async () => {
 	try {
 		await lastCommit({
 			dir: '/test',
-			fileUtils,
-			fs,
+			fileUtils: fileUtils,
 			existsSync: fs.existsSync,
 			execFileSync: execFileSyncMock,
 		})
 	} catch (e) {
+		expect(e).toBeInstanceOf(Error)
 		expect(e.message).toBe('execFileSync error')
 	}
 })
@@ -127,8 +128,7 @@ test('should throw an error when execFileSync returns an error', async () => {
 	await expect(
 		lastCommit({
 			dir: '/test',
-			fileUtils,
-			fs,
+			fileUtils: fileUtils,
 			existsSync: fs.existsSync,
 			execFileSync: execFileSyncMock,
 		}),
@@ -151,8 +151,7 @@ test('should use branch-specific commit when branches object exists', async () =
 		.mockReturnValueOnce('latest-commit') // Second call for latest commit
 	const result = await lastCommit({
 		dir: '/test',
-		fileUtils,
-		fs,
+		fileUtils: fileUtils,
 		existsSync: fs.existsSync,
 		execFileSync: execFileSyncMock,
 	})

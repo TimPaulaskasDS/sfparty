@@ -1,6 +1,7 @@
 import { execFileSync } from 'child_process'
 import * as os from 'os'
-import { log } from '../../../src/lib/gitUtils'
+import { beforeEach, expect, it, vi } from 'vitest'
+import { log } from '../../../src/lib/gitUtils.js'
 
 vi.mock('child_process', () => {
 	return {
@@ -12,7 +13,7 @@ beforeEach(() => {
 })
 it('should return an array of git commit hashes', () => {
 	const commits = ['1234567890abcdef', '234567890abcdef1', '34567890abcdef12']
-	execFileSync.mockReturnValue(commits.join(os.EOL))
+	vi.mocked(execFileSync).mockReturnValue(commits.join(os.EOL))
 	const dir = process.cwd()
 	const gitRef = 'HEAD~1..HEAD'
 	const result = log(dir, gitRef, execFileSync)
@@ -24,12 +25,33 @@ it('should return an array of git commit hashes', () => {
 	expect(result).toEqual(commits)
 })
 it('should throw an error if git is not installed or no entry found in path', () => {
-	const error = { message: 'ENOENT' }
-	execFileSync.mockImplementation(() => {
+	const error = new Error('ENOENT')
+	vi.mocked(execFileSync).mockImplementation(() => {
 		throw error
 	})
 	const dir = process.cwd()
 	const gitRef = 'HEAD~1..HEAD'
-	expect(() => log(dir, gitRef, execFileSync)).toThrow()
+	try {
+		log(dir, gitRef, execFileSync)
+		expect.fail('Should have thrown an error')
+	} catch (err) {
+		expect(err).toBeInstanceOf(Error)
+		// Test line 219: error message modification for ENOENT
+		expect(err.message).toBe('git not installed or no entry found in path')
+	}
+})
+it('should throw error for invalid git reference (empty string)', () => {
+	const dir = process.cwd()
+	const gitRef = ''
+	expect(() => log(dir, gitRef, execFileSync)).toThrow(
+		'Invalid git reference',
+	)
+})
+it('should throw error for invalid git reference (invalid characters)', () => {
+	const dir = process.cwd()
+	const gitRef = 'HEAD; rm -rf /'
+	expect(() => log(dir, gitRef, execFileSync)).toThrow(
+		'Git reference contains invalid characters',
+	)
 })
 //# sourceMappingURL=log.test.js.map
