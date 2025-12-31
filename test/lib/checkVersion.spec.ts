@@ -25,8 +25,18 @@ global.icons = {
 
 global.runType = null
 
-vi.mock('axios')
-vi.mock('child_process', () => ({ spawnSync: vi.fn() }))
+const mockAxiosGet = vi.fn()
+const mockSpawnSync = vi.fn()
+
+vi.mock('axios', () => ({
+	default: {
+		get: (...args: unknown[]) => mockAxiosGet(...args),
+	},
+}))
+
+vi.mock('child_process', () => ({
+	spawnSync: (...args: unknown[]) => mockSpawnSync(...args),
+}))
 
 describe('checkVersion', () => {
 	let spy: ReturnType<typeof vi.spyOn>
@@ -40,9 +50,9 @@ describe('checkVersion', () => {
 	})
 
 	it('should return "A newer version" if a newer version is available', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
+		})
 		const result = await checkVersion({
 			axios,
 			spawnSync,
@@ -52,7 +62,7 @@ describe('checkVersion', () => {
 	})
 
 	it('should return "You are on the latest version" if the current version is the latest version', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '1.0.0' } },
 		})
 		const result = await checkVersion({
@@ -64,13 +74,13 @@ describe('checkVersion', () => {
 	})
 
 	it('should throw a NpmNotInstalledError if npm is not installed', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
-		vi.mocked(spawnSync).mockReturnValue({
+		})
+		mockSpawnSync.mockReturnValue({
 			status: 1,
 			stderr: Buffer.from('command not found'),
-		} as ReturnType<typeof spawnSync>)
+		})
 		try {
 			await checkVersion({
 				axios,
@@ -88,7 +98,7 @@ describe('checkVersion', () => {
 	})
 
 	it('should throw a PackageNotFoundError if the package is not found on the npm registry', async () => {
-		vi.mocked(axios.get).mockRejectedValue({ response: { status: 404 } })
+		mockAxiosGet.mockRejectedValue({ response: { status: 404 } })
 		try {
 			await checkVersion({
 				axios,
@@ -105,13 +115,13 @@ describe('checkVersion', () => {
 	})
 
 	it('should throw a UpdateError if an error occurs while updating the package', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
-		vi.mocked(spawnSync).mockReturnValue({
+		})
+		mockSpawnSync.mockReturnValue({
 			status: 1,
 			stderr: Buffer.from('Update error'),
-		} as ReturnType<typeof spawnSync>)
+		})
 		try {
 			await checkVersion({
 				axios,
@@ -129,20 +139,15 @@ describe('checkVersion', () => {
 	})
 
 	it('should throw a UpdateError if update.status !== 0', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
-		vi.mocked(spawnSync)
-			.mockImplementationOnce(
-				() => ({ status: 0 }) as ReturnType<typeof spawnSync>,
-			)
-			.mockImplementationOnce(
-				() =>
-					({
-						status: 1,
-						stderr: Buffer.from('Update error'),
-					}) as ReturnType<typeof spawnSync>,
-			)
+		})
+		mockSpawnSync
+			.mockImplementationOnce(() => ({ status: 0 }))
+			.mockImplementationOnce(() => ({
+				status: 1,
+				stderr: Buffer.from('Update error'),
+			}))
 		try {
 			await checkVersion({
 				axios,
@@ -160,7 +165,7 @@ describe('checkVersion', () => {
 	})
 
 	it('should log "You are on the latest version" if update flag is true and the current version is the latest version', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '1.0.0' } },
 		})
 		await checkVersion({
@@ -175,12 +180,10 @@ describe('checkVersion', () => {
 	})
 
 	it('should log "Application updated successfully." after successful update', async () => {
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
-		vi.mocked(spawnSync).mockReturnValue({ status: 0 } as ReturnType<
-			typeof spawnSync
-		>)
+		})
+		mockSpawnSync.mockReturnValue({ status: 0 })
 		await checkVersion({
 			axios,
 			spawnSync,
@@ -195,9 +198,9 @@ describe('checkVersion', () => {
 	it('should use correct update command for global runType', async () => {
 		// Test for checkVersion.js lines 49-50 - global case
 		global.runType = 'global'
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
+		})
 		const result = await checkVersion({
 			axios,
 			spawnSync,
@@ -212,9 +215,9 @@ describe('checkVersion', () => {
 	it('should use correct update command for npx runType', async () => {
 		// Test for checkVersion.js lines 51-52 - npx case
 		global.runType = 'npx'
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
+		})
 		const result = await checkVersion({
 			axios,
 			spawnSync,
@@ -229,9 +232,9 @@ describe('checkVersion', () => {
 	it('should use correct update command for node runType', async () => {
 		// Test for checkVersion.js lines 53-54 - node case
 		global.runType = 'node'
-		vi.mocked(axios.get).mockResolvedValue({
+		mockAxiosGet.mockResolvedValue({
 			data: { 'dist-tags': { latest: '2.0.0' } },
-		} as Awaited<ReturnType<typeof axios.get>>)
+		})
 		const result = await checkVersion({
 			axios,
 			spawnSync,
@@ -259,7 +262,7 @@ describe('checkVersion', () => {
 		// Mock axios.get to verify validateStatus is called
 		let validateStatusCalled = false
 		let validateStatusValue: number | undefined
-		vi.mocked(axios.get).mockImplementation(
+		mockAxiosGet.mockImplementation(
 			(_url: string, config?: Parameters<typeof axios.get>[1]) => {
 				// Simulate validateStatus being called with a non-200 status
 				if (config?.validateStatus) {

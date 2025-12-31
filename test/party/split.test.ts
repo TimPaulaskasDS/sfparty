@@ -29,21 +29,20 @@ declare const global: GlobalContext & typeof globalThis
 // Mock modules before importing
 vi.mock('fs', () => ({
 	default: {
-		readFile: vi.fn(
-			(
-				_path: Parameters<typeof import('fs').readFile>[0],
-				cb: Parameters<typeof import('fs').readFile>[1],
-			) => {
-				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+		promises: {
+			readFile: vi
+				.fn()
+				.mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>Admin</fullName>
     <custom>false</custom>
-</Profile>`
-				if (typeof cb === 'function') {
-					cb(null, Buffer.from(xmlData))
-				}
-			},
-		) as unknown as typeof import('fs').readFile,
+</Profile>`),
+			stat: vi.fn().mockResolvedValue({
+				size: 1024,
+				isFile: () => true,
+				isDirectory: () => false,
+			}),
+		},
 		existsSync: vi.fn(() => true),
 		statSync: vi.fn(() => ({
 			isFile: () => true,
@@ -53,27 +52,24 @@ vi.mock('fs', () => ({
 	},
 }))
 
-vi.mock('../../src/lib/fileUtils.js', async (importOriginal) => {
-	const actual =
-		await importOriginal<typeof import('../../src/lib/fileUtils.js')>()
-	return {
-		...actual,
-		fileInfo: vi.fn((_path: string) => ({
+vi.mock('../../src/lib/fileUtils.js', () => ({
+	fileInfo: vi.fn((_path: string) =>
+		Promise.resolve({
 			dirname: '/source',
 			basename: 'Admin',
 			filename: 'Admin.profile-meta.xml',
 			extname: '.xml',
 			exists: true,
-		})),
-		getFiles: vi.fn(() => ['Admin.profile-meta.xml']),
-		fileExists: vi.fn(() => true),
-		directoryExists: vi.fn(() => true),
-		createDirectory: vi.fn(),
-		deleteDirectory: vi.fn(),
-		saveFile: vi.fn(() => true),
-		readFile: vi.fn(() => null),
-	}
-})
+		}),
+	),
+	getFiles: vi.fn(() => Promise.resolve(['Admin.profile-meta.xml'])),
+	fileExists: vi.fn(() => Promise.resolve(true)),
+	directoryExists: vi.fn(() => Promise.resolve(true)),
+	createDirectory: vi.fn(() => Promise.resolve(undefined)),
+	deleteDirectory: vi.fn(() => Promise.resolve(undefined)),
+	saveFile: vi.fn(() => Promise.resolve(true)),
+	readFile: vi.fn(() => Promise.resolve(null)),
+}))
 
 describe('Split class', () => {
 	beforeEach(() => {
@@ -94,7 +90,10 @@ describe('Split class', () => {
 		global.format = 'yaml'
 		global.logger = {
 			info: vi.fn(),
+			warn: vi.fn(),
 			error: vi.fn(),
+			debug: vi.fn(),
+			log: vi.fn(),
 		}
 		global.icons = {
 			warn: '🔕',
@@ -106,8 +105,46 @@ describe('Split class', () => {
 		}
 	})
 
-	afterEach(() => {
-		vi.clearAllMocks()
+	afterEach(async () => {
+		// Reset mocks but preserve the mock functions
+		vi.clearAllMocks?.()
+		// Restore any fast-xml-parser XMLParser.prototype modifications
+		try {
+			const { XMLParser } = await import('fast-xml-parser')
+			// Reset to default if it was modified - we can't easily restore the original,
+			// but we can ensure a fresh instance is created for each test
+			if (XMLParser && XMLParser.prototype) {
+				// The prototype might have been modified, but since we create new instances
+				// in each test, this should be fine. The modifications are test-specific.
+			}
+		} catch {
+			// fast-xml-parser might not be available, which is fine
+		}
+		// Re-setup default mocks after clearing to ensure they're ready for next test
+		if (
+			fs.promises.stat &&
+			typeof (fs.promises.stat as ReturnType<typeof vi.fn>)
+				.mockResolvedValue === 'function'
+		) {
+			;(fs.promises.stat as ReturnType<typeof vi.fn>).mockResolvedValue({
+				size: 1024,
+				isFile: () => true,
+				isDirectory: () => false,
+			})
+		}
+		if (
+			fs.promises.readFile &&
+			typeof (fs.promises.readFile as ReturnType<typeof vi.fn>)
+				.mockResolvedValue === 'function'
+		) {
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <custom>false</custom>
+</Profile>`)
+		}
 	})
 
 	describe('Constructor', () => {
@@ -279,8 +316,10 @@ describe('Split class', () => {
 		})
 
 		it('should resolve false when file does not exist', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileExists).mockReturnValueOnce(false)
+			// Mock fs.promises.stat to throw ENOENT error (file not found)
+			;(
+				fs.promises.stat as ReturnType<typeof vi.fn>
+			).mockRejectedValueOnce(new Error('ENOENT'))
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -315,21 +354,14 @@ describe('Split class', () => {
 		})
 
 		it('should handle permission set metadata', async () => {
-			const fs = await import('fs')
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(
+				`<?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="https://soap.sforce.com/2006/04/metadata">
     <label>Test PermSet</label>
     <hasActivationRequired>false</hasActivationRequired>
-</PermissionSet>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
+</PermissionSet>`,
 			)
 
 			const config = {
@@ -350,21 +382,12 @@ describe('Split class', () => {
 		// XML parsing errors are caught internally and logged
 
 		it('should handle invalid XML root', async () => {
-			const fs = await import('fs')
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <InvalidRoot>
     <content>data</content>
-</InvalidRoot>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</InvalidRoot>`)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -385,23 +408,20 @@ describe('Split class', () => {
 		})
 
 		it('should update http to https in xmlns', async () => {
-			const fs = await import('fs')
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			// Mock stat first (file exists check)
+			;(
+				fs.promises.stat as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce({
+				size: 1024,
+				isFile: () => true,
+				isDirectory: () => false,
+			})
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>TestProfile</fullName>
-</Profile>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</Profile>`)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -416,12 +436,12 @@ describe('Split class', () => {
 			const result = await split.split()
 
 			expect(result).toBe(true)
-			expect(fileUtils.createDirectory).toHaveBeenCalled()
+			expect(
+				fileUtils.createDirectory as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
 		})
 
 		it('should delete existing target directory', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -434,15 +454,12 @@ describe('Split class', () => {
 			const split = new Split(config)
 			await split.split()
 
-			expect(fileUtils.deleteDirectory).toHaveBeenCalledWith(
-				expect.stringContaining('Admin'),
-				true,
-			)
+			expect(
+				fileUtils.deleteDirectory as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalledWith(expect.stringContaining('Admin'), true)
 		})
 
 		it('should create target directory', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -455,9 +472,9 @@ describe('Split class', () => {
 			const split = new Split(config)
 			await split.split()
 
-			expect(fileUtils.createDirectory).toHaveBeenCalledWith(
-				expect.stringContaining('Admin'),
-			)
+			expect(
+				fileUtils.createDirectory as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalledWith(expect.stringContaining('Admin'))
 		})
 	})
 
@@ -481,15 +498,9 @@ describe('Split class', () => {
 
 	describe('Complex XML Processing', () => {
 		it('should handle profile with multiple sections', async () => {
-			const fs = await import('fs')
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>ComplexProfile</fullName>
     <custom>true</custom>
@@ -508,12 +519,7 @@ describe('Split class', () => {
         <editable>true</editable>
         <readable>true</readable>
     </fieldPermissions>
-</Profile>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</Profile>`)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -528,19 +534,15 @@ describe('Split class', () => {
 			const result = await split.split()
 
 			expect(result).toBe(true)
-			expect(fileUtils.saveFile).toHaveBeenCalled()
+			expect(
+				fileUtils.saveFile as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
 		})
 
 		it('should handle custom labels with multiple entries', async () => {
-			const fs = await import('fs')
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <CustomLabels xmlns="https://soap.sforce.com/2006/04/metadata">
     <labels>
         <fullName>Label1</fullName>
@@ -560,12 +562,7 @@ describe('Split class', () => {
         <protected>false</protected>
         <value>Value 3</value>
     </labels>
-</CustomLabels>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</CustomLabels>`)
 
 			const config = {
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -581,19 +578,15 @@ describe('Split class', () => {
 
 			expect(result).toBe(true)
 			// Should have saved files for each label
-			expect(fileUtils.saveFile).toHaveBeenCalled()
+			expect(
+				fileUtils.saveFile as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
 		})
 
 		it('should handle permission set with various permissions', async () => {
-			const fs = await import('fs')
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="https://soap.sforce.com/2006/04/metadata">
     <label>Custom PermSet</label>
     <hasActivationRequired>false</hasActivationRequired>
@@ -615,12 +608,7 @@ describe('Split class', () => {
         <object>CustomObject__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
-</PermissionSet>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</PermissionSet>`)
 
 			const config = {
 				metadataDefinition: permsetDefinition.metadataDefinition,
@@ -635,18 +623,15 @@ describe('Split class', () => {
 			const result = await split.split()
 
 			expect(result).toBe(true)
-			expect(fileUtils.createDirectory).toHaveBeenCalled()
+			expect(
+				fileUtils.createDirectory as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
 		})
 
 		it('should handle nested XML elements', async () => {
-			const fs = await import('fs')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>NestedProfile</fullName>
     <custom>false</custom>
@@ -659,12 +644,7 @@ describe('Split class', () => {
         <default>true</default>
         <visible>true</visible>
     </recordTypeVisibilities>
-</Profile>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</Profile>`)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -682,14 +662,9 @@ describe('Split class', () => {
 		})
 
 		it('should handle boolean value conversion', async () => {
-			const fs = await import('fs')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>BooleanProfile</fullName>
     <custom>true</custom>
@@ -699,12 +674,7 @@ describe('Split class', () => {
         <editable>false</editable>
         <readable>true</readable>
     </fieldPermissions>
-</Profile>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</Profile>`)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -722,25 +692,15 @@ describe('Split class', () => {
 		})
 
 		it('should handle empty array elements', async () => {
-			const fs = await import('fs')
-
-			vi.mocked(fs.default.readFile).mockImplementationOnce(
-				(
-					_path: Parameters<typeof fs.default.readFile>[0],
-					cb: Parameters<typeof fs.default.readFile>[1],
-				) => {
-					const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>EmptyProfile</fullName>
     <custom>false</custom>
     <description></description>
     <userLicense>Salesforce</userLicense>
-</Profile>`
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+</Profile>`)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -760,8 +720,9 @@ describe('Split class', () => {
 
 	describe('File name handling', () => {
 		it('should extract short name from file path', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileInfo).mockReturnValueOnce({
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce({
 				dirname: '/source/profiles',
 				basename: 'System Administrator',
 				filename: 'System Administrator.profile-meta.xml',
@@ -788,8 +749,9 @@ describe('Split class', () => {
 		})
 
 		it('should handle file paths with special characters', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileInfo).mockReturnValueOnce({
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce({
 				dirname: '/source/profiles',
 				basename: 'Profile (Special)',
 				filename: 'Profile (Special).profile-meta.xml',
@@ -818,8 +780,6 @@ describe('Split class', () => {
 	describe('Format handling', () => {
 		it('should respect yaml format', async () => {
 			global.format = 'yaml'
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -832,8 +792,11 @@ describe('Split class', () => {
 			const split = new Split(config)
 			await split.split()
 
-			expect(fileUtils.saveFile).toHaveBeenCalled()
-			const calls = vi.mocked(fileUtils.saveFile).mock.calls
+			expect(
+				fileUtils.saveFile as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
+			const calls = (fileUtils.saveFile as ReturnType<typeof vi.fn>).mock
+				.calls
 			// Check that format is passed correctly
 			expect(calls.some((call: unknown[]) => call[2] === 'yaml')).toBe(
 				true,
@@ -842,8 +805,6 @@ describe('Split class', () => {
 
 		it('should respect json format', async () => {
 			global.format = 'json'
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -856,15 +817,40 @@ describe('Split class', () => {
 			const split = new Split(config)
 			await split.split()
 
-			expect(fileUtils.saveFile).toHaveBeenCalled()
+			expect(
+				fileUtils.saveFile as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
 		})
 	})
 
 	describe('Branch coverage - additional conditional paths', () => {
 		beforeEach(async () => {
-			vi.clearAllMocks()
+			// Reset mocks - manually reset each mock function
+			vi.clearAllMocks?.()
+			// Reset fs.promises.stat mock (Split uses this to check file existence)
+			if (
+				fs.promises.stat &&
+				typeof (fs.promises.stat as ReturnType<typeof vi.fn>)
+					.mockResolvedValue === 'function'
+			) {
+				;(
+					fs.promises.stat as ReturnType<typeof vi.fn>
+				).mockResolvedValue({
+					size: 1024,
+					isFile: () => true,
+					isDirectory: () => false,
+				})
+			}
 			// Reset file exists mock
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			if (
+				fileUtils.fileExists &&
+				typeof (fileUtils.fileExists as ReturnType<typeof vi.fn>)
+					.mockResolvedValue === 'function'
+			) {
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+			}
 		})
 
 		it('should handle invalid information passed to split', async () => {
@@ -887,8 +873,10 @@ describe('Split class', () => {
 		})
 
 		it('should handle file not found error', async () => {
-			vi.mocked(fileUtils.fileExists).mockReturnValue(false)
-
+			// Split uses fs.promises.stat directly, not fileUtils.fileExists
+			;(
+				fs.promises.stat as ReturnType<typeof vi.fn>
+			).mockRejectedValueOnce(new Error('ENOENT'))
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -926,7 +914,9 @@ describe('Split class', () => {
 			const result = await split.split()
 
 			expect(result).toBe(true)
-			expect(fileUtils.saveFile).toHaveBeenCalled()
+			expect(
+				fileUtils.saveFile as ReturnType<typeof vi.fn>,
+			).toHaveBeenCalled()
 		})
 
 		it('should handle empty targetDir in constructor', () => {
@@ -944,11 +934,10 @@ describe('Split class', () => {
 		})
 
 		it('should handle sandbox loginIpRanges in profiles', async () => {
-			vi.mocked(fileUtils.fileExists)
-				.mockReturnValueOnce(true)
-				.mockReturnValueOnce(true)
-				.mockReturnValueOnce(true)
-
+			;(fileUtils.fileExists as ReturnType<typeof vi.fn>)
+				.mockResolvedValueOnce(true)
+				.mockResolvedValueOnce(true)
+				.mockResolvedValueOnce(true)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -974,19 +963,21 @@ describe('Split class', () => {
     </userPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlWithComplexObject))
-					}
-				},
-			)
+			// Mock stat first (file exists check)
+			;(
+				fs.promises.stat as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce({
+				size: 1024,
+				isFile: () => true,
+				isDirectory: () => false,
+			})
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlWithComplexObject)
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1016,19 +1007,13 @@ describe('Split class', () => {
     </objectPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlWithNestedStructure))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlWithNestedStructure)
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1058,19 +1043,13 @@ describe('Split class', () => {
     </userPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlWithArrays))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlWithArrays)
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1100,19 +1079,13 @@ describe('Split class', () => {
     </classAccesses>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlWithMultipleSections))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlWithMultipleSections)
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1139,17 +1112,9 @@ describe('Split class', () => {
         <item>value3</item>
     </arrayField>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1171,16 +1136,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
     <custom>false</custom>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 
 			// Mock console.error to verify it's called
 			const consoleErrorSpy = vi
@@ -1241,17 +1199,9 @@ describe('Split class', () => {
     </fieldPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithSplitObjects,
 				sourceDir: '/source',
@@ -1283,17 +1233,9 @@ describe('Split class', () => {
     </fieldPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithSplitObjects,
 				sourceDir: '/source',
@@ -1333,17 +1275,9 @@ describe('Split class', () => {
     </userPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithKeyOrder,
 				sourceDir: '/source',
@@ -1380,17 +1314,9 @@ describe('Split class', () => {
     </userPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithSortKeys,
 				sourceDir: '/source',
@@ -1425,17 +1351,9 @@ describe('Split class', () => {
     </userPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithNested,
 				sourceDir: '/source',
@@ -1461,17 +1379,9 @@ describe('Split class', () => {
     </fieldPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1505,17 +1415,9 @@ describe('Split class', () => {
     </fieldPermissions>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithSplitObjects,
 				sourceDir: '/source',
@@ -1543,17 +1445,9 @@ describe('Split class', () => {
     <custom>false</custom>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithoutSortKey,
 				sourceDir: '/source',
@@ -1575,17 +1469,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1612,17 +1498,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDefWithMain,
 				sourceDir: '/source',
@@ -1645,17 +1523,9 @@ describe('Split class', () => {
     <custom>false</custom>
 </Profile>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1677,17 +1547,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
 </InvalidRoot>`
 
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
-
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -1723,16 +1585,9 @@ describe('Split class', () => {
         <enabled>false</enabled>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -1765,16 +1620,9 @@ describe('Split class', () => {
         <enabled>true</enabled>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -1809,16 +1657,9 @@ describe('Split class', () => {
         <enabled>true</enabled>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -1852,16 +1693,9 @@ describe('Split class', () => {
         <enabled>false</enabled>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -1897,16 +1731,9 @@ describe('Split class', () => {
         <sameKey>value2</sameKey>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -1939,16 +1766,9 @@ describe('Split class', () => {
         </nested>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -1970,16 +1790,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
     <custom>false</custom>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2004,16 +1817,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
     <custom>false</custom>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2050,16 +1856,9 @@ describe('Split class', () => {
         <enabled>true</enabled>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -2094,16 +1893,9 @@ describe('Split class', () => {
         <sameKey>value2</sameKey>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -2139,16 +1931,9 @@ describe('Split class', () => {
         <enabled>true</enabled>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -2184,16 +1969,9 @@ describe('Split class', () => {
         </nested>
     </userPermissions>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -2217,16 +1995,9 @@ describe('Split class', () => {
         <item>onlyValue</item>
     </singleValue>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2248,16 +2019,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
     <custom>false</custom>
 </Profile>`
-			vi.mocked(fs.readFile).mockImplementation(
-				(
-					_path: Parameters<typeof fs.readFile>[0],
-					cb: Parameters<typeof fs.readFile>[1],
-				) => {
-					if (typeof cb === 'function') {
-						cb(null, Buffer.from(xmlData))
-					}
-				},
-			)
+			;(
+				fs.promises.readFile as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(xmlData)
 			// Mock console.error to verify it's called
 			const consoleErrorSpy = vi
 				.spyOn(console, 'error')
@@ -2289,11 +2053,12 @@ describe('Split class', () => {
 
 		describe('Coverage for uncovered lines from EXECUTION_TRACE.md', () => {
 			it('should cover transformJSON line 517 error re-throw when keySort throws', async () => {
-				// Test line 517: transformJSON error re-throw
-				// transformJSON calls keySort at line 515, and if keySort throws, it's caught at line 516
-				// and re-thrown at line 517
-				// keySort can throw from the forEach callback at line 567, which would propagate
-				// through the call stack to transformJSON
+				// Test line 573: transformJSON error re-throw (updated line numbers for fast-xml-parser)
+				// transformJSON calls keySort at line 571, and if keySort throws, it's caught at line 572
+				// and re-thrown at line 573
+				// We need to create data that will cause keySort to throw an error
+				// Since the code uses fast-xml-parser, we need to create XML that parses to an object
+				// that will cause an error when keySort processes it
 				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>Admin</fullName>
@@ -2303,21 +2068,14 @@ describe('Split class', () => {
         <readable>true</readable>
     </fieldPermissions>
 </Profile>`
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
-				// Create an object that will cause an error in keySort's forEach callback
-				// The error will be caught at line 566 and re-thrown at line 567
-				// This error will propagate to transformJSON and be caught at line 516,
-				// then re-thrown at line 517
+				// Mock fast-xml-parser to return data that will cause keySort to throw
+				// We'll use vi.spyOn to intercept the XMLParser.parse call
+				const { XMLParser } = await import('fast-xml-parser')
+				const originalParse = XMLParser.prototype.parse
 				const throwingObject = {
 					field: 'Account.Name',
 					get editable() {
@@ -2326,21 +2084,13 @@ describe('Split class', () => {
 					readable: true,
 				}
 
-				const { Parser } = await import('xml2js')
-				const originalParse = Parser.prototype.parseString
-				Parser.prototype.parseString = function (
-					_data: unknown,
-					cb: (err: unknown, result?: unknown) => void,
-				) {
-					cb(null, {
-						Profile: {
-							$: {
-								xmlns: 'https://soap.sforce.com/2006/04/metadata',
-							},
-							fullName: 'Admin',
-							fieldPermissions: [throwingObject],
-						},
-					})
+				XMLParser.prototype.parse = function (xml: string) {
+					// Return parsed data that includes our throwing object
+					const parsed = originalParse.call(this, xml)
+					if (parsed.Profile?.fieldPermissions) {
+						parsed.Profile.fieldPermissions = [throwingObject]
+					}
+					return parsed
 				}
 
 				const config = {
@@ -2353,14 +2103,14 @@ describe('Split class', () => {
 				}
 
 				const split = new Split(config)
-				// Error thrown in keySort (line 567) propagates to transformJSON,
-				// caught at line 516, re-thrown at line 517
+				// Error thrown in keySort (line 571) propagates to transformJSON,
+				// caught at line 572, re-thrown at line 573
 				await expect(split.split()).rejects.toThrow(
 					'Error in keySort processing',
 				)
 
 				// Restore
-				Parser.prototype.parseString = originalParse
+				XMLParser.prototype.parse = originalParse
 			})
 
 			it('should cover keySort line 560 return 0 in keyOrder sort', async () => {
@@ -2376,17 +2126,9 @@ describe('Split class', () => {
         <readable>true</readable>
     </fieldPermissions>
 </Profile>`
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2403,9 +2145,9 @@ describe('Split class', () => {
 			})
 
 			it('should cover keySort line 567 error re-throw in forEach', async () => {
-				// Test line 567: keySort error re-throw in forEach
-				// Need to trigger an error in the reduce operation (lines 562-565)
-				// The error happens when accessing item[key] in the reduce callback
+				// Test line 571: keySort error re-throw in forEach (updated for fast-xml-parser)
+				// Need to trigger an error when keySort processes the data
+				// The error happens when accessing item[key] during sorting
 				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="https://soap.sforce.com/2006/04/metadata">
     <fullName>Admin</fullName>
@@ -2415,44 +2157,31 @@ describe('Split class', () => {
         <readable>true</readable>
     </fieldPermissions>
 </Profile>`
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				// Create an object with a getter that throws when accessed
-				// This will cause the reduce operation to throw when trying to access item[key]
+				// This will cause the sort operation to throw when trying to access item[key]
 				const throwingObject = {
 					field: 'Account.Name',
 					get editable() {
-						// This getter throws when accessed during reduce
+						// This getter throws when accessed during sort
 						throw new Error('Access denied in getter')
 					},
 					readable: true,
 				}
 
-				// Mock the parser to return our throwing object
-				const { Parser } = await import('xml2js')
-				const originalParse = Parser.prototype.parseString
-				Parser.prototype.parseString = function (
-					_data: unknown,
-					cb: (err: unknown, result?: unknown) => void,
-				) {
-					cb(null, {
-						Profile: {
-							$: {
-								xmlns: 'https://soap.sforce.com/2006/04/metadata',
-							},
-							fullName: 'Admin',
-							fieldPermissions: [throwingObject],
-						},
-					})
+				// Mock fast-xml-parser to return our throwing object
+				const { XMLParser } = await import('fast-xml-parser')
+				const originalParse = XMLParser.prototype.parse
+				XMLParser.prototype.parse = function (xml: string) {
+					// Return parsed data that includes our throwing object
+					const parsed = originalParse.call(this, xml)
+					if (parsed.Profile?.fieldPermissions) {
+						parsed.Profile.fieldPermissions = [throwingObject]
+					}
+					return parsed
 				}
 
 				const config = {
@@ -2465,14 +2194,14 @@ describe('Split class', () => {
 				}
 
 				const split = new Split(config)
-				// Should throw error from reduce when accessing item['editable'],
-				// caught and re-thrown at line 567
+				// Should throw error from sort when accessing item['editable'],
+				// caught and re-thrown at line 573
 				await expect(split.split()).rejects.toThrow(
 					'Access denied in getter',
 				)
 
 				// Restore
-				Parser.prototype.parseString = originalParse
+				XMLParser.prototype.parse = originalParse
 			})
 
 			it('should cover keySort line 586 recursive call with nested objects', async () => {
@@ -2491,17 +2220,9 @@ describe('Split class', () => {
         </metadata>
     </fieldPermissions>
 </Profile>`
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2530,38 +2251,21 @@ describe('Split class', () => {
         <item>onlyValue</item>
     </singleValue>
 </Profile>`
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
-				// Mock the parser to return single-element arrays
-				// Note: With explicitArray: false, xml2js typically doesn't create arrays
-				// But we can mock it to return arrays for testing
-				const { Parser } = await import('xml2js')
-				const originalParse = Parser.prototype.parseString
-				Parser.prototype.parseString = function (
-					_data: unknown,
-					cb: (err: unknown, result?: unknown) => void,
-				) {
-					cb(null, {
-						Profile: {
-							$: {
-								xmlns: 'https://soap.sforce.com/2006/04/metadata',
-							},
-							fullName: 'Admin',
-							custom: 'false',
-							singleValue: {
-								item: ['onlyValue'], // Single-element array - will trigger line 605
-							},
-						},
-					})
+				// Mock fast-xml-parser to return single-element arrays
+				// This tests xml2json line 701 (array length === 1 conversion)
+				const { XMLParser } = await import('fast-xml-parser')
+				const originalParse = XMLParser.prototype.parse
+				XMLParser.prototype.parse = function (xml: string) {
+					const parsed = originalParse.call(this, xml)
+					if (parsed.Profile?.singleValue?.item) {
+						// Ensure it's an array with single element to test xml2json line 701
+						parsed.Profile.singleValue.item = ['onlyValue']
+					}
+					return parsed
 				}
 
 				const config = {
@@ -2576,11 +2280,11 @@ describe('Split class', () => {
 				const split = new Split(config)
 				const result = await split.split()
 				expect(result).toBe(true)
-				// The single-element array ['onlyValue'] should trigger line 605
-				// when xml2json processes it via the JSON.stringify replacer
+				// The single-element array ['onlyValue'] should trigger xml2json line 701
+				// when xml2json processes it
 
 				// Restore
-				Parser.prototype.parseString = originalParse
+				XMLParser.prototype.parse = originalParse
 			})
 
 			it('should cover xml2json lines 613-617 error handling with different error message', async () => {
@@ -2596,16 +2300,9 @@ describe('Split class', () => {
     <fullName>Admin</fullName>
     <custom>false</custom>
 </Profile>`
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				// Mock console.error to verify it's called
 				const consoleErrorSpy = vi
@@ -2615,17 +2312,15 @@ describe('Split class', () => {
 				// Create a value that throws when compared with ===
 				// We need to intercept the comparison operation
 				// Since === comparison doesn't normally throw, we'll use a getter that throws
-				const { Parser } = await import('xml2js')
-				const originalParse = Parser.prototype.parseString
+				const { XMLParser } = await import('fast-xml-parser')
+				const originalParse = XMLParser.prototype.parse
 
 				// Create an object that throws when accessed
-				// The xml2json function processes values via JSON.stringify replacer
-				// We need the value to throw during the try block comparison
-				Parser.prototype.parseString = function (
-					_data: unknown,
-					cb: (err: unknown, result?: unknown) => void,
-				) {
-					// Create a value that will cause an error during comparison
+				// The xml2json function processes values
+				// We need the value to throw during processing
+				XMLParser.prototype.parse = function (xml: string) {
+					const parsed = originalParse.call(this, xml)
+					// Create a value that will cause an error during processing
 					// We'll use a getter that throws
 					const throwingValue = Object.create(null)
 					Object.defineProperty(throwingValue, 'valueOf', {
@@ -2633,16 +2328,10 @@ describe('Split class', () => {
 							throw new Error('Custom conversion error')
 						},
 					})
-
-					cb(null, {
-						Profile: {
-							$: {
-								xmlns: 'https://soap.sforce.com/2006/04/metadata',
-							},
-							fullName: 'Admin',
-							custom: throwingValue, // This might throw when xml2json processes it
-						},
-					})
+					if (parsed.Profile) {
+						parsed.Profile.custom = throwingValue // This might throw when xml2json processes it
+					}
+					return parsed
 				}
 
 				const config = {
@@ -2662,11 +2351,10 @@ describe('Split class', () => {
 				} catch (error) {
 					// Error may propagate
 				}
-				// Note: Line 613-617 may be difficult to trigger in practice
-				// The test verifies the error handling path exists in the code
+				// Note: The error handling path exists in the code
 
 				// Restore
-				Parser.prototype.parseString = originalParse
+				XMLParser.prototype.parse = originalParse
 				consoleErrorSpy.mockRestore()
 			})
 
@@ -2687,27 +2375,18 @@ describe('Split class', () => {
     <custom>false</custom>
 </Profile>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				// Mock fileUtils to return loginIpRanges-sandbox.yaml when reading from targetDir
-				vi.mocked(fileUtils.readFile).mockImplementation(
-					(filePath: string) => {
-						if (filePath.includes('loginIpRanges-sandbox.yaml')) {
-							return yamlContent // Return the actual test data
-						}
-						return null
-					},
-				)
-				vi.mocked(fileUtils.fileExists).mockImplementation(
+				fileUtils.readFile.mockImplementation((filePath: string) => {
+					if (filePath.includes('loginIpRanges-sandbox.yaml')) {
+						return yamlContent // Return the actual test data
+					}
+					return null
+				})
+				fileUtils.fileExists.mockImplementation(
 					(options: { filePath: string; fs: unknown }) => {
 						// The metaFilePath must exist for split to succeed
 						if (
@@ -2723,9 +2402,11 @@ describe('Split class', () => {
 						)
 					},
 				)
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-				vi.mocked(fileUtils.getFiles).mockReturnValue([])
-				vi.mocked(fileUtils.fileInfo).mockReturnValue({
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				fileUtils.getFiles.mockResolvedValue([])
+				fileUtils.fileInfo.mockResolvedValue({
 					dirname: '/source',
 					basename: 'TestProfile',
 					filename: 'TestProfile.profile-meta.xml',
@@ -2738,7 +2419,6 @@ describe('Split class', () => {
 						typeof fileUtils.fileInfo
 					>['stats'],
 				})
-
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2778,17 +2458,9 @@ describe('Split class', () => {
   </alerts>
 </Workflow>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: workflowDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2817,17 +2489,9 @@ describe('Split class', () => {
   </alerts>
 </Workflow>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: workflowDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2857,17 +2521,9 @@ describe('Split class', () => {
   </classAccesses>
 </Profile>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2894,17 +2550,9 @@ describe('Split class', () => {
   <fullName>Admin</fullName>
 </Profile>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2931,17 +2579,9 @@ describe('Split class', () => {
   <fullName>TestProfile</fullName>
 </Profile>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
@@ -2967,16 +2607,9 @@ describe('Split class', () => {
   </classAccesses>
 </Profile>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				// Create invalid data that will cause keySort to throw
 				// by using a metadata definition that will trigger the error path
@@ -3007,17 +2640,9 @@ describe('Split class', () => {
   </classAccesses>
 </Profile>`
 
-				vi.mocked(fs.readFile).mockImplementation(
-					(
-						_path: Parameters<typeof fs.readFile>[0],
-						cb: Parameters<typeof fs.readFile>[1],
-					) => {
-						if (typeof cb === 'function') {
-							cb(null, Buffer.from(xmlData))
-						}
-					},
-				)
-
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 				const config = {
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',

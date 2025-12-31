@@ -10,53 +10,47 @@ beforeEach(() => {
 	latest = '1234567890abcdef'
 })
 
-afterEach(() => {
-	vi.resetModules()
-})
-
-it('should throw an error if latest is not a string', () => {
+it('should throw an error if latest is not a string', async () => {
 	latest = {} as unknown as string
-	expect(() =>
+	await expect(
 		updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs }),
-	).toThrowError('updateLastCommit received a object instead of string')
+	).rejects.toThrow('updateLastCommit received a object instead of string')
 })
 
-it('should not update lastCommit property if latest is undefined', () => {
+it('should not update lastCommit property if latest is undefined', async () => {
 	latest = undefined
 	const fileExistsSpy = vi
 		.spyOn(fileUtilsModule, 'fileExists')
-		.mockReturnValue(true)
-	const readFileSpy = vi.spyOn(fileUtilsModule, 'readFile').mockReturnValue({
-		git: { lastCommit: '1111111111abcdef' },
-	})
+		.mockResolvedValue(true)
+	const readFileSpy = vi
+		.spyOn(fileUtilsModule, 'readFile')
+		.mockResolvedValue({
+			git: { lastCommit: '1111111111abcdef' },
+		})
 	const saveFileSpy = vi
 		.spyOn(fileUtilsModule, 'saveFile')
-		.mockImplementation(() => true)
-	updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
+		.mockResolvedValue(true)
+	await updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
 	expect(fileExistsSpy).not.toHaveBeenCalled()
 	expect(readFileSpy).not.toHaveBeenCalled()
 	expect(saveFileSpy).not.toHaveBeenCalled()
 })
 
-vi.mock('child_process', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('child_process')>()
-	return {
-		...actual,
-		execFileSync: vi.fn().mockReturnValue('mock-branch'),
-	} as unknown as typeof import('child_process')
-})
+vi.mock('child_process', () => ({
+	execFileSync: vi.fn().mockReturnValue('mock-branch'),
+}))
 
 // Then in your test:
-it('should update lastCommit property in index.yaml for the current branch', () => {
-	vi.spyOn(fileUtilsModule, 'fileExists').mockReturnValue(true)
-	vi.spyOn(fileUtilsModule, 'readFile').mockReturnValue({
+it('should update lastCommit property in index.yaml for the current branch', async () => {
+	vi.spyOn(fileUtilsModule, 'fileExists').mockResolvedValue(true)
+	vi.spyOn(fileUtilsModule, 'readFile').mockResolvedValue({
 		git: { branches: { 'mock-branch': '1111111111abcdef' } },
 	})
 	const saveFileSpy = vi
 		.spyOn(fileUtilsModule, 'saveFile')
-		.mockImplementation(() => true)
+		.mockResolvedValue(true)
 
-	updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
+	await updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
 
 	expect(saveFileSpy).toHaveBeenCalledWith(
 		{ git: { branches: { 'mock-branch': latest } } },
@@ -64,11 +58,11 @@ it('should update lastCommit property in index.yaml for the current branch', () 
 	)
 })
 
-it('should save the default definition with branches object if file does not exist', () => {
-	vi.spyOn(fileUtilsModule, 'fileExists').mockReturnValue(false)
+it('should save the default definition with branches object if file does not exist', async () => {
+	vi.spyOn(fileUtilsModule, 'fileExists').mockResolvedValue(false)
 	const saveFileSpy = vi
 		.spyOn(fileUtilsModule, 'saveFile')
-		.mockImplementation(() => true)
+		.mockResolvedValue(true)
 
 	const defaultDefinitionWithBranches = {
 		git: {
@@ -79,7 +73,7 @@ it('should save the default definition with branches object if file does not exi
 		},
 	}
 
-	updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
+	await updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
 
 	expect(saveFileSpy).toHaveBeenCalledWith(
 		defaultDefinitionWithBranches,

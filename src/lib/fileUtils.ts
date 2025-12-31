@@ -48,6 +48,13 @@ export async function flushWriteBatcher(): Promise<void> {
 	}
 }
 
+/**
+ * Reset the global write batcher (primarily for testing)
+ */
+export function resetWriteBatcher(): void {
+	globalWriteBatcher = null
+}
+
 export interface FileInfo {
 	dirname: string
 	basename: string
@@ -196,6 +203,13 @@ export async function fileExists({
 // Cache for verified existing directories to avoid redundant operations
 // Only cache after we've successfully created or verified the directory exists
 const verifiedDirectories = new Set<string>()
+
+/**
+ * Clear the verified directories cache (primarily for testing)
+ */
+export function clearVerifiedDirectoriesCache(): void {
+	verifiedDirectories.clear()
+}
 
 export async function createDirectory(
 	dirPath: string,
@@ -362,7 +376,7 @@ export async function fileInfo(
 	}
 
 	return {
-		dirname: path.join(path.dirname(sanitizedPath)), //something/folder/example
+		dirname: path.dirname(sanitizedPath), //something/folder/example
 		basename: path.basename(sanitizedPath, path.extname(sanitizedPath)), //example
 		filename: path.basename(sanitizedPath), //example.txt
 		extname: path.extname(sanitizedPath), //txt

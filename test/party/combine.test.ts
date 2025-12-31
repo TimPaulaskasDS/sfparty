@@ -59,28 +59,30 @@ vi.mock('fs', () => ({
 }))
 
 vi.mock('../../src/lib/fileUtils.js', () => ({
-	fileInfo: vi.fn((_path) => ({
-		dirname: '/target',
-		basename: 'Admin',
-		filename: 'Admin.profile-meta.xml',
-		extname: '.xml',
-		exists: true,
-		stats: {
-			atime: new Date('2023-01-01'),
-			mtime: new Date('2023-01-01'),
-		},
-	})),
-	getFiles: vi.fn(() => ['fullName.yaml']),
-	fileExists: vi.fn(() => true),
-	directoryExists: vi.fn(() => true),
-	createDirectory: vi.fn(),
-	deleteDirectory: vi.fn(),
-	saveFile: vi.fn(() => true),
+	fileInfo: vi.fn((_path) =>
+		Promise.resolve({
+			dirname: '/target',
+			basename: 'Admin',
+			filename: 'Admin.profile-meta.xml',
+			extname: '.xml',
+			exists: true,
+			stats: {
+				atime: new Date('2023-01-01'),
+				mtime: new Date('2023-01-01'),
+			},
+		}),
+	),
+	getFiles: vi.fn(() => Promise.resolve(['fullName.yaml'])),
+	fileExists: vi.fn(() => Promise.resolve(true)),
+	directoryExists: vi.fn(() => Promise.resolve(true)),
+	createDirectory: vi.fn(() => Promise.resolve(undefined)),
+	deleteDirectory: vi.fn(() => Promise.resolve(undefined)),
+	saveFile: vi.fn(() => Promise.resolve(true)),
 	readFile: vi.fn(() =>
 		Promise.resolve({ fullName: 'TestProfile', custom: false }),
 	),
-	writeFile: vi.fn(),
-	getDirectories: vi.fn(() => []),
+	writeFile: vi.fn(() => Promise.resolve(undefined)),
+	getDirectories: vi.fn(() => Promise.resolve([])),
 }))
 
 describe('Combine class', () => {
@@ -108,7 +110,10 @@ describe('Combine class', () => {
 		}
 		global.logger = {
 			info: vi.fn(),
+			warn: vi.fn(),
 			error: vi.fn(),
+			debug: vi.fn(),
+			log: vi.fn(),
 		}
 		// Create a tracking object that also provides access to Node.js process methods
 		// This allows global.process.current to work while keeping process.hrtime accessible
@@ -345,8 +350,10 @@ describe('Combine class', () => {
 
 	describe('combine() method', () => {
 		it('should reject when source directory does not exist', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.directoryExists).mockReturnValueOnce(false)
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce(false)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -403,12 +410,16 @@ describe('Combine class', () => {
 		})
 
 		it('should successfully combine custom labels', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['TestLabel.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'TestLabel',
-				value: 'Test Value',
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['TestLabel.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'TestLabel',
+					value: 'Test Value',
+				},
+			)
 
 			const config = {
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -493,7 +504,7 @@ describe('Combine class', () => {
 		})
 
 		it('should write XML file with proper timestamps', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -515,15 +526,13 @@ describe('Combine class', () => {
 		// Read errors are handled internally by the combine logic
 
 		it('should process multiple file types', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'classAccesses',
-				'pageAccesses',
-			])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'item1.yaml',
-				'item2.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['classAccesses', 'pageAccesses'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['item1.yaml', 'item2.yaml'],
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -585,14 +594,20 @@ describe('Combine class', () => {
 
 	describe('Complex Metadata Processing', () => {
 		it('should handle profile with multiple directory types', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'ComplexProfile',
-				custom: true,
-				userLicense: 'Salesforce',
-			})
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue([])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'ComplexProfile',
+					custom: true,
+					userLicense: 'Salesforce',
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -613,15 +628,16 @@ describe('Combine class', () => {
 		})
 
 		it('should process fieldPermissions directory', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'fieldPermissions',
-			])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Account.Name.yaml',
-				'Contact.Email.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation((path: string) => {
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['fieldPermissions'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Account.Name.yaml', 'Contact.Email.yaml'],
+			)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				if (path.includes('Account.Name')) {
 					return Promise.resolve({
 						fieldPermissions: {
@@ -661,14 +677,16 @@ describe('Combine class', () => {
 		})
 
 		it('should handle custom labels with multiple labels', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue(['labels'])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Label1.yaml',
-				'Label2.yaml',
-				'Label3.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation((path: string) => {
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['labels'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Label1.yaml', 'Label2.yaml', 'Label3.yaml'],
+			)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				if (path.includes('Label1')) {
 					return Promise.resolve({
 						labels: {
@@ -722,24 +740,27 @@ describe('Combine class', () => {
 		})
 
 		it('should handle permission set with object and field permissions', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'fieldPermissions',
-				'objectPermissions',
-			])
-			vi.mocked(fileUtils.getFiles).mockImplementation((dir: string) => {
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['fieldPermissions', 'objectPermissions'])
+			;(
+				fileUtils.getFiles as ReturnType<typeof vi.fn>
+			).mockImplementation((dir: string) => {
 				if (dir.includes('fieldPermissions')) {
-					return [
+					return Promise.resolve([
 						'CustomObject__c.Field1__c.yaml',
 						'CustomObject__c.Field2__c.yaml',
-					]
+					])
 				}
 				if (dir.includes('objectPermissions')) {
-					return ['CustomObject__c.yaml']
+					return Promise.resolve(['CustomObject__c.yaml'])
 				}
-				return ['main.yaml']
+				return Promise.resolve(['main.yaml'])
 			})
-			vi.mocked(fileUtils.readFile).mockImplementation((path: string) => {
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				if (path.includes('Field1__c')) {
 					return Promise.resolve({
 						fieldPermissions: {
@@ -795,12 +816,14 @@ describe('Combine class', () => {
 
 		it('should handle missing main file gracefully', async () => {
 			await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileExists).mockImplementation(
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(
 				(opts: Parameters<typeof fileUtils.fileExists>[0]) => {
 					if (opts.filePath.includes('main.yaml')) {
-						return false
+						return Promise.resolve(false)
 					}
-					return true
+					return Promise.resolve(true)
 				},
 			)
 
@@ -822,11 +845,19 @@ describe('Combine class', () => {
 		})
 
 		it('should handle empty directories', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockImplementation(
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue([])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(
 				(opts: Parameters<typeof fileUtils.fileExists>[0]) => {
 					if (opts.filePath.includes('main.yaml')) {
 						return true
@@ -834,10 +865,12 @@ describe('Combine class', () => {
 					return false
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'EmptyProfile',
-				custom: false,
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'EmptyProfile',
+					custom: false,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -857,10 +890,16 @@ describe('Combine class', () => {
 		})
 
 		it('should sort file lists alphabetically', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue([])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(
 				(opts: Parameters<typeof fileUtils.fileExists>[0]) => {
 					if (opts.filePath.includes('main.yaml')) {
 						return true
@@ -868,10 +907,12 @@ describe('Combine class', () => {
 					return false
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'SortedProfile',
-				custom: false,
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'SortedProfile',
+					custom: false,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -893,7 +934,7 @@ describe('Combine class', () => {
 
 	describe('Git integration scenarios', () => {
 		it('should filter files in delta mode with added files', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			global.git = { ...global.git, enabled: true }
 			global.git = { ...global.git, delta: true }
 			global.metaTypes = {
@@ -903,9 +944,15 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue([])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(
 				(opts: Parameters<typeof fileUtils.fileExists>[0]) => {
 					if (opts.filePath.includes('main.yaml')) {
 						return true
@@ -913,10 +960,12 @@ describe('Combine class', () => {
 					return false
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'TestProfile',
-				custom: false,
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'TestProfile',
+					custom: false,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -967,11 +1016,15 @@ describe('Combine class', () => {
 		})
 
 		it('should handle git append mode', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			global.git = { ...global.git, enabled: true }
 			global.git = { ...global.git, append: true }
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(
 				(opts: Parameters<typeof fileUtils.fileExists>[0]) => {
 					if (opts.filePath.includes('main.yaml')) {
 						return true
@@ -979,10 +1032,12 @@ describe('Combine class', () => {
 					return false
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'AppendProfile',
-				custom: false,
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'AppendProfile',
+					custom: false,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1030,13 +1085,19 @@ describe('Combine class', () => {
 
 	describe('Special file handling', () => {
 		it('should handle loginIpRanges special case', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'IpRangeProfile',
-				custom: false,
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'IpRangeProfile',
+					custom: false,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1056,15 +1117,17 @@ describe('Combine class', () => {
 		})
 
 		it('should handle nested directory paths', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '/target/nested/path',
-				basename: 'NestedProfile',
-				filename: 'NestedProfile.profile-meta.xml',
-				extname: '.xml',
-				exists: true,
-				stats: undefined,
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '/target/nested/path',
+					basename: 'NestedProfile',
+					filename: 'NestedProfile.profile-meta.xml',
+					extname: '.xml',
+					exists: true,
+					stats: undefined,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1085,9 +1148,10 @@ describe('Combine class', () => {
 
 	describe('Error scenarios', () => {
 		it('should reject when source directory does not exist', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(false)
-
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(false)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/nonexistent',
@@ -1107,10 +1171,16 @@ describe('Combine class', () => {
 		})
 
 		it('should handle file read errors gracefully', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(
 				(opts: Parameters<typeof fileUtils.fileExists>[0]) => {
 					if (opts.filePath.includes('main.yaml')) {
 						return true
@@ -1118,10 +1188,12 @@ describe('Combine class', () => {
 					return false
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'ErrorProfile',
-				custom: false,
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'ErrorProfile',
+					custom: false,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1145,23 +1217,36 @@ describe('Combine class', () => {
 	describe('Branch coverage - conditional logic', () => {
 		beforeEach(() => {
 			// Reset mocks to default state
-			vi.clearAllMocks()
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				custom: true,
-			})
+			// Note: vi.clearAllMocks() is already called globally in setup.ts afterEach
+			// We just reset the mock implementations here
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					custom: true,
+				},
+			)
 		})
 
 		it('should handle delta mode with added files', async () => {
 			global.git = { enabled: true, delta: true }
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.profile'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				custom: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.profile'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					custom: true,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1187,11 +1272,15 @@ describe('Combine class', () => {
 				...labelDefinition.metadataDefinition,
 				xmlFirst: 'labels',
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Label1.label'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Label1',
-				value: 'Test Value',
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Label1.label'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Label1',
+					value: 'Test Value',
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithXmlFirst,
@@ -1211,14 +1300,16 @@ describe('Combine class', () => {
 		})
 
 		it('should handle array merging in processFile', async () => {
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				$: { xmlns: 'http://soap.sforce.com/2006/04/metadata' },
-				fullName: 'Test',
-				objectPermissions: [
-					{ object: 'Account', allowRead: true },
-					{ object: 'Contact', allowRead: true },
-				],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					$: { xmlns: 'http://soap.sforce.com/2006/04/metadata' },
+					fullName: 'Test',
+					objectPermissions: [
+						{ object: 'Account', allowRead: true },
+						{ object: 'Contact', allowRead: true },
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1238,8 +1329,9 @@ describe('Combine class', () => {
 		})
 
 		it('should handle missing source directory', async () => {
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(false)
-
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(false)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/nonexistent',
@@ -1260,8 +1352,10 @@ describe('Combine class', () => {
 		})
 
 		it('should handle loginIpRanges for profiles', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Admin.profile'])
-			vi.mocked(fileUtils.readFile)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Admin.profile'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({
 					fullName: 'Admin',
 					loginIpRanges: [
@@ -1294,11 +1388,13 @@ describe('Combine class', () => {
 		})
 
 		it('should handle sandbox loginIpRanges', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.profile'])
-			vi.mocked(fileUtils.fileExists)
-				.mockReturnValueOnce(true) // loginIpRanges exists
-				.mockReturnValueOnce(true) // sandbox exists
-			vi.mocked(fileUtils.readFile)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.profile'],
+			)
+			fileUtils.fileExists
+				.mockResolvedValueOnce(true) // loginIpRanges exists
+				.mockResolvedValueOnce(true) // sandbox exists
+			fileUtils.readFile
 				.mockResolvedValueOnce({
 					startAddress: '10.0.0.1',
 					endAddress: '10.0.0.255',
@@ -1334,14 +1430,16 @@ describe('Combine class', () => {
 				...permsetDefinition.metadataDefinition,
 				main: ['userPermissions', 'objectPermissions'],
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Test.permissionset',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				userPermissions: [{ name: 'ViewSetup', enabled: true }],
-				objectPermissions: [{ object: 'Account', allowRead: true }],
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.permissionset'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					userPermissions: [{ name: 'ViewSetup', enabled: true }],
+					objectPermissions: [{ object: 'Account', allowRead: true }],
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithMain,
@@ -1365,11 +1463,15 @@ describe('Combine class', () => {
 				...labelDefinition.metadataDefinition,
 				packageTypeIsDirectory: true,
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Label1.label'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Label1',
-				value: 'Test',
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Label1.label'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Label1',
+					value: 'Test',
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefIsDirectory,
@@ -1389,14 +1491,17 @@ describe('Combine class', () => {
 		})
 
 		it('should handle namespace-qualified XML elements', async () => {
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				$: {
-					xmlns: 'http://soap.sforce.com/2006/04/metadata',
-					'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					$: {
+						xmlns: 'http://soap.sforce.com/2006/04/metadata',
+						'xmlns:xsi':
+							'http://www.w3.org/2001/XMLSchema-instance',
+					},
+					fullName: 'Test',
+					custom: true,
 				},
-				fullName: 'Test',
-				custom: true,
-			})
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1416,9 +1521,7 @@ describe('Combine class', () => {
 		})
 
 		it('should handle error when processing file throws', async () => {
-			vi.mocked(fileUtils.readFile).mockRejectedValue(
-				new Error('Read error'),
-			)
+			fileUtils.readFile.mockRejectedValue(new Error('Read error'))
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1441,11 +1544,15 @@ describe('Combine class', () => {
 		it('should handle CI environment without spinner', async () => {
 			const originalCI = process.env.CI
 			process.env.CI = 'true'
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.profile'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				custom: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.profile'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					custom: true,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1473,8 +1580,12 @@ describe('Combine class', () => {
 
 		it('should handle delta mode with deleted main file', async () => {
 			global.git = { enabled: true, delta: true }
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.fileExists).mockReturnValue(false)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(false)
 
 			// Create mock package objects
 			const mockPkg = {
@@ -1504,11 +1615,10 @@ describe('Combine class', () => {
 				...labelDefinition.metadataDefinition,
 				sort: 'fullName',
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Label2.label',
-				'Label1.label',
-			])
-			vi.mocked(fileUtils.readFile)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Label2.label', 'Label1.label'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ fullName: 'Label2', value: 'Value 2' })
 				.mockResolvedValueOnce({ fullName: 'Label1', value: 'Value 1' })
 
@@ -1534,13 +1644,15 @@ describe('Combine class', () => {
 				...profileDefinition.metadataDefinition,
 				splitObjects: ['objectPermissions'],
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Account.objectPermissions',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				allowRead: true,
-				allowCreate: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Account.objectPermissions'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					allowRead: true,
+					allowCreate: true,
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithSplitObjects,
@@ -1560,12 +1672,16 @@ describe('Combine class', () => {
 		})
 
 		it('should handle profile type with main file', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: {
-					fullName: 'TestProfile',
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: {
+						fullName: 'TestProfile',
+					},
 				},
-			})
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1585,10 +1701,14 @@ describe('Combine class', () => {
 		})
 
 		it('should handle non-array json key when merging', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'SingleValue',
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'SingleValue',
+				},
+			)
 
 			const config = {
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -1612,11 +1732,15 @@ describe('Combine class', () => {
 				...profileDefinition.metadataDefinition,
 				splitBy: 'customKey',
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Custom.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				customKey: 'Test',
-				value: 'Data',
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Custom.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					customKey: 'Test',
+					value: 'Data',
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithCustomKey,
@@ -1636,7 +1760,9 @@ describe('Combine class', () => {
 		})
 
 		it('should handle empty getFiles result', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1658,11 +1784,15 @@ describe('Combine class', () => {
 
 		it('should handle sequence tracking', async () => {
 			global.process = { ...global.process, current: 5 }
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.profile'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				custom: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.profile'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					custom: true,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1688,11 +1818,15 @@ describe('Combine class', () => {
 				...profileDefinition.metadataDefinition,
 				packageTypeIsDirectory: false,
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.profile'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				custom: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.profile'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					custom: true,
+				},
+			)
 
 			const mockPkg = {
 				addMember: vi.fn(),
@@ -1725,21 +1859,25 @@ describe('Combine class', () => {
 					fieldPermissions: 'CustomField',
 				},
 			} as typeof profileDefinition.metadataDefinition
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'objectPermissions/Account.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				allowRead: true,
-				allowCreate: true,
-			})
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '/source/TestProfile/objectPermissions',
-				basename: 'Account',
-				filename: 'Account.yaml',
-				extname: '.yaml',
-				exists: true,
-				stats: undefined,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['objectPermissions/Account.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					allowRead: true,
+					allowCreate: true,
+				},
+			)
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '/source/TestProfile/objectPermissions',
+					basename: 'Account',
+					filename: 'Account.yaml',
+					extname: '.yaml',
+					exists: true,
+					stats: undefined,
+				},
+			)
 
 			const mockPkg = { addMember: vi.fn() }
 
@@ -1768,13 +1906,15 @@ describe('Combine class', () => {
 				},
 				splitObjects: ['objectPermissions'],
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Account.objectPermissions',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				allowRead: true,
-				allowCreate: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Account.objectPermissions'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					allowRead: true,
+					allowCreate: true,
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithKeyOrder,
@@ -1796,11 +1936,10 @@ describe('Combine class', () => {
 		it('should handle file stats updating with newer atime', async () => {
 			const olderDate = new Date('2024-01-01')
 			const newerDate = new Date('2024-12-01')
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Test1.yaml',
-				'Test2.yaml',
-			])
-			vi.mocked(fileUtils.readFile)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test1.yaml', 'Test2.yaml'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ fullName: 'Test1', custom: true })
 				.mockResolvedValueOnce({ fullName: 'Test2', custom: false })
 
@@ -1839,15 +1978,14 @@ describe('Combine class', () => {
 		})
 
 		it('should merge IP ranges without duplicates', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'loginIpRanges.yaml',
-				'loginIpRanges-sandbox.yaml',
-			])
-			vi.mocked(fileUtils.fileExists)
-				.mockReturnValueOnce(true)
-				.mockReturnValueOnce(true)
-				.mockReturnValueOnce(true)
-			vi.mocked(fileUtils.readFile)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['loginIpRanges.yaml', 'loginIpRanges-sandbox.yaml'],
+			)
+			fileUtils.fileExists
+				.mockResolvedValueOnce(true)
+				.mockResolvedValueOnce(true)
+				.mockResolvedValueOnce(true)
+			fileUtils.readFile
 				.mockResolvedValueOnce({
 					loginIpRanges: [
 						{
@@ -1884,11 +2022,15 @@ describe('Combine class', () => {
 		})
 
 		it('should handle undefined json keys in saveXML', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				undefinedKey: undefined,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					undefinedKey: undefined,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1910,12 +2052,11 @@ describe('Combine class', () => {
 		it('should handle git enabled with main file exclusion', async () => {
 			global.git = { enabled: true, delta: false }
 
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'main.yaml',
-				'Test.yaml',
-			])
-			vi.mocked(fileUtils.fileInfo)
-				.mockReturnValueOnce({
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml', 'Test.yaml'],
+			)
+			fileUtils.fileInfo
+				.mockResolvedValueOnce({
 					dirname: '/source/TestProfile',
 					basename: 'main',
 					filename: 'main.yaml',
@@ -1923,7 +2064,7 @@ describe('Combine class', () => {
 					exists: true,
 					stats: undefined,
 				})
-				.mockReturnValueOnce({
+				.mockResolvedValueOnce({
 					dirname: '/target',
 					basename: 'Test',
 					filename: 'Test.yaml',
@@ -1931,7 +2072,7 @@ describe('Combine class', () => {
 					exists: true,
 					stats: undefined,
 				})
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'TestProfile' } })
 				.mockResolvedValueOnce({ fullName: 'Test', custom: true })
 
@@ -1959,15 +2100,17 @@ describe('Combine class', () => {
 				...permsetDefinition.metadataDefinition,
 				rootKey: 'PermissionSet',
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'Test.permissionset',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				PermissionSet: {
-					fullName: 'Test',
-					userPermissions: [{ name: 'ViewSetup', enabled: true }],
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.permissionset'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					PermissionSet: {
+						fullName: 'Test',
+						userPermissions: [{ name: 'ViewSetup', enabled: true }],
+					},
 				},
-			})
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithRootKey,
@@ -1993,11 +2136,15 @@ describe('Combine class', () => {
 					throw new Error('Stat error')
 				}),
 			}
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Test',
-				custom: true,
-			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Test',
+					custom: true,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2018,12 +2165,13 @@ describe('Combine class', () => {
 		})
 
 		it('should handle duplicate IP ranges correctly', async () => {
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'loginIpRanges.yaml',
-				'loginIpRanges-sandbox.yaml',
-			])
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['loginIpRanges.yaml', 'loginIpRanges-sandbox.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			fileUtils.readFile
 				.mockResolvedValueOnce({
 					loginIpRanges: [
 						{
@@ -2071,11 +2219,14 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2102,32 +2253,36 @@ describe('Combine class', () => {
 				},
 			}
 			// Mock regular loginIpRanges doesn't exist, only sandbox does
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('loginIpRanges-sandbox')) return true
-					if (filePath.includes('loginIpRanges')) return false
-					if (filePath.includes('main')) return true
-					return false
-				},
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('loginIpRanges-sandbox')) return true
+				if (filePath.includes('loginIpRanges')) return false
+				if (filePath.includes('main')) return true
+				return false
+			})
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				if (filePath.includes('loginIpRanges-sandbox'))
+					return Promise.resolve({
+						loginIpRanges: [
+							{
+								startAddress: '2.2.2.2',
+								endAddress: '2.2.2.255',
+							},
+						],
+					})
+				return Promise.resolve({})
+			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
 			)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					if (filePath.includes('loginIpRanges-sandbox'))
-						return {
-							loginIpRanges: [
-								{
-									startAddress: '2.2.2.2',
-									endAddress: '2.2.2.255',
-								},
-							],
-						}
-					return {}
-				},
-			)
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2154,19 +2309,24 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				labels: [
-					{
-						fullName: 'TestLabel',
-						value: 'Test Value',
-						language: 'en_US',
-						protected: false,
-					},
-				],
-			})
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					labels: [
+						{
+							fullName: 'TestLabel',
+							value: 'Test Value',
+							language: 'en_US',
+							protected: false,
+						},
+					],
+				},
+			)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			const config = {
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2192,28 +2352,33 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'userPermissions',
-			])
-			vi.mocked(fileUtils.getFiles).mockImplementation((dir: string) => {
-				if (dir.includes('userPermissions')) return ['ApiEnabled.yaml']
-				return []
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['userPermissions'])
+			;(
+				fileUtils.getFiles as ReturnType<typeof vi.fn>
+			).mockImplementation((dir: string) => {
+				if (dir.includes('userPermissions'))
+					return Promise.resolve(['ApiEnabled.yaml'])
+				return Promise.resolve([])
 			})
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					if (filePath.includes('ApiEnabled'))
-						return {
-							userPermissions: {
-								name: 'ApiEnabled',
-								enabled: true,
-							},
-						}
-					return {}
-				},
-			)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				if (filePath.includes('ApiEnabled'))
+					return Promise.resolve({
+						userPermissions: {
+							name: 'ApiEnabled',
+							enabled: true,
+						},
+					})
+				return Promise.resolve({})
+			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2249,21 +2414,26 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'userPermissions',
-			])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['userPermissions'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
 				},
 			)
-
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				return false
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2296,17 +2466,26 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					// Main file is deleted
-					if (filePath.includes('main.yaml')) return false
-					return false
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue([])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({})
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				// Main file is deleted
+				if (filePath.includes('main.yaml'))
+					return Promise.resolve(false)
+				return Promise.resolve(false)
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2335,24 +2514,27 @@ describe('Combine class', () => {
 				},
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					return {
-						userPermissions: [
-							{ name: 'ZZZ_NotInOrder', enabled: true },
-							{ name: 'ApiEnabled', enabled: false },
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				return Promise.resolve({
+					userPermissions: [
+						{ name: 'ZZZ_NotInOrder', enabled: true },
+						{ name: 'ApiEnabled', enabled: false },
+					],
+				})
+			})
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
 			)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([])
-
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue([])
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2378,24 +2560,25 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Return array in result
-					return {
-						userPermissions: [
-							{ name: 'ApiEnabled', enabled: true },
-							{ name: 'EditTask', enabled: false },
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Return array in result
+				return Promise.resolve({
+					userPermissions: [
+						{ name: 'ApiEnabled', enabled: true },
+						{ name: 'EditTask', enabled: false },
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2437,16 +2620,21 @@ describe('Combine class', () => {
 				sortKeys: {},
 				keyOrder: {},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'TestWorkflow' } }
-					return { singleFile: { key: 'value' } }
-				},
-			)
-
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({
+						main: { fullName: 'TestWorkflow' },
+					})
+				return Promise.resolve({ singleFile: { key: 'value' } })
+			})
 			const config = {
 				metadataDefinition: localWorkflowDefinition,
 				sourceDir: '/source',
@@ -2472,24 +2660,25 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'layoutAssignments.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Return non-array result
-					return {
-						layoutAssignments: {
-							layout: 'TestLayout',
-							recordType: 'TestRecord',
-						},
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['layoutAssignments.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Return non-array result
+				return Promise.resolve({
+					layoutAssignments: {
+						layout: 'TestLayout',
+						recordType: 'TestRecord',
+					},
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2516,20 +2705,25 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// loginIpRanges file exists but not in delta
-					if (filePath.includes('loginIpRanges')) return true
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
 				},
 			)
-
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// loginIpRanges file exists but not in delta
+				if (filePath.includes('loginIpRanges')) return true
+				return false
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2555,27 +2749,28 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'objectPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Return nested object structure
-					return {
-						objectPermissions: [
-							{
-								object: 'Account',
-								allowCreate: true,
-								nested: { field1: 'value1', field2: 'value2' },
-							},
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['objectPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Return nested object structure
+				return Promise.resolve({
+					objectPermissions: [
+						{
+							object: 'Account',
+							allowCreate: true,
+							nested: { field1: 'value1', field2: 'value2' },
+						},
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2601,27 +2796,28 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'classAccesses.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Return object with empty nested object
-					return {
-						classAccesses: [
-							{
-								apexClass: 'TestClass',
-								enabled: true,
-								nested: {},
-							},
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['classAccesses.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Return object with empty nested object
+				return Promise.resolve({
+					classAccesses: [
+						{
+							apexClass: 'TestClass',
+							enabled: true,
+							nested: {},
+						},
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2668,20 +2864,28 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue(['fields'])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Name.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// field file doesn't exist
-					if (filePath.includes('Name')) return false
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['fields'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Name.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// field file doesn't exist
+				if (filePath.includes('Name')) return false
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Account__c' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Account__c' },
-			})
 
 			const config = {
 				metadataDefinition: objectDefinition,
@@ -2712,27 +2916,28 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'recordTypeVisibilities.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Return nested structure with arrays containing objects
-					return {
-						recordTypeVisibilities: [
-							{
-								recordType: 'Account.Business',
-								default: true,
-								nested: [{ item: 'a' }, { item: 'b' }],
-							},
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['recordTypeVisibilities.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Return nested structure with arrays containing objects
+				return Promise.resolve({
+					recordTypeVisibilities: [
+						{
+							recordType: 'Account.Business',
+							default: true,
+							nested: [{ item: 'a' }, { item: 'b' }],
+						},
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2768,22 +2973,21 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					return {
-						userPermissions: [
-							{ name: 'ApiEnabled', enabled: true },
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				return Promise.resolve({
+					userPermissions: [{ name: 'ApiEnabled', enabled: true }],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2814,20 +3018,25 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					// main.yaml is deleted
-					if (filePath.includes('main.yaml')) return false
-					return true
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				// main.yaml is deleted
+				if (filePath.includes('main.yaml'))
+					return Promise.resolve(false)
+				return Promise.resolve(true)
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					userPermissions: [{ name: 'ApiEnabled', enabled: true }],
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				userPermissions: [{ name: 'ApiEnabled', enabled: true }],
-			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2859,40 +3068,43 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// Both loginIpRanges files exist
-					if (filePath.includes('loginIpRanges')) return true
-					return false
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
 			)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					if (filePath.includes('sandbox'))
-						return {
-							loginIpRanges: [
-								{
-									startAddress: '2.2.2.2',
-									endAddress: '2.2.2.255',
-								},
-							],
-						}
-					return {
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// Both loginIpRanges files exist
+				if (filePath.includes('loginIpRanges')) return true
+				return false
+			})
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				if (filePath.includes('sandbox'))
+					return Promise.resolve({
 						loginIpRanges: [
 							{
-								startAddress: '1.1.1.1',
-								endAddress: '1.1.1.255',
+								startAddress: '2.2.2.2',
+								endAddress: '2.2.2.255',
 							},
 						],
-					}
-				},
-			)
-
+					})
+				return Promise.resolve({
+					loginIpRanges: [
+						{
+							startAddress: '1.1.1.1',
+							endAddress: '1.1.1.255',
+						},
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -2918,11 +3130,17 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2954,24 +3172,25 @@ describe('Combine class', () => {
 				...profileDefinition.metadataDefinition,
 				splitObjects: ['fieldPermissions'],
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'fieldPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Return object that needs hydration
-					return {
-						fieldPermissions: {
-							field: 'Account.Name',
-							editable: true,
-						},
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['fieldPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Return object that needs hydration
+				return Promise.resolve({
+					fieldPermissions: {
+						field: 'Account.Name',
+						editable: true,
+					},
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefWithSplit,
 				sourceDir: '/source',
@@ -2997,19 +3216,20 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Throw error when reading file
-					throw new Error('Read error')
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Throw error when reading file
+				throw new Error('Read error')
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -3048,11 +3268,17 @@ describe('Combine class', () => {
 				...profileDefinition.metadataDefinition,
 				xmlFirst: 'xmlns',
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefWithXmlFirst,
@@ -3080,22 +3306,21 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					return {
-						userPermissions: [
-							{ name: 'ApiEnabled', enabled: true },
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				return Promise.resolve({
+					userPermissions: [{ name: 'ApiEnabled', enabled: true }],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -3122,30 +3347,32 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-				'objectPermissions.yaml',
-			])
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					if (filePath.includes('userPermissions'))
-						return {
-							userPermissions: [
-								{ name: 'ApiEnabled', enabled: true },
-							],
-						}
-					return {
-						objectPermissions: [
-							{ object: 'Account', allowCreate: true },
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml', 'objectPermissions.yaml'],
 			)
-
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				if (filePath.includes('userPermissions'))
+					return Promise.resolve({
+						userPermissions: [
+							{ name: 'ApiEnabled', enabled: true },
+						],
+					})
+				return Promise.resolve({
+					objectPermissions: [
+						{ object: 'Account', allowCreate: true },
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -3193,20 +3420,28 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue(['alerts'])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['TestAlert.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// Alert file doesn't exist - should add to package
-					if (filePath.includes('TestAlert')) return false
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['alerts'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['TestAlert.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// Alert file doesn't exist - should add to package
+				if (filePath.includes('TestAlert')) return false
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'TestWorkflow' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'TestWorkflow' },
-			})
 
 			const config = {
 				metadataDefinition: workflowDefWithPackage,
@@ -3241,11 +3476,17 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3273,20 +3514,24 @@ describe('Combine class', () => {
 				},
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockImplementation(
+			fileUtils.directoryExists.mockImplementation(
 				({ dirPath }: { dirPath: string }) => {
 					// Main dir exists, but subdirectories don't
 					if (dirPath.includes('userPermissions')) return false
 					return true
 				},
 			)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'userPermissions',
-			])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['userPermissions'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3314,22 +3559,24 @@ describe('Combine class', () => {
 				},
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					// Throw a different error to test error path
-					const error = new Error('File read failure') as Error & {
-						code?: string
-					}
-					error.code = 'ENOENT'
-					throw error
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
 			)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				// Throw a different error to test error path
+				const error = new Error('File read failure') as Error & {
+					code?: string
+				}
+				error.code = 'ENOENT'
+				throw error
+			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3362,18 +3609,24 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['missing.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// File doesn't exist
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['missing.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// File doesn't exist
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3400,35 +3653,38 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// Regular loginIpRanges exists but not sandbox
-					if (
-						filePath.includes('loginIpRanges') &&
-						!filePath.includes('sandbox')
-					)
-						return true
-					return false
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
 			)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					return {
-						loginIpRanges: [
-							{
-								startAddress: '1.1.1.1',
-								endAddress: '1.1.1.255',
-							},
-						],
-					}
-				},
-			)
-
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// Regular loginIpRanges exists but not sandbox
+				if (
+					filePath.includes('loginIpRanges') &&
+					!filePath.includes('sandbox')
+				)
+					return true
+				return false
+			})
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				return Promise.resolve({
+					loginIpRanges: [
+						{
+							startAddress: '1.1.1.1',
+							endAddress: '1.1.1.255',
+						},
+					],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -3454,19 +3710,25 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					// Neither loginIpRanges file exists
-					if (filePath.includes('loginIpRanges')) return false
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				// Neither loginIpRanges file exists
+				if (filePath.includes('loginIpRanges')) return false
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3493,31 +3755,30 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'layoutAssignments.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main')) {
-						// Initialize with non-array
-						return {
-							main: { fullName: 'Admin' },
-							layoutAssignments: {
-								layout: 'Existing',
-								recordType: 'Existing',
-							},
-						}
-					}
-					// Return result with array
-					return {
-						layoutAssignments: [
-							{ layout: 'Test', recordType: 'Test' },
-						],
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['layoutAssignments.yaml'],
 			)
-
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main')) {
+					// Initialize with non-array
+					return Promise.resolve({
+						main: { fullName: 'Admin' },
+						layoutAssignments: {
+							layout: 'Existing',
+							recordType: 'Existing',
+						},
+					})
+				}
+				// Return result with array
+				return Promise.resolve({
+					layoutAssignments: [{ layout: 'Test', recordType: 'Test' }],
+				})
+			})
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -3565,18 +3826,26 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue(['unknownDir'])
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Test.yaml'])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['unknownDir'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Test.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'TestWorkflow' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'TestWorkflow' },
-			})
 
 			const config = {
 				metadataDefinition: workflowDefWithPackage,
@@ -3604,38 +3873,38 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'userPermissions',
-			])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'ApiEnabled.yaml',
-				'EditTask.yaml',
-				'ViewSetup.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main'))
-						return { main: { fullName: 'Admin' } }
-					if (filePath.includes('ApiEnabled'))
-						return {
-							userPermissions: {
-								name: 'ApiEnabled',
-								enabled: true,
-							},
-						}
-					if (filePath.includes('EditTask'))
-						return {
-							userPermissions: {
-								name: 'EditTask',
-								enabled: false,
-							},
-						}
-					return {
-						userPermissions: { name: 'ViewSetup', enabled: true },
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['userPermissions'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['ApiEnabled.yaml', 'EditTask.yaml', 'ViewSetup.yaml'],
 			)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main'))
+					return Promise.resolve({ main: { fullName: 'Admin' } })
+				if (filePath.includes('ApiEnabled'))
+					return Promise.resolve({
+						userPermissions: {
+							name: 'ApiEnabled',
+							enabled: true,
+						},
+					})
+				if (filePath.includes('EditTask'))
+					return Promise.resolve({
+						userPermissions: {
+							name: 'EditTask',
+							enabled: false,
+						},
+					})
+				return Promise.resolve({
+					userPermissions: { name: 'ViewSetup', enabled: true },
+				})
+			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3663,11 +3932,17 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'CustomAdmin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'CustomAdmin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3694,28 +3969,30 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'tabVisibilities.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('main')) {
-						// Start with array
-						return {
-							main: { fullName: 'Admin' },
-							tabVisibilities: [],
-						}
-					}
-					// Return non-array result
-					return {
-						tabVisibilities: {
-							tab: 'standard-Account',
-							visibility: 'DefaultOn',
-						},
-					}
-				},
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['tabVisibilities.yaml'],
 			)
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('main')) {
+					// Start with array
+					return Promise.resolve({
+						main: { fullName: 'Admin' },
+						tabVisibilities: [],
+					})
+				}
+				// Return non-array result
+				return Promise.resolve({
+					tabVisibilities: {
+						tab: 'standard-Account',
+						visibility: 'DefaultOn',
+					},
+				})
+			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3742,13 +4019,21 @@ describe('Combine class', () => {
 					remove: { files: [] },
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue(['emptyDir'])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['emptyDir'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
 			// Empty directory
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3786,21 +4071,26 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'userPermissions',
-				'classAccesses',
-			])
-			vi.mocked(fileUtils.getFiles).mockReturnValue([])
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['userPermissions', 'classAccesses'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				[],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3826,16 +4116,20 @@ describe('Combine class', () => {
 					userPermissions: ['ApiEnabled', 'ViewSetup'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				userPermissions: [
-					{ name: 'NotInOrder1', enabled: true },
-					{ name: 'NotInOrder2', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					userPermissions: [
+						{ name: 'NotInOrder1', enabled: true },
+						{ name: 'NotInOrder2', enabled: false },
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithXmlOrder,
@@ -3860,16 +4154,20 @@ describe('Combine class', () => {
 					userPermissions: ['ApiEnabled', 'ViewSetup', 'EditTask'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				userPermissions: [
-					{ name: 'ViewSetup', enabled: true },
-					{ name: 'ApiEnabled', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					userPermissions: [
+						{ name: 'ViewSetup', enabled: true },
+						{ name: 'ApiEnabled', enabled: false },
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithXmlOrder,
@@ -3894,16 +4192,20 @@ describe('Combine class', () => {
 					userPermissions: ['ApiEnabled', 'ViewSetup', 'EditTask'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				userPermissions: [
-					{ name: 'EditTask', enabled: true },
-					{ name: 'ViewSetup', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					userPermissions: [
+						{ name: 'EditTask', enabled: true },
+						{ name: 'ViewSetup', enabled: false },
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithXmlOrder,
@@ -3928,16 +4230,20 @@ describe('Combine class', () => {
 					userPermissions: ['ApiEnabled'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				userPermissions: [
-					{ name: 'ApiEnabled', enabled: true },
-					{ name: 'ApiEnabled', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					userPermissions: [
+						{ name: 'ApiEnabled', enabled: true },
+						{ name: 'ApiEnabled', enabled: false },
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithXmlOrder,
@@ -3970,11 +4276,17 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockReturnValue(false)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(false)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4003,39 +4315,41 @@ describe('Combine class', () => {
 				singleFiles: ['loginIpRanges'],
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('loginIpRanges')) return true
-					if (filePath.includes('main')) return true
-					return false
-				},
-			)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('loginIpRanges-sandbox')) {
-						return Promise.resolve({
-							loginIpRanges: [
-								{
-									startAddress: '192.168.1.1',
-									endAddress: '192.168.1.10',
-								},
-							],
-						})
-					}
-					if (filePath.includes('loginIpRanges')) {
-						return Promise.resolve({
-							loginIpRanges: [
-								{
-									startAddress: '10.0.0.1',
-									endAddress: '10.0.0.10',
-								},
-							],
-						})
-					}
-					return Promise.resolve({ main: { fullName: 'Admin' } })
-				},
-			)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('loginIpRanges')) return true
+				if (filePath.includes('main')) return true
+				return false
+			})
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('loginIpRanges-sandbox')) {
+					return Promise.resolve({
+						loginIpRanges: [
+							{
+								startAddress: '192.168.1.1',
+								endAddress: '192.168.1.10',
+							},
+						],
+					})
+				}
+				if (filePath.includes('loginIpRanges')) {
+					return Promise.resolve({
+						loginIpRanges: [
+							{
+								startAddress: '10.0.0.1',
+								endAddress: '10.0.0.10',
+							},
+						],
+					})
+				}
+				return Promise.resolve({ main: { fullName: 'Admin' } })
+			})
 
 			const config = {
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -4060,29 +4374,31 @@ describe('Combine class', () => {
 				singleFiles: ['loginIpRanges'],
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('loginIpRanges-sandbox')) return true
-					if (filePath.includes('main')) return true
-					return false
-				},
-			)
-			vi.mocked(fileUtils.readFile).mockImplementation(
-				(filePath: string) => {
-					if (filePath.includes('loginIpRanges-sandbox')) {
-						return Promise.resolve({
-							loginIpRanges: [
-								{
-									startAddress: '192.168.1.1',
-									endAddress: '192.168.1.10',
-								},
-							],
-						})
-					}
-					return Promise.resolve({ main: { fullName: 'Admin' } })
-				},
-			)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('loginIpRanges-sandbox')) return true
+				if (filePath.includes('main')) return true
+				return false
+			})
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((filePath: string) => {
+				if (filePath.includes('loginIpRanges-sandbox')) {
+					return Promise.resolve({
+						loginIpRanges: [
+							{
+								startAddress: '192.168.1.1',
+								endAddress: '192.168.1.10',
+							},
+						],
+					})
+				}
+				return Promise.resolve({ main: { fullName: 'Admin' } })
+			})
 
 			const config = {
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -4114,17 +4430,21 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockImplementation(
-				({ filePath }: { filePath: string }) => {
-					if (filePath.includes('main')) return true
-					if (filePath.includes('classes')) return false
-					return false
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockImplementation(({ filePath }: { filePath: string }) => {
+				if (filePath.includes('main')) return true
+				if (filePath.includes('classes')) return false
+				return false
+			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
 				},
 			)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
 
 			const config = {
 				metadataDefinition: metaDefWithPackage,
@@ -4153,13 +4473,21 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['TestLabel.yaml'])
-			vi.mocked(fileUtils.fileExists).mockReturnValue(false)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'TestLabel',
-				value: 'Test Value',
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['TestLabel.yaml'],
+			)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(false)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'TestLabel',
+					value: 'Test Value',
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithPackageDir,
@@ -4179,17 +4507,23 @@ describe('Combine class', () => {
 		})
 
 		it('should handle sortAndArrange with recursive object processing', async () => {
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: {
-					fullName: 'Admin',
-					nested: {
-						subKey1: 'value1',
-						subKey2: 'value2',
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: {
+						fullName: 'Admin',
+						nested: {
+							subKey1: 'value1',
+							subKey2: 'value2',
+						},
 					},
 				},
-			})
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4209,24 +4543,28 @@ describe('Combine class', () => {
 		})
 
 		it('should handle sortAndArrange with array of objects', async () => {
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'userPermissions.yaml',
-			])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				userPermissions: [
-					{
-						name: 'ApiEnabled',
-						enabled: true,
-						nested: { key: 'value' },
-					},
-					{
-						name: 'ViewSetup',
-						enabled: false,
-						nested: { key: 'value2' },
-					},
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['userPermissions.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					userPermissions: [
+						{
+							name: 'ApiEnabled',
+							enabled: true,
+							nested: { key: 'value' },
+						},
+						{
+							name: 'ViewSetup',
+							enabled: false,
+							nested: { key: 'value2' },
+						},
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4255,11 +4593,17 @@ describe('Combine class', () => {
 				},
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4279,14 +4623,20 @@ describe('Combine class', () => {
 		})
 
 		it('should handle profile with profileName extraction', async () => {
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: {
-					fullName: 'TestProfile',
-					custom: false,
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: {
+						fullName: 'TestProfile',
+						custom: false,
+					},
 				},
-			})
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4314,18 +4664,24 @@ describe('Combine class', () => {
 				},
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['Account.Name.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				object: 'Account',
-				fieldPermissions: [
-					{
-						field: 'Name',
-						editable: true,
-						readable: true,
-					},
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['Account.Name.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					object: 'Account',
+					fieldPermissions: [
+						{
+							field: 'Name',
+							editable: true,
+							readable: true,
+						},
+					],
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithSplitObjects,
@@ -4345,7 +4701,9 @@ describe('Combine class', () => {
 		})
 
 		it('should handle fileObj validation error path', async () => {
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			global.displayError = vi.fn()
 
 			const config = {
@@ -4372,12 +4730,18 @@ describe('Combine class', () => {
 				xmlFirst: 'fullName',
 			}
 
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fullName: 'Admin',
-				main: { fullName: 'Admin' },
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fullName: 'Admin',
+					main: { fullName: 'Admin' },
+				},
+			)
 
 			const config = {
 				metadataDefinition: metaDefWithXmlFirst,
@@ -4402,21 +4766,30 @@ describe('Combine class', () => {
 				atime: new Date('2024-01-02'),
 				mtime: new Date('2024-01-03'),
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '',
-				basename: '',
-				filename: '',
-				extname: '',
-				exists: true,
-				stats: mockStats as unknown as ReturnType<
-					typeof fileUtils.fileInfo
-				>['stats'],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '',
+					basename: '',
+					filename: '',
+					extname: '',
+					exists: true,
+					stats: mockStats as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -4442,15 +4815,16 @@ describe('Combine class', () => {
 				atime: new Date('2024-01-02'),
 				mtime: new Date('2024-01-01'),
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'main.yaml',
-				'file1.yaml',
-			])
-			vi.mocked(fileUtils.readFile)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml', 'file1.yaml'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({ file1: 'data' })
-			vi.mocked(fileUtils.fileInfo)
+			fileUtils.fileInfo
 				.mockReturnValueOnce({
 					dirname: '',
 					basename: '',
@@ -4471,6 +4845,7 @@ describe('Combine class', () => {
 						typeof fileUtils.fileInfo
 					>['stats'],
 				})
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -4496,15 +4871,16 @@ describe('Combine class', () => {
 				atime: new Date('2024-01-01'),
 				mtime: new Date('2024-01-02'),
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'main.yaml',
-				'file1.yaml',
-			])
-			vi.mocked(fileUtils.readFile)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml', 'file1.yaml'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({ file1: 'data' })
-			vi.mocked(fileUtils.fileInfo)
+			fileUtils.fileInfo
 				.mockReturnValueOnce({
 					dirname: '',
 					basename: '',
@@ -4525,6 +4901,7 @@ describe('Combine class', () => {
 						typeof fileUtils.fileInfo
 					>['stats'],
 				})
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -4548,15 +4925,22 @@ describe('Combine class', () => {
 					userPermissions: 'name',
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: [
-					{ name: 'ZPermission', enabled: true },
-					{ name: 'APermission', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: [
+						{ name: 'ZPermission', enabled: true },
+						{ name: 'APermission', enabled: false },
+					],
+				},
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4580,15 +4964,22 @@ describe('Combine class', () => {
 					userPermissions: 'name',
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: [
-					{ name: 'SameName', enabled: true },
-					{ name: 'SameName', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: [
+						{ name: 'SameName', enabled: true },
+						{ name: 'SameName', enabled: false },
+					],
+				},
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4612,15 +5003,22 @@ describe('Combine class', () => {
 					userPermissions: 'name',
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: [
-					{ name: 'APermission', enabled: true },
-					{ name: 'BPermission', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: [
+						{ name: 'APermission', enabled: true },
+						{ name: 'BPermission', enabled: false },
+					],
+				},
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4644,15 +5042,22 @@ describe('Combine class', () => {
 					userPermissions: 'name',
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: [
-					{ name: 'BPermission', enabled: true },
-					{ name: 'APermission', enabled: false },
-				],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: [
+						{ name: 'BPermission', enabled: true },
+						{ name: 'APermission', enabled: false },
+					],
+				},
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4676,16 +5081,23 @@ describe('Combine class', () => {
 					userPermissions: ['name', 'enabled'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: {
-					enabled: true,
-					name: 'Test',
-					other: 'value',
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: {
+						enabled: true,
+						name: 'Test',
+						other: 'value',
+					},
 				},
-			})
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4709,16 +5121,23 @@ describe('Combine class', () => {
 					userPermissions: ['name', 'enabled'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: {
-					name: 'Test',
-					enabled: true,
-					other: 'value',
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: {
+						name: 'Test',
+						enabled: true,
+						other: 'value',
+					},
 				},
-			})
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4742,16 +5161,23 @@ describe('Combine class', () => {
 					userPermissions: ['name'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: {
-					name: 'Test',
-					otherKey1: 'value1',
-					otherKey2: 'value2',
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: {
+						name: 'Test',
+						otherKey1: 'value1',
+						otherKey2: 'value2',
+					},
 				},
-			})
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4775,16 +5201,23 @@ describe('Combine class', () => {
 					userPermissions: ['name'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: {
-					name: 'Test',
-					otherKeyA: 'valueA', // 'A' < 'B' alphabetically
-					otherKeyB: 'valueB',
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: {
+						name: 'Test',
+						otherKeyA: 'valueA', // 'A' < 'B' alphabetically
+						otherKeyB: 'valueB',
+					},
 				},
-			})
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4808,16 +5241,23 @@ describe('Combine class', () => {
 					userPermissions: ['name'],
 				},
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: {
-					name: 'Test',
-					otherKeyB: 'valueB', // 'B' > 'A' alphabetically
-					otherKeyA: 'valueA',
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: {
+						name: 'Test',
+						otherKeyB: 'valueB', // 'B' > 'A' alphabetically
+						otherKeyA: 'valueA',
+					},
 				},
-			})
+			)
+
 			const config = {
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
@@ -4838,22 +5278,33 @@ describe('Combine class', () => {
 			// When combine is called for the first time, #fileStats is initialized
 			// with undefined values, so the first updateFileStats call will have
 			// atime === undefined, triggering line 831
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '',
-				basename: '',
-				filename: '',
-				extname: '',
-				exists: true,
-				stats: {
-					atime: new Date('2024-01-01'),
-					mtime: new Date('2024-01-01'),
-				} as unknown as ReturnType<typeof fileUtils.fileInfo>['stats'],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '',
+					basename: '',
+					filename: '',
+					extname: '',
+					exists: true,
+					stats: {
+						atime: new Date('2024-01-01'),
+						mtime: new Date('2024-01-01'),
+					} as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -4873,22 +5324,33 @@ describe('Combine class', () => {
 		it('should handle updateFileStats when mtime is undefined', async () => {
 			// Test line 838: that.#fileStats.mtime === undefined
 			// This is tested in the same way as atime - first call has undefined mtime
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '',
-				basename: '',
-				filename: '',
-				extname: '',
-				exists: true,
-				stats: {
-					atime: new Date('2024-01-01'),
-					mtime: new Date('2024-01-01'),
-				} as unknown as ReturnType<typeof fileUtils.fileInfo>['stats'],
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '',
+					basename: '',
+					filename: '',
+					extname: '',
+					exists: true,
+					stats: {
+						atime: new Date('2024-01-01'),
+						mtime: new Date('2024-01-01'),
+					} as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -4906,19 +5368,27 @@ describe('Combine class', () => {
 		})
 
 		it('should handle updateFileStats with undefined stats', async () => {
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-			})
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '',
-				basename: '',
-				filename: '',
-				extname: '',
-				exists: true,
-				stats: undefined,
-			})
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+				},
+			)
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '',
+					basename: '',
+					filename: '',
+					extname: '',
+					exists: true,
+					stats: undefined,
+				},
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4948,15 +5418,16 @@ describe('Combine class', () => {
 				atime: new Date('2024-01-01'), // Earlier than existing
 				mtime: new Date('2024-01-02'),
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'main.yaml',
-				'file1.yaml',
-			])
-			vi.mocked(fileUtils.readFile)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml', 'file1.yaml'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({ file1: 'data' })
-			vi.mocked(fileUtils.fileInfo)
+			fileUtils.fileInfo
 				.mockReturnValueOnce({
 					dirname: '',
 					basename: '',
@@ -4977,6 +5448,7 @@ describe('Combine class', () => {
 						typeof fileUtils.fileInfo
 					>['stats'],
 				})
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -5003,15 +5475,16 @@ describe('Combine class', () => {
 				atime: new Date('2024-01-02'),
 				mtime: new Date('2024-01-01'), // Earlier than existing
 			}
-			vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'main.yaml',
-				'file1.yaml',
-			])
-			vi.mocked(fileUtils.readFile)
+			;(
+				fileUtils.directoryExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml', 'file1.yaml'],
+			)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({ file1: 'data' })
-			vi.mocked(fileUtils.fileInfo)
+			fileUtils.fileInfo
 				.mockReturnValueOnce({
 					dirname: '',
 					basename: '',
@@ -5032,6 +5505,7 @@ describe('Combine class', () => {
 						typeof fileUtils.fileInfo
 					>['stats'],
 				})
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -5049,17 +5523,21 @@ describe('Combine class', () => {
 
 		it('should handle updateFileStats when stats.atime is greater than existing', async () => {
 			// Test lines 830-835: updateFileStats when stats.atime > that.#fileStats.atime
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const earlierDate = new Date('2023-01-01')
 			const laterDate = new Date('2023-01-02')
 			// Ensure files exist and are processed
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			// Mock fileInfo to return stats for all calls - first call sets initial, second updates
 			let callCount = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation((path: string) => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				callCount++
 				if (path.includes('main.yaml')) {
-					return {
+					return Promise.resolve({
 						dirname: '/source',
 						basename: 'Admin',
 						filename: 'main.yaml',
@@ -5071,9 +5549,9 @@ describe('Combine class', () => {
 						} as unknown as ReturnType<
 							typeof fileUtils.fileInfo
 						>['stats'],
-					}
+					})
 				}
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: path.split('/').pop() || 'file.yaml',
@@ -5085,8 +5563,9 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -5104,17 +5583,21 @@ describe('Combine class', () => {
 
 		it('should handle updateFileStats when stats.mtime is greater than existing', async () => {
 			// Test lines 837-841: updateFileStats when stats.mtime > that.#fileStats.mtime
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const earlierDate = new Date('2023-01-01')
 			const laterDate = new Date('2023-01-02')
 			// Ensure files exist and are processed
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			// Mock fileInfo to return stats for all calls - first call sets initial, second updates
 			let callCount = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation((path: string) => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				callCount++
 				if (path.includes('main.yaml')) {
-					return {
+					return Promise.resolve({
 						dirname: '/source',
 						basename: 'Admin',
 						filename: 'main.yaml',
@@ -5126,9 +5609,9 @@ describe('Combine class', () => {
 						} as unknown as ReturnType<
 							typeof fileUtils.fileInfo
 						>['stats'],
-					}
+					})
 				}
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: path.split('/').pop() || 'file.yaml',
@@ -5140,8 +5623,9 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -5159,18 +5643,19 @@ describe('Combine class', () => {
 
 		it('should handle sortJSON when a[key] < b[key]', async () => {
 			// Test line 910: a[key] < b[key] returns -1
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'file1.yaml',
-				'file2.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['file1.yaml', 'file2.yaml'],
+			)
 			// Ensure the array is in the order that will trigger a[key] < b[key]
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{ field: 'Account.Name', editable: true },
-					{ field: 'Contact.Email', editable: false },
-				],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Account.Name', editable: true },
+						{ field: 'Contact.Email', editable: false },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				sortKeys: {
@@ -5196,18 +5681,19 @@ describe('Combine class', () => {
 
 		it('should handle sortJSON when a[key] > b[key]', async () => {
 			// Test line 911: a[key] > b[key] returns 1
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'file1.yaml',
-				'file2.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['file1.yaml', 'file2.yaml'],
+			)
 			// Ensure the array is in the order that will trigger a[key] > b[key]
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{ field: 'Contact.Email', editable: false },
-					{ field: 'Account.Name', editable: true },
-				],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Contact.Email', editable: false },
+						{ field: 'Account.Name', editable: true },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				sortKeys: {
@@ -5233,11 +5719,15 @@ describe('Combine class', () => {
 
 		it('should handle arrangeKeys xmlOrder when aIndex < bIndex && aIndex !== 99', async () => {
 			// Test line 991: aIndex < bIndex && aIndex !== 99 returns -1
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Create data with keys that will trigger the xmlOrder sorting
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ field: 'Account.Name', editable: true }],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Account.Name', editable: true },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5263,11 +5753,15 @@ describe('Combine class', () => {
 
 		it('should handle arrangeKeys xmlOrder when aIndex > bIndex && bIndex !== 99', async () => {
 			// Test line 992: aIndex > bIndex && bIndex !== 99 returns 1
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Create data with keys in reverse order to trigger aIndex > bIndex
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ editable: false, field: 'Account.Name' }],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ editable: false, field: 'Account.Name' },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5293,17 +5787,19 @@ describe('Combine class', () => {
 
 		it('should handle arrangeKeys return 0 when a === b', async () => {
 			// Test line 997: return 0 when a === b (keys are equal)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Create data with keys that are not in xmlOrder to trigger fallback comparison
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						field: 'Account.Name',
-						editable: true,
-						otherKey: 'value',
-					},
-				],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							field: 'Account.Name',
+							editable: true,
+							otherKey: 'value',
+						},
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5329,13 +5825,17 @@ describe('Combine class', () => {
 
 		it('should handle arrangeKeys return 0 when keys are equal and not in xmlOrder', async () => {
 			// Test line 997: return 0 when a === b (fallback when keys not in xmlOrder)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Create data with duplicate keys to trigger a === b comparison
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ field: 'Account.Name', editable: true }],
-				// Add another key at root level that will trigger arrangeKeys
-				custom: false,
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Account.Name', editable: true },
+					],
+					// Add another key at root level that will trigger arrangeKeys
+					custom: false,
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5361,22 +5861,23 @@ describe('Combine class', () => {
 
 		it('should process multiple files and update file stats correctly', async () => {
 			// Test lines 830-841: updateFileStats with multiple files having different stats
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const date1 = new Date('2023-01-01')
 			const date2 = new Date('2023-01-02')
 			const date3 = new Date('2023-01-03')
 
 			// Ensure files exist
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 
 			// Mock getFiles to return multiple files in a directory
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'file1.yaml',
-				'file2.yaml',
-			])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['file1.yaml', 'file2.yaml'],
+			)
 
 			// Mock readFile to return different data for each file
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({
 					field: 'Account.Name',
@@ -5389,11 +5890,13 @@ describe('Combine class', () => {
 
 			// Mock fileInfo to return different stats for each file call
 			let fileInfoCallCount = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation((path: string) => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				fileInfoCallCount++
 				const isMain = path.includes('main.yaml')
 				const isFile1 = path.includes('file1.yaml')
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: path.split('/').pop() || 'file.yaml',
@@ -5405,7 +5908,7 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
 
 			const metaDef = {
@@ -5433,19 +5936,24 @@ describe('Combine class', () => {
 
 		it('should cover updateFileStats branch when atime is undefined initially', async () => {
 			// Test line 831: that.#fileStats.atime === undefined
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const date = new Date('2023-01-01')
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '/source',
-				basename: 'Admin',
-				filename: 'main.yaml',
-				extname: '.yaml',
-				exists: true,
-				stats: {
-					atime: date,
-					mtime: date,
-				} as unknown as ReturnType<typeof fileUtils.fileInfo>['stats'],
-			})
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '/source',
+					basename: 'Admin',
+					filename: 'main.yaml',
+					extname: '.yaml',
+					exists: true,
+					stats: {
+						atime: date,
+						mtime: date,
+					} as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -5463,19 +5971,24 @@ describe('Combine class', () => {
 
 		it('should cover updateFileStats branch when mtime is undefined initially', async () => {
 			// Test line 838: that.#fileStats.mtime === undefined
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const date = new Date('2023-01-01')
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '/source',
-				basename: 'Admin',
-				filename: 'main.yaml',
-				extname: '.yaml',
-				exists: true,
-				stats: {
-					atime: date,
-					mtime: date,
-				} as unknown as ReturnType<typeof fileUtils.fileInfo>['stats'],
-			})
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '/source',
+					basename: 'Admin',
+					filename: 'main.yaml',
+					extname: '.yaml',
+					exists: true,
+					stats: {
+						atime: date,
+						mtime: date,
+					} as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
+
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
@@ -5493,14 +6006,18 @@ describe('Combine class', () => {
 
 		it('should cover sortJSON branch when a[key] equals b[key]', async () => {
 			// Test line 912: return 0 when a[key] === b[key]
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['file1.yaml'])
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{ field: 'Account.Name', editable: true },
-					{ field: 'Account.Name', editable: false },
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['file1.yaml'],
+			)
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Account.Name', editable: true },
+						{ field: 'Account.Name', editable: false },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				sortKeys: {
@@ -5524,10 +6041,14 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when xmlOrder is undefined', async () => {
 			// Test line 982: xmlOrder === undefined (false branch)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ field: 'Account.Name', editable: true }],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Account.Name', editable: true },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				// Explicitly do not include xmlOrder
@@ -5549,10 +6070,14 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when xmlOrder[key] is undefined', async () => {
 			// Test line 983: xmlOrder[key] === undefined (false branch)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ field: 'Account.Name', editable: true }],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ field: 'Account.Name', editable: true },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5577,16 +6102,18 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when aIndex === -1', async () => {
 			// Test line 988: aIndex === -1
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						field: 'Account.Name',
-						editable: true,
-						otherKey: 'value',
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							field: 'Account.Name',
+							editable: true,
+							otherKey: 'value',
+						},
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5610,16 +6137,18 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when bIndex === -1', async () => {
 			// Test line 989: bIndex === -1
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						field: 'Account.Name',
-						editable: true,
-						otherKey: 'value',
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							field: 'Account.Name',
+							editable: true,
+							otherKey: 'value',
+						},
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5643,12 +6172,14 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when aIndex === 99', async () => {
 			// Test line 991: aIndex !== 99 (false branch when aIndex === 99)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{ notInOrder: 'value1', alsoNotInOrder: 'value2' },
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ notInOrder: 'value1', alsoNotInOrder: 'value2' },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5672,12 +6203,14 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when bIndex === 99', async () => {
 			// Test line 992: bIndex !== 99 (false branch when bIndex === 99)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{ notInOrder: 'value1', alsoNotInOrder: 'value2' },
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{ notInOrder: 'value1', alsoNotInOrder: 'value2' },
+					],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 				xmlOrder: {
@@ -5701,10 +6234,12 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys fallback when a < b', async () => {
 			// Test line 995: a < b (fallback when not in xmlOrder)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ aKey: 'value1', zKey: 'value2' }],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [{ aKey: 'value1', zKey: 'value2' }],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 			}
@@ -5725,10 +6260,12 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys fallback when a > b', async () => {
 			// Test line 996: a > b (fallback when not in xmlOrder)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [{ zKey: 'value2', aKey: 'value1' }],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [{ zKey: 'value2', aKey: 'value1' }],
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 			}
@@ -5749,11 +6286,13 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys return 0 when keys are equal', async () => {
 			// Test line 997: return 0 when a === b
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Create an object with duplicate keys (which shouldn't happen in real JSON, but tests the branch)
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				singleKey: 'value',
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					singleKey: 'value',
+				},
+			)
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 			}
@@ -5774,19 +6313,22 @@ describe('Combine class', () => {
 
 		it('should comprehensively cover all updateFileStats branches', async () => {
 			// Test lines 830-841: All branches of updateFileStats
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const date1 = new Date('2023-01-01')
 			const date2 = new Date('2023-01-02')
 			const date3 = new Date('2023-01-03')
 
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'file1.yaml',
-				'file2.yaml',
-			])
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['file1.yaml', 'file2.yaml'],
+			)
 
 			let readFileCall = 0
-			vi.mocked(fileUtils.readFile).mockImplementation(() => {
+			;(
+				fileUtils.readFile as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				readFileCall++
 				if (readFileCall === 1) {
 					return Promise.resolve({ main: { fullName: 'Admin' } })
@@ -5798,12 +6340,14 @@ describe('Combine class', () => {
 			})
 
 			let fileInfoCall = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				fileInfoCall++
 				// First call: sets initial atime/mtime (both undefined initially)
 				// Second call: atime greater, mtime same
 				// Third call: atime same, mtime greater
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: `file${fileInfoCall}.yaml`,
@@ -5825,7 +6369,7 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
 
 			const metaDef = {
@@ -5853,14 +6397,12 @@ describe('Combine class', () => {
 
 		it('should comprehensively cover all sortJSON branches', async () => {
 			// Test lines 909-912: All branches of sortJSON
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'file1.yaml',
-				'file2.yaml',
-				'file3.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['file1.yaml', 'file2.yaml', 'file3.yaml'],
+			)
 
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({
 					field: 'Account.Name',
@@ -5900,19 +6442,21 @@ describe('Combine class', () => {
 
 		it('should comprehensively cover all arrangeKeys branches with xmlOrder', async () => {
 			// Test lines 983-992: All branches of arrangeKeys with xmlOrder
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				// Create data that will trigger all branches
-				fieldPermissions: [
-					{
-						field: 'Account.Name',
-						editable: true,
-						// Add keys not in xmlOrder to trigger aIndex === -1 and bIndex === -1
-						notInOrder1: 'value1',
-						notInOrder2: 'value2',
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					// Create data that will trigger all branches
+					fieldPermissions: [
+						{
+							field: 'Account.Name',
+							editable: true,
+							// Add keys not in xmlOrder to trigger aIndex === -1 and bIndex === -1
+							notInOrder1: 'value1',
+							notInOrder2: 'value2',
+						},
+					],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -5942,16 +6486,18 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys when xmlOrder key exists but keys are not in order', async () => {
 			// Test lines 988-992: When keys are not in xmlOrder array
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						// Keys not in xmlOrder will have indexOf === -1, setting to 99
-						unknownKey1: 'value1',
-						unknownKey2: 'value2',
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							// Keys not in xmlOrder will have indexOf === -1, setting to 99
+							unknownKey1: 'value1',
+							unknownKey2: 'value2',
+						},
+					],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -5978,14 +6524,16 @@ describe('Combine class', () => {
 
 		it('should trigger all arrangeKeys branches with mixed keys in and out of xmlOrder', async () => {
 			// Test all branches: keys in xmlOrder, keys not in xmlOrder, comparisons
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Create a structure that will be processed as an object (not array) to reach arrangeKeys
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				// This will be processed and trigger arrangeKeys on the root level
-				custom: false,
-				description: 'Test',
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					// This will be processed and trigger arrangeKeys on the root level
+					custom: false,
+					description: 'Test',
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6012,15 +6560,13 @@ describe('Combine class', () => {
 
 		it('should trigger sortJSON with array containing items that need sorting', async () => {
 			// Test lines 909-912: Ensure sortJSON is called with array and all comparison branches
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'perm1.yaml',
-				'perm2.yaml',
-				'perm3.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['perm1.yaml', 'perm2.yaml', 'perm3.yaml'],
+			)
 
 			// Return items in different orders to trigger all comparison branches
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({ name: 'PermissionC', enabled: true })
 				.mockResolvedValueOnce({ name: 'PermissionA', enabled: false })
@@ -6051,15 +6597,19 @@ describe('Combine class', () => {
 
 		it('should cover updateFileStats branch when atime is defined and greater', async () => {
 			// Test line 832: stats.atime > that.#fileStats.atime (when atime is already defined)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const date1 = new Date('2023-01-01')
 			const date2 = new Date('2023-01-02')
 
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			let callCount = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				callCount++
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: callCount === 1 ? 'main.yaml' : 'file.yaml',
@@ -6071,7 +6621,7 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
 
 			const config = {
@@ -6091,15 +6641,19 @@ describe('Combine class', () => {
 
 		it('should cover updateFileStats branch when mtime is defined and greater', async () => {
 			// Test line 839: stats.mtime > that.#fileStats.mtime (when mtime is already defined)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			const date1 = new Date('2023-01-01')
 			const date2 = new Date('2023-01-02')
 
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 			let callCount = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				callCount++
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: callCount === 1 ? 'main.yaml' : 'file.yaml',
@@ -6111,7 +6665,7 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
 
 			const config = {
@@ -6131,15 +6685,17 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when aIndex < bIndex AND aIndex !== 99', async () => {
 			// Test line 991: Both conditions must be true
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						field: 'Account.Name', // index 0 in xmlOrder
-						editable: true, // index 1 in xmlOrder
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							field: 'Account.Name', // index 0 in xmlOrder
+							editable: true, // index 1 in xmlOrder
+						},
+					],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6165,15 +6721,17 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when aIndex > bIndex AND bIndex !== 99', async () => {
 			// Test line 992: Both conditions must be true
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						editable: true, // index 1 in xmlOrder
-						field: 'Account.Name', // index 0 in xmlOrder (will be compared after)
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							editable: true, // index 1 in xmlOrder
+							field: 'Account.Name', // index 0 in xmlOrder (will be compared after)
+						},
+					],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6199,15 +6757,17 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when aIndex === 99 (not less than bIndex)', async () => {
 			// Test line 991: aIndex !== 99 (false branch when aIndex === 99)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						notInOrder: 'value', // index -1, becomes 99
-						field: 'Account.Name', // index 0
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							notInOrder: 'value', // index -1, becomes 99
+							field: 'Account.Name', // index 0
+						},
+					],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6233,15 +6793,17 @@ describe('Combine class', () => {
 
 		it('should cover arrangeKeys branch when bIndex === 99 (not greater than aIndex)', async () => {
 			// Test line 992: bIndex !== 99 (false branch when bIndex === 99)
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				fieldPermissions: [
-					{
-						field: 'Account.Name', // index 0
-						notInOrder: 'value', // index -1, becomes 99
-					},
-				],
-			})
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					fieldPermissions: [
+						{
+							field: 'Account.Name', // index 0
+							notInOrder: 'value', // index -1, becomes 99
+						},
+					],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6267,15 +6829,16 @@ describe('Combine class', () => {
 
 		it('should process directory files and trigger arrangeKeys with xmlOrder', async () => {
 			// Test lines 983-992: arrangeKeys with xmlOrder when processing directory files
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'field1.yaml',
-				'field2.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['field1.yaml', 'field2.yaml'],
+			)
 
 			// Each file in directory returns an object that will trigger arrangeKeys
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({
 					// Object with keys that will trigger arrangeKeys with xmlOrder
@@ -6291,9 +6854,11 @@ describe('Combine class', () => {
 
 			// Ensure fileInfo returns stats for updateFileStats
 			let fileInfoCall = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				fileInfoCall++
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: `file${fileInfoCall}.yaml`,
@@ -6305,7 +6870,7 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
 
 			const metaDef = {
@@ -6337,32 +6902,40 @@ describe('Combine class', () => {
 
 		it('should process singleFile with nested array to trigger sortJSON', async () => {
 			// Test lines 909-912: sortJSON when processing singleFile that contains arrays
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 
 			// Return data with nested array that will trigger sortJSON
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				// singleFile that contains an array - this will trigger sortJSON
-				userPermissions: [
-					{ name: 'PermissionC', enabled: true },
-					{ name: 'PermissionA', enabled: false },
-					{ name: 'PermissionB', enabled: true },
-				],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					// singleFile that contains an array - this will trigger sortJSON
+					userPermissions: [
+						{ name: 'PermissionC', enabled: true },
+						{ name: 'PermissionA', enabled: false },
+						{ name: 'PermissionB', enabled: true },
+					],
+				},
+			)
 
 			// Ensure fileInfo returns stats
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '/source',
-				basename: 'Admin',
-				filename: 'userPermissions.yaml',
-				extname: '.yaml',
-				exists: true,
-				stats: {
-					atime: new Date('2023-01-01'),
-					mtime: new Date('2023-01-01'),
-				} as unknown as ReturnType<typeof fileUtils.fileInfo>['stats'],
-			})
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '/source',
+					basename: 'Admin',
+					filename: 'userPermissions.yaml',
+					extname: '.yaml',
+					exists: true,
+					stats: {
+						atime: new Date('2023-01-01'),
+						mtime: new Date('2023-01-01'),
+					} as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6391,17 +6964,17 @@ describe('Combine class', () => {
 		it('should process directory files where final array triggers sortJSON', async () => {
 			// Test lines 909-912: sortJSON when the final array in that.#json[key] needs sorting
 			// This happens when processing directories - the array is built up and needs sorting
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-			vi.mocked(fileUtils.getFiles).mockReturnValue([
-				'perm1.yaml',
-				'perm2.yaml',
-				'perm3.yaml',
-			])
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['perm1.yaml', 'perm2.yaml', 'perm3.yaml'],
+			)
 
 			// Files that will be collected into an array
 			// The array itself will be processed by sortAndArrange recursively
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 				.mockResolvedValueOnce({ name: 'PermissionC', enabled: true })
 				.mockResolvedValueOnce({ name: 'PermissionA', enabled: false })
@@ -6409,9 +6982,11 @@ describe('Combine class', () => {
 
 			// Ensure fileInfo returns stats with increasing dates to trigger updateFileStats branches
 			let fileInfoCall = 0
-			vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+			;(
+				fileUtils.fileInfo as ReturnType<typeof vi.fn>
+			).mockImplementation((path: string) => {
 				fileInfoCall++
-				return {
+				return Promise.resolve({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: `file${fileInfoCall}.yaml`,
@@ -6423,7 +6998,7 @@ describe('Combine class', () => {
 					} as unknown as ReturnType<
 						typeof fileUtils.fileInfo
 					>['stats'],
-				}
+				})
 			})
 
 			const metaDef = {
@@ -6455,32 +7030,40 @@ describe('Combine class', () => {
 			// When sortAndArrange processes an object with an array property, it recursively processes it
 			// But sortJSON is called on the root object result, which won't be an array
 			// However, if we process a structure where the result itself is an array, sortJSON will execute
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+			// fileUtils is already imported at the top of the file
+			;(
+				fileUtils.fileExists as ReturnType<typeof vi.fn>
+			).mockResolvedValue(true)
 
 			// Return an object where a property contains an array
 			// This will trigger arrangeKeys on the root, then sortJSON won't execute (object not array)
 			// But the nested array will be processed recursively
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				main: { fullName: 'Admin' },
-				userPermissions: [
-					{ name: 'PermissionC', enabled: true },
-					{ name: 'PermissionA', enabled: false },
-					{ name: 'PermissionB', enabled: true },
-				],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					main: { fullName: 'Admin' },
+					userPermissions: [
+						{ name: 'PermissionC', enabled: true },
+						{ name: 'PermissionA', enabled: false },
+						{ name: 'PermissionB', enabled: true },
+					],
+				},
+			)
 
-			vi.mocked(fileUtils.fileInfo).mockReturnValue({
-				dirname: '/source',
-				basename: 'Admin',
-				filename: 'file.yaml',
-				extname: '.yaml',
-				exists: true,
-				stats: {
-					atime: new Date('2023-01-01'),
-					mtime: new Date('2023-01-01'),
-				} as unknown as ReturnType<typeof fileUtils.fileInfo>['stats'],
-			})
+			;(fileUtils.fileInfo as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					dirname: '/source',
+					basename: 'Admin',
+					filename: 'file.yaml',
+					extname: '.yaml',
+					exists: true,
+					stats: {
+						atime: new Date('2023-01-01'),
+						mtime: new Date('2023-01-01'),
+					} as unknown as ReturnType<
+						typeof fileUtils.fileInfo
+					>['stats'],
+				},
+			)
 
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
@@ -6512,19 +7095,21 @@ describe('Combine class', () => {
 		describe('Coverage for uncovered lines from EXECUTION_TRACE.md', () => {
 			it('should cover updateFileStats lines 830-841 with multiple files and increasing timestamps', async () => {
 				// Test lines 830-841: updateFileStats with multiple files having increasing timestamps
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
 				// Return multiple files from a directory to trigger multiple processFile calls
-				vi.mocked(fileUtils.getFiles).mockReturnValue([
-					'perm1.yaml',
-					'perm2.yaml',
-					'perm3.yaml',
-				])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue(['perm1.yaml', 'perm2.yaml', 'perm3.yaml'])
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
 
 				// Return different files with different data
 				// Main file first, then directory files
-				vi.mocked(fileUtils.readFile)
+				fileUtils.readFile
 					.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 					.mockResolvedValueOnce({
 						name: 'Permission1',
@@ -6545,27 +7130,27 @@ describe('Combine class', () => {
 				// Third file: date3 > date2, triggers line 832 and 839 again
 				let callCount = 0
 				const baseDate = new Date('2024-01-01T10:00:00Z')
-				vi.mocked(fileUtils.fileInfo).mockImplementation(
-					(filePath: string) => {
-						callCount++
-						const date = new Date(
-							baseDate.getTime() + callCount * 60000,
-						) // Add minutes
-						return {
-							dirname: '/source',
-							basename: 'Admin',
-							filename: path.basename(filePath),
-							extname: '.yaml',
-							exists: true,
-							stats: {
-								atime: date, // Increasing timestamp
-								mtime: date, // Increasing timestamp
-							} as unknown as ReturnType<
-								typeof fileUtils.fileInfo
-							>['stats'],
-						}
-					},
-				)
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockImplementation((filePath: string) => {
+					callCount++
+					const date = new Date(
+						baseDate.getTime() + callCount * 60000,
+					) // Add minutes
+					return Promise.resolve({
+						dirname: '/source',
+						basename: 'Admin',
+						filename: path.basename(filePath),
+						extname: '.yaml',
+						exists: true,
+						stats: {
+							atime: date, // Increasing timestamp
+							mtime: date, // Increasing timestamp
+						} as unknown as ReturnType<
+							typeof fileUtils.fileInfo
+						>['stats'],
+					})
+				})
 
 				// Use a metadata definition with directories to process multiple files
 				// userPermissions is in singleFiles, not directories, so let's use fieldPermissions
@@ -6595,21 +7180,27 @@ describe('Combine class', () => {
 
 			it('should cover sortJSON lines 909-912 with all comparison branches', async () => {
 				// Test lines 909-912: sortJSON with array containing items that trigger all branches
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-				vi.mocked(fileUtils.getFiles).mockReturnValue([
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue([
 					'perm1.yaml',
 					'perm2.yaml',
 					'perm3.yaml',
 					'perm4.yaml',
 				])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
 
 				// Create files with sort key values that will trigger all comparison branches:
 				// - a[key] < b[key] (line 910): 'A' < 'B'
 				// - a[key] > b[key] (line 911): 'C' > 'B'
 				// - a[key] === b[key] (line 912): 'A' === 'A'
-				vi.mocked(fileUtils.readFile)
+				fileUtils.readFile
 					.mockResolvedValueOnce({ main: { fullName: 'Admin' } })
 					.mockResolvedValueOnce({
 						name: 'PermissionB',
@@ -6628,7 +7219,9 @@ describe('Combine class', () => {
 						enabled: true,
 					}) // 'A' === 'A' (line 912)
 
-				vi.mocked(fileUtils.fileInfo).mockReturnValue({
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockResolvedValue({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: 'file.yaml',
@@ -6669,15 +7262,21 @@ describe('Combine class', () => {
 			it('should cover arrangeKeys lines 983-992 with xmlOrder', async () => {
 				// Test lines 983-992: arrangeKeys with xmlOrder defined
 				// Use Workflows metadata which has xmlOrder configured
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-				vi.mocked(fileUtils.getFiles).mockReturnValue(['alert1.yaml'])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue(['alert1.yaml'])
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
 
 				// Create object with keys that match xmlOrder positions
 				// xmlOrder.alerts = ['fullName']
 				// We need keys that are in xmlOrder and some that are not
-				vi.mocked(fileUtils.readFile)
+				fileUtils.readFile
 					.mockResolvedValueOnce({ main: { fullName: 'Workflow1' } })
 					.mockResolvedValueOnce({
 						fullName: 'Alert1', // In xmlOrder at index 0
@@ -6685,7 +7284,9 @@ describe('Combine class', () => {
 						template: 'Template', // NOT in xmlOrder (index = -1 → 99)
 					})
 
-				vi.mocked(fileUtils.fileInfo).mockReturnValue({
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockResolvedValue({
 					dirname: '/source',
 					basename: 'Workflow1',
 					filename: 'file.yaml',
@@ -6720,18 +7321,27 @@ describe('Combine class', () => {
 				// This happens when xmlOrder logic doesn't apply and string comparison results in equal keys
 				// Since JS objects can't have duplicate keys, this is an edge case
 				// We can trigger it when xmlOrder is undefined or keys are not in xmlOrder
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-				vi.mocked(fileUtils.getFiles).mockReturnValue(['file1.yaml'])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-
-				vi.mocked(fileUtils.readFile).mockResolvedValue({
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue(['file1.yaml'])
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				;(
+					fileUtils.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue({
 					main: { fullName: 'Admin' },
 					customField1: 'value1',
 					customField2: 'value2',
 				})
 
-				vi.mocked(fileUtils.fileInfo).mockReturnValue({
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockResolvedValue({
 					dirname: '/source',
 					basename: 'Admin',
 					filename: 'file.yaml',
@@ -6770,15 +7380,21 @@ describe('Combine class', () => {
 			it('should cover lines 983-992, 997 with real workflow data - arrangeKeys xmlOrder', async () => {
 				// Test lines 983-992, 997: arrangeKeys with xmlOrder
 				// Workflows have xmlOrder defined for alerts, rules, fieldUpdates
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-				vi.mocked(fileUtils.getFiles).mockReturnValue(['alert1.yaml'])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue(['alert1.yaml'])
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
 
 				// Create alert data with keys in xmlOrder and keys not in xmlOrder
 				// xmlOrder.alerts = ['fullName']
 				// So fullName is in order (index 0), other keys are not (index 99)
-				vi.mocked(fileUtils.readFile)
+				fileUtils.readFile
 					.mockResolvedValueOnce({ main: { fullName: 'Case' } })
 					.mockResolvedValueOnce({
 						// Keys NOT in xmlOrder should come after fullName
@@ -6789,9 +7405,11 @@ describe('Combine class', () => {
 					})
 
 				let fileInfoCallCount = 0
-				vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockImplementation((path: string) => {
 					fileInfoCallCount++
-					return {
+					return Promise.resolve({
 						dirname: '/source',
 						basename: 'Case',
 						filename: 'alert1.yaml',
@@ -6803,7 +7421,7 @@ describe('Combine class', () => {
 						} as unknown as ReturnType<
 							typeof fileUtils.fileInfo
 						>['stats'],
-					}
+					})
 				})
 
 				const config = {
@@ -6827,17 +7445,22 @@ describe('Combine class', () => {
 				// Test lines 909-912: sortJSON with array and key
 				// CustomLabels has sortKeys.labels = 'fullName'
 				// When combining multiple labels, they should be sorted by fullName
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
 				// Return multiple label files to create an array
-				vi.mocked(fileUtils.getFiles).mockReturnValue([
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue([
 					'LabelC.yaml', // Should sort last
 					'LabelA.yaml', // Should sort first
 					'LabelB.yaml', // Should sort middle
 				])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-
-				vi.mocked(fileUtils.readFile)
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				fileUtils.readFile
 					.mockResolvedValueOnce({
 						main: { fullName: 'CustomLabels' },
 					})
@@ -6854,7 +7477,9 @@ describe('Combine class', () => {
 						value: 'Value B',
 					})
 
-				vi.mocked(fileUtils.fileInfo).mockReturnValue({
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockResolvedValue({
 					dirname: '/source',
 					basename: 'CustomLabels',
 					filename: 'label.yaml',
@@ -6891,14 +7516,17 @@ describe('Combine class', () => {
 				// Line 832: stats.atime > that.#fileStats.atime (subsequent files)
 				// Line 838: that.#fileStats.mtime === undefined (first file)
 				// Line 839: stats.mtime > that.#fileStats.mtime (subsequent files)
-				const fileUtils = await import('../../src/lib/fileUtils.js')
-				vi.mocked(fileUtils.directoryExists).mockReturnValue(true)
-				vi.mocked(fileUtils.getFiles).mockReturnValue([
-					'file1.yaml',
-					'file2.yaml',
-				])
-				vi.mocked(fileUtils.fileExists).mockReturnValue(true)
-				vi.mocked(fileUtils.readFile)
+				// fileUtils is already imported at the top of the file
+				;(
+					fileUtils.directoryExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				;(
+					fileUtils.getFiles as ReturnType<typeof vi.fn>
+				).mockResolvedValue(['file1.yaml', 'file2.yaml'])
+				;(
+					fileUtils.fileExists as ReturnType<typeof vi.fn>
+				).mockResolvedValue(true)
+				fileUtils.readFile
 					.mockResolvedValueOnce({ main: { fullName: 'Test' } })
 					.mockResolvedValueOnce({ fullName: 'File1' })
 					.mockResolvedValueOnce({ fullName: 'File2' })
@@ -6907,10 +7535,12 @@ describe('Combine class', () => {
 				const date2 = new Date('2023-01-01T11:00:00Z') // Newer than date1
 
 				let callCount = 0
-				vi.mocked(fileUtils.fileInfo).mockImplementation(() => {
+				;(
+					fileUtils.fileInfo as ReturnType<typeof vi.fn>
+				).mockImplementation((path: string) => {
 					callCount++
 					const date = callCount === 1 ? date1 : date2
-					return {
+					return Promise.resolve({
 						dirname: '/source',
 						basename: 'Test',
 						filename: `file${callCount}.yaml`,
@@ -6922,7 +7552,7 @@ describe('Combine class', () => {
 						} as unknown as ReturnType<
 							typeof fileUtils.fileInfo
 						>['stats'],
-					}
+					})
 				})
 
 				const config = {
@@ -6955,8 +7585,9 @@ describe('Combine class', () => {
 				output: [] as string[],
 				title: '',
 			} as unknown as ListrTaskWrapper<any, any, any>
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6981,8 +7612,9 @@ describe('Combine class', () => {
 				output: [] as string[],
 				title: '',
 			} as unknown as ListrTaskWrapper<any, any, any>
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['main.yaml'])
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['main.yaml'],
+			)
 
 			const config = {
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -7008,8 +7640,10 @@ describe('Combine class', () => {
 			const mockAddPkg = {
 				addMember: vi.fn(),
 			}
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['testFile.yaml'])
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['testFile.yaml'],
+			)
 
 			// Create metadata definition with package mapping
 			const metadataDefWithPackage = {
@@ -7041,15 +7675,15 @@ describe('Combine class', () => {
 			const mockAddPkg = {
 				addMember: vi.fn(),
 			}
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Return files in a directory to trigger the package mapping path
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'classAccesses',
-			])
-			vi.mocked(fileUtils.getFiles)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['classAccesses'])
+			fileUtils.getFiles
 				.mockReturnValueOnce(['main.yaml']) // For main file
 				.mockReturnValueOnce(['TestClass.yaml']) // For classAccesses directory
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ fullName: 'Admin' }) // Main file
 				.mockResolvedValueOnce({ apexClass: 'TestClass' }) // Directory file
 
@@ -7081,15 +7715,15 @@ describe('Combine class', () => {
 		})
 
 		it('should handle hydrateObject with keyOrder including order', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
+			// fileUtils is already imported at the top of the file
 			// Return files in a directory to trigger hydrateObject
-			vi.mocked(fileUtils.getDirectories).mockReturnValue([
-				'fieldPermissions',
-			])
-			vi.mocked(fileUtils.getFiles)
+			;(
+				fileUtils.getDirectories as ReturnType<typeof vi.fn>
+			).mockResolvedValue(['fieldPermissions'])
+			fileUtils.getFiles
 				.mockReturnValueOnce(['main.yaml']) // For main file
 				.mockReturnValueOnce(['TestField.yaml']) // For fieldPermissions directory
-			vi.mocked(fileUtils.readFile)
+			fileUtils.readFile
 				.mockResolvedValueOnce({ fullName: 'Admin' }) // Main file
 				.mockResolvedValueOnce({
 					// Directory file with object and field
@@ -7126,12 +7760,16 @@ describe('Combine class', () => {
 		})
 
 		it('should handle error in processFile array push', async () => {
-			const fileUtils = await import('../../src/lib/fileUtils.js')
-			vi.mocked(fileUtils.getFiles).mockReturnValue(['testFile.yaml'])
+			// fileUtils is already imported at the top of the file
+			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
+				['testFile.yaml'],
+			)
 			// Mock readFile to return data that will trigger array path
-			vi.mocked(fileUtils.readFile).mockResolvedValue({
-				testKey: [{ value: 'test' }],
-			})
+			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+				{
+					testKey: [{ value: 'test' }],
+				},
+			)
 
 			// Create metadata definition with directories that will create array
 			const metadataDefWithDirectories = {

@@ -22,22 +22,18 @@ const fileUtils = {
 	}),
 }
 
-vi.mock('fs', async (importOriginal) => {
-	const actual = (await importOriginal()) as typeof fs
-	return {
-		...actual,
-		default: actual,
-		existsSync: vi.fn(),
-		statSync: vi.fn(),
-	} as unknown as typeof fs
-})
+vi.mock('fs', () => ({
+	default: {},
+	existsSync: vi.fn(),
+	statSync: vi.fn(),
+}))
 
 beforeEach(() => {
 	vi.clearAllMocks()
 })
 
 test('should return lastCommit and latestCommit if file exists', async () => {
-	vi.mocked(fs.existsSync).mockReturnValue(true)
+	;(fs.existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true)
 	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: 'project',
@@ -52,8 +48,9 @@ test('should return lastCommit and latestCommit if file exists', async () => {
 })
 
 test('should return only latestCommit if file does not exist', async () => {
-	vi.mocked(fs.existsSync).mockReturnValue(false)
-	vi.mocked(fileUtils.fileExists).mockReturnValue(false)
+	;(fs.existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false)
+	// Reset fileUtils.fileExists to return false for this test
+	fileUtils.fileExists = vi.fn().mockResolvedValue(false)
 	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 	const result = await lastCommit({
 		dir: __dirname,
@@ -68,7 +65,7 @@ test('should return only latestCommit if file does not exist', async () => {
 })
 
 it('should handle missing file gracefully', async () => {
-	vi.mocked(fs.existsSync).mockImplementation(() => false)
+	;(fs.existsSync as ReturnType<typeof vi.fn>).mockImplementation(() => false)
 	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
 
 	const result = await lastCommit({
@@ -129,13 +126,9 @@ test('should throw an error when execFileSync returns an error', async () => {
 })
 
 // Mock child_process to support execFileSync
-vi.mock('child_process', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('child_process')>()
-	return {
-		...actual,
-		execFileSync: vi.fn(),
-	} as unknown as typeof import('child_process')
-})
+vi.mock('child_process', () => ({
+	execFileSync: vi.fn(),
+}))
 
 test('should throw an error when execFileSync returns an error', async () => {
 	const execFileSyncMock = vi.fn().mockImplementationOnce(() => {

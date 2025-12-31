@@ -19,7 +19,9 @@ it('should return an array of git commit hashes', () => {
 		'234567890abcdef1',
 		'34567890abcdef12',
 	]
-	vi.mocked(execFileSync).mockReturnValue(commits.join(os.EOL))
+	;(execFileSync as ReturnType<typeof vi.fn>).mockReturnValue(
+		commits.join(os.EOL),
+	)
 	const dir = process.cwd()
 	const gitRef = 'HEAD~1..HEAD'
 	const result = log(dir, gitRef, execFileSync)
@@ -33,14 +35,14 @@ it('should return an array of git commit hashes', () => {
 
 it('should throw an error if git is not installed or no entry found in path', () => {
 	const error = new Error('ENOENT')
-	vi.mocked(execFileSync).mockImplementation(() => {
+	;(execFileSync as ReturnType<typeof vi.fn>).mockImplementation(() => {
 		throw error
 	})
 	const dir = process.cwd()
 	const gitRef = 'HEAD~1..HEAD'
 	try {
 		log(dir, gitRef, execFileSync)
-		expect.fail('Should have thrown an error')
+		throw new Error('Should have thrown an error')
 	} catch (err) {
 		expect(err).toBeInstanceOf(Error)
 		// Test line 219: error message modification for ENOENT

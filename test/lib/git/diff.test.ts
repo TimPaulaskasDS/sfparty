@@ -27,7 +27,7 @@ beforeEach(() => {
 })
 
 test('rejects if directory does not exist', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(false)
+	;(existsSync as ReturnType<typeof vi.fn>).mockReturnValueOnce(false)
 	const spawnMock = vi.fn()
 	try {
 		await diff({
@@ -46,7 +46,9 @@ test('rejects if directory does not exist', async () => {
 })
 
 test('rejects if .git directory does not exist', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(false)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(false)
 
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
@@ -60,7 +62,9 @@ test('rejects if .git directory does not exist', async () => {
 })
 
 test('rejects when git is not installed', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn().mockImplementationOnce((event, callback) => {
 			if (event === 'error') {
@@ -68,7 +72,7 @@ test('rejects when git is not installed', async () => {
 			}
 		}),
 	} as unknown as ReturnType<typeof spawn>
-	vi.mocked(spawn).mockReturnValueOnce(git)
+	;(spawn as ReturnType<typeof vi.fn>).mockReturnValueOnce(git)
 
 	try {
 		await diff({ dir: '/path/to/dir', existsSync, spawn })
@@ -82,7 +86,9 @@ test('rejects when git is not installed', async () => {
 })
 
 test('resolves with files when git diff command is successful', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -109,7 +115,9 @@ test('resolves with files when git diff command is successful', async () => {
 			}),
 		},
 	} as unknown as ReturnType<typeof spawn>
-	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
 
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
 	expect(files).toEqual([
@@ -120,7 +128,9 @@ test('resolves with files when git diff command is successful', async () => {
 })
 
 test('rejects when git diff command fails', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -138,7 +148,7 @@ test('rejects when git diff command fails', async () => {
 		},
 	} as unknown as ReturnType<typeof spawn>
 	if (gitDiff.stderr && gitDiff.stderr.on) {
-		vi.mocked(gitDiff.stderr.on).mockImplementation(((
+		;(gitDiff.stderr.on as ReturnType<typeof vi.fn>).mockImplementation(((
 			_: string,
 			cb: (err: string) => void,
 		) => {
@@ -151,7 +161,9 @@ test('rejects when git diff command fails', async () => {
 			listener: (...args: unknown[]) => void,
 		) => ReturnType<typeof import('stream').Readable.prototype.on>)
 	}
-	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
 
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
@@ -165,7 +177,9 @@ test('rejects when git diff command fails', async () => {
 })
 
 test('ignores files when git diff output does not have a tab character', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -189,7 +203,9 @@ test('ignores files when git diff output does not have a tab character', async (
 			}),
 		},
 	} as unknown as ReturnType<typeof spawn>
-	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
 
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
 	expect(files).toEqual([
@@ -199,7 +215,9 @@ test('ignores files when git diff output does not have a tab character', async (
 })
 
 test('rejects when git --version command fails', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -207,7 +225,7 @@ test('rejects when git --version command fails', async () => {
 			}
 		}),
 	} as unknown as ReturnType<typeof spawn>
-	vi.mocked(spawn).mockReturnValueOnce(git)
+	;(spawn as ReturnType<typeof vi.fn>).mockReturnValueOnce(git)
 
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
@@ -221,7 +239,9 @@ test('rejects when git --version command fails', async () => {
 })
 
 test('rejects when git diff command fails', async () => {
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -242,7 +262,9 @@ test('rejects when git diff command fails', async () => {
 			}),
 		},
 	} as unknown as ReturnType<typeof spawn>
-	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
 
 	try {
 		await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
@@ -258,7 +280,9 @@ test('rejects when git diff command fails', async () => {
 test('handles unknown status type with default action', async () => {
 	// Test lines 174-178: statusType undefined branch
 	// Use a status code that's definitely not in the status object
-	vi.mocked(existsSync).mockReturnValueOnce(true).mockReturnValueOnce(true)
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
 	const git = {
 		on: vi.fn((event, callback) => {
 			if (event === 'close') {
@@ -282,7 +306,9 @@ test('handles unknown status type with default action', async () => {
 			on: vi.fn(),
 		},
 	} as unknown as ReturnType<typeof spawn>
-	vi.mocked(spawn).mockReturnValueOnce(git).mockReturnValueOnce(gitDiff)
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
 
 	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
 	// When statusType is undefined, should default to type 'A' (line 176) and action 'add' (line 180)

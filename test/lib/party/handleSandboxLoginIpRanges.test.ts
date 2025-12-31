@@ -1,60 +1,65 @@
-import { describe, expect, it, vi } from 'vitest'
-import * as fileUtils from '../../../src/lib/fileUtils.js'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as fileUtilsModule from '../../../src/lib/fileUtils.js'
 import { handleSandboxLoginIpRanges } from '../../../src/party/split.js'
 
+const mockReadFile = vi.fn()
+const mockDeleteDirectory = vi.fn()
+const mockCreateDirectory = vi.fn()
+const mockSaveFile = vi.fn()
+
 vi.mock('../../../src/lib/fileUtils.js', () => ({
-	readFile: vi.fn(),
-	deleteDirectory: vi.fn(),
-	createDirectory: vi.fn(),
-	saveFile: vi.fn(),
+	readFile: (...args: unknown[]) => mockReadFile(...args),
+	deleteDirectory: (...args: unknown[]) => mockDeleteDirectory(...args),
+	createDirectory: (...args: unknown[]) => mockCreateDirectory(...args),
+	saveFile: (...args: unknown[]) => mockSaveFile(...args),
 }))
 
 describe('handleSandboxLoginIpRanges', () => {
-	it('should read, delete, create, and save loginIpRanges-sandbox.yaml when it exists', () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		mockReadFile.mockReset()
+		mockDeleteDirectory.mockReset()
+		mockCreateDirectory.mockReset()
+		mockSaveFile.mockReset()
+	})
+
+	it('should read, delete, create, and save loginIpRanges-sandbox.yaml when it exists', async () => {
 		const yamlContent = `loginIpRanges:
 - startAddress: 4.78.246.194
   endAddress: 4.78.246.194`
 		const targetDir = '/target'
 
-		vi.mocked(fileUtils.readFile).mockReturnValue(yamlContent)
-		vi.mocked(fileUtils.deleteDirectory).mockReturnValue(
-			undefined as unknown as void,
-		)
-		vi.mocked(fileUtils.createDirectory).mockReturnValue(
-			undefined as unknown as void,
-		)
-		vi.mocked(fileUtils.saveFile).mockReturnValue(true)
+		mockReadFile.mockResolvedValue(yamlContent)
+		mockDeleteDirectory.mockResolvedValue(undefined)
+		mockCreateDirectory.mockResolvedValue(undefined)
+		mockSaveFile.mockResolvedValue(true)
 
-		handleSandboxLoginIpRanges(targetDir, fileUtils)
+		await handleSandboxLoginIpRanges(targetDir, fileUtilsModule)
 
-		expect(fileUtils.readFile).toHaveBeenCalledWith(
+		expect(mockReadFile).toHaveBeenCalledWith(
 			expect.stringContaining('loginIpRanges-sandbox.yaml'),
 		)
-		expect(fileUtils.deleteDirectory).toHaveBeenCalledWith(targetDir, true)
-		expect(fileUtils.createDirectory).toHaveBeenCalledWith(targetDir)
-		expect(fileUtils.saveFile).toHaveBeenCalledWith(
+		expect(mockDeleteDirectory).toHaveBeenCalledWith(targetDir, true)
+		expect(mockCreateDirectory).toHaveBeenCalledWith(targetDir)
+		expect(mockSaveFile).toHaveBeenCalledWith(
 			yamlContent,
 			expect.stringContaining('loginIpRanges-sandbox.yaml'),
 			'yaml',
 		)
 	})
 
-	it('should not save file when loginIpRanges-sandbox.yaml does not exist', () => {
+	it('should not save file when loginIpRanges-sandbox.yaml does not exist', async () => {
 		const targetDir = '/target'
 
-		vi.mocked(fileUtils.readFile).mockReturnValue(null)
-		vi.mocked(fileUtils.deleteDirectory).mockReturnValue(
-			undefined as unknown as void,
-		)
-		vi.mocked(fileUtils.createDirectory).mockReturnValue(
-			undefined as unknown as void,
-		)
+		mockReadFile.mockResolvedValue(null)
+		mockDeleteDirectory.mockResolvedValue(undefined)
+		mockCreateDirectory.mockResolvedValue(undefined)
 
-		handleSandboxLoginIpRanges(targetDir, fileUtils)
+		await handleSandboxLoginIpRanges(targetDir, fileUtilsModule)
 
-		expect(fileUtils.readFile).toHaveBeenCalled()
-		expect(fileUtils.deleteDirectory).toHaveBeenCalled()
-		expect(fileUtils.createDirectory).toHaveBeenCalled()
-		expect(fileUtils.saveFile).not.toHaveBeenCalled()
+		expect(mockReadFile).toHaveBeenCalled()
+		expect(mockDeleteDirectory).toHaveBeenCalled()
+		expect(mockCreateDirectory).toHaveBeenCalled()
+		expect(mockSaveFile).not.toHaveBeenCalled()
 	})
 })
