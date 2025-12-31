@@ -58,6 +58,42 @@ describe('PerformanceLogger', () => {
 			const operation = timing?.operations[0]
 			expect(operation?.fileSize).toBe(2048)
 		})
+
+		it('should set parseTime for parse operations', () => {
+			const opId = logger.startOperation('parse', 'test.xml')
+			logger.endOperation(opId)
+
+			const timing = logger.getFileTiming('test.xml')
+			expect(timing?.parseTime).toBeDefined()
+			expect(timing?.parseTime).toBeGreaterThanOrEqual(0)
+		})
+
+		it('should set parseTime for xml operations', () => {
+			const opId = logger.startOperation('parseXml', 'test.xml')
+			logger.endOperation(opId)
+
+			const timing = logger.getFileTiming('test.xml')
+			expect(timing?.parseTime).toBeDefined()
+			expect(timing?.parseTime).toBeGreaterThanOrEqual(0)
+		})
+
+		it('should set writeTime for write operations', () => {
+			const opId = logger.startOperation('write', 'test.xml')
+			logger.endOperation(opId)
+
+			const timing = logger.getFileTiming('test.xml')
+			expect(timing?.writeTime).toBeDefined()
+			expect(timing?.writeTime).toBeGreaterThanOrEqual(0)
+		})
+
+		it('should set writeTime for save operations', () => {
+			const opId = logger.startOperation('save', 'test.xml')
+			logger.endOperation(opId)
+
+			const timing = logger.getFileTiming('test.xml')
+			expect(timing?.writeTime).toBeDefined()
+			expect(timing?.writeTime).toBeGreaterThanOrEqual(0)
+		})
 	})
 
 	describe('setFileSize', () => {
