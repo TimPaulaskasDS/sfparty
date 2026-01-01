@@ -7584,7 +7584,7 @@ describe('Combine class', () => {
 			const mockTask = {
 				output: [] as string[],
 				title: '',
-			} as unknown as ListrTaskWrapper<any, any, any>
+			} as unknown as ListrTaskWrapper<unknown, unknown, unknown>
 			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
 				['main.yaml'],
 			)
@@ -7611,7 +7611,7 @@ describe('Combine class', () => {
 			const mockTask = {
 				output: [] as string[],
 				title: '',
-			} as unknown as ListrTaskWrapper<any, any, any>
+			} as unknown as ListrTaskWrapper<unknown, unknown, unknown>
 			;(fileUtils.getFiles as ReturnType<typeof vi.fn>).mockResolvedValue(
 				['main.yaml'],
 			)

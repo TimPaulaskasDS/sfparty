@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser'
 import fs from 'fs'
 import path from 'path'
+import { sanitizeErrorPath } from '../lib/errorUtils.js'
 import * as fileUtils from '../lib/fileUtils.js'
 import { getPerformanceLogger } from '../lib/performanceLogger.js'
 import { getGlobalProgressTracker } from '../lib/tuiProgressTracker.js'
@@ -251,8 +252,10 @@ export class Split {
 					global.logger?.error(message)
 				}
 			}
+			const errorMessage =
+				err instanceof Error ? err.message : String(err)
 			throw new Error(
-				`error converting xml to json: ${that.metaFilePath}: ${err instanceof Error ? err.message : String(err)}`,
+				`error converting xml to json: ${sanitizeErrorPath(that.metaFilePath)}: ${errorMessage}`,
 			)
 		}
 		const parseEnd = process.hrtime.bigint()

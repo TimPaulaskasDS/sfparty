@@ -2,18 +2,6 @@ import * as fs from 'fs'
 import yaml from 'js-yaml'
 import * as path from 'path'
 
-// Copy replaceSpecialChars to avoid circular dependency
-function replaceSpecialChars(str: string): string {
-	if (typeof str !== 'string') return str
-	return str
-		.replace(/\*/g, '\u002a')
-		.replace(/\?/g, '\u003f')
-		.replace(/</g, '\u003c')
-		.replace(/>/g, '\u003e')
-		.replace(/\|/g, '\u007c')
-		.replace(/:/g, '\u003a')
-}
-
 /**
  * Write batcher for optimizing file I/O operations
  * Collects multiple file writes and executes them in batches to reduce I/O overhead
@@ -37,8 +25,9 @@ export class WriteBatcher {
 	 * Add a file write to the batch queue
 	 */
 	async addWrite(fileName: string, data: string): Promise<void> {
-		const sanitizedFileName = this.sanitizePath(fileName)
-		this.writeQueue.push({ fileName: sanitizedFileName, data })
+		// Path should already be sanitized by caller (saveFile)
+		// Removing redundant sanitization to reduce overhead
+		this.writeQueue.push({ fileName, data })
 
 		// Force flush if queue gets too large (prevents accumulation of 100k+ writes)
 		// This is especially important when writes come in faster than they can be flushed
@@ -215,10 +204,6 @@ export class WriteBatcher {
 	async waitForCompletion(): Promise<void> {
 		// Use flushAll for final flush - it's more efficient
 		await this.flushAll()
-	}
-
-	private sanitizePath(filePath: string): string {
-		return replaceSpecialChars(filePath)
 	}
 }
 

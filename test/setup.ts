@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, vi } from 'vitest'
+import type { Logger } from 'winston'
 import {
 	clearVerifiedDirectoriesCache,
 	resetWriteBatcher,
@@ -32,13 +33,14 @@ beforeEach(() => {
 
 	// Setup global.logger mock for tests
 	// @ts-expect-error - global.logger is added dynamically
-	global.logger = {
+	const mockLogger: Partial<Logger> = {
 		info: vi.fn(),
 		warn: vi.fn(),
 		error: vi.fn(),
 		debug: vi.fn(),
 		log: vi.fn(),
-	} as any
+	}
+	global.logger = mockLogger as Logger
 })
 
 // Clean up after each test

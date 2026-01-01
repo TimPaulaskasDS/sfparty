@@ -113,7 +113,7 @@ describe('getDirectories', () => {
 			{ name: 'dir1', isDirectory: () => true },
 			{ name: 'file1.txt', isDirectory: () => false },
 			{ name: 'dir2', isDirectory: () => true },
-		] as any)
+		] as unknown as import('fs').Dirent[])
 
 		const result = await getDirectories(
 			'/test/path',

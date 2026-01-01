@@ -24,6 +24,7 @@ import {
 	setPerformanceLogger,
 } from './lib/performanceLogger.js'
 import pkgObj from './lib/pkgObj.js'
+import { suppressTerminalErrors } from './lib/terminalUtils.js'
 import {
 	getGlobalProgressTracker,
 	setGlobalProgressTracker,
@@ -39,44 +40,7 @@ import { Split } from './party/split.js'
 import type { MetadataDefinition } from './types/metadata.js'
 
 // Suppress terminal capability errors at the very start, before any imports that might trigger them
-if (process.stdout.isTTY && process.env.TERM !== 'dumb') {
-	const originalStderrWrite = process.stderr.write.bind(process.stderr)
-	process.stderr.write = function (
-		chunk: any,
-		encoding?: any,
-		cb?: any,
-	): boolean {
-		const message = chunk?.toString() || ''
-		// Filter out terminal capability errors - be very aggressive
-		if (
-			message.includes('xterm-256color.Setulc') ||
-			message.includes('stack.pop') ||
-			message.includes('out.push') ||
-			message.includes('var v,') ||
-			message.includes('stack.push') ||
-			message.includes('stack =') ||
-			message.includes('out =') ||
-			message.includes('return out.join') ||
-			message.includes('Error on xterm') ||
-			message.includes('\\u001b[58::') ||
-			message.includes('%p1%{65536}') ||
-			message.includes('\x1b[58::')
-		) {
-			// Call callback if provided to prevent hanging
-			if (typeof cb === 'function') {
-				cb()
-			}
-			return true // Suppress these messages
-		}
-		if (cb) {
-			return originalStderrWrite(chunk, encoding, cb)
-		} else if (encoding) {
-			return originalStderrWrite(chunk, encoding)
-		} else {
-			return originalStderrWrite(chunk)
-		}
-	}
-}
+suppressTerminalErrors()
 
 const processStartTime = process.hrtime.bigint()
 const __filename = fileURLToPath(import.meta.url)
@@ -611,7 +575,7 @@ yargs(hideBin(process.argv))
 		},
 		handler: async (_argv) => {
 			const { marked } = await import('marked')
-			// @ts-expect-error - no type definitions available
+			// @ts-expect-error - marked-terminal has no type definitions available
 			const markedTerminal = (await import('marked-terminal')).default
 			marked.setOptions({
 				renderer: new markedTerminal() as unknown as Parameters<
@@ -661,7 +625,7 @@ yargs(hideBin(process.argv))
 		builder: (yargs) => {
 			yargs
 				.example(yargOptions.splitExamples)
-				// @ts-expect-error - yargs options type mismatch
+				// @ts-expect-error - yargs options type mismatch (known issue with yargs v17 types)
 				.options(yargOptions.splitOptions)
 				.choices('format', ['json', 'yaml'])
 				.check(yargCheck)
@@ -679,7 +643,7 @@ yargs(hideBin(process.argv))
 		builder: (yargs) => {
 			yargs
 				.example(yargOptions.combineExamples)
-				// @ts-expect-error - yargs options type mismatch
+				// @ts-expect-error - yargs options type mismatch (known issue with yargs v17 types)
 				.options(yargOptions.combineOptions)
 				.choices('format', ['json', 'yaml'])
 				.check(yargCheck)

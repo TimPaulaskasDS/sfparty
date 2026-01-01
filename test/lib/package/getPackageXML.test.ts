@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, type Mock, vi } from 'vitest'
 import { Package } from '../../../src/lib/packageUtil.js'
 import * as labelDefinition from '../../../src/meta/CustomLabels.js'
 import * as packageDefinition from '../../../src/meta/Package.js'
@@ -69,6 +69,10 @@ const fileUtils = {
 	createDirectory: vi.fn(),
 	writeFile: vi.fn(),
 } as unknown as FileUtilsInterface
+
+// Type helpers for accessing mock methods
+const mockFileExists = fileUtils.fileExists as unknown as Mock
+const mockReadFile = fileUtils.readFile as unknown as Mock
 beforeEach(() => {
 	pkg = new Package('xmlPath')
 	global.git = undefined
@@ -79,8 +83,8 @@ afterEach(() => {
 })
 
 it('should default the package if the json is empty', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({})
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({})
 	global.git = { append: true }
 	const result = await pkg.getPackageXML(fileUtils)
 	expect(result).toBe('existing')
@@ -92,8 +96,8 @@ it('should default the package if the json is empty', async () => {
 })
 
 it('should read an existing file and call processJSON', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue(
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue(
 		packageDefinition.metadataDefinition.emptyPackage,
 	)
 	global.git = { append: true }
@@ -104,7 +108,7 @@ it('should read an existing file and call processJSON', async () => {
 })
 
 it('should create an empty pkg JSON and call processJSON', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(false)
+	mockFileExists.mockReturnValue(false)
 	const finalJSON = JSON.parse(
 		JSON.stringify(packageDefinition.metadataDefinition.emptyPackage),
 	)
@@ -128,15 +132,15 @@ it('should throw an error if xmlPath is undefined', async () => {
 })
 
 it('should throw an error if error occurs during processing', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockRejectedValue(new Error('Error'))
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockRejectedValue(new Error('Error'))
 	global.git = { append: true }
 	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError('Error')
 })
 
 it('should catch errors and reject the promise', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockRejectedValue(new Error('Test Error'))
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockRejectedValue(new Error('Test Error'))
 	global.git = { append: true }
 	try {
 		await pkg.getPackageXML(fileUtils)
@@ -147,8 +151,8 @@ it('should catch errors and reject the promise', async () => {
 })
 
 it('should default to an empty package if the read file is empty', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue('')
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue('')
 	global.git = { append: true }
 	const result = await pkg.getPackageXML(fileUtils)
 	expect(result).toBe('existing')
@@ -160,8 +164,8 @@ it('should default to an empty package if the read file is empty', async () => {
 })
 
 it('should throw an error if fileUtils.readFile() returns a rejected promise', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockRejectedValue(new Error('Test Error'))
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockRejectedValue(new Error('Test Error'))
 	global.git = { append: true }
 	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError(
 		'Test Error',
@@ -171,8 +175,8 @@ it('should throw an error if fileUtils.readFile() returns a rejected promise', a
 })
 
 it('should correctly process the json object returned from the XML file', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValueOnce({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValueOnce({
 		Package: {
 			types: [
 				{
@@ -195,8 +199,8 @@ it('should correctly process the json object returned from the XML file', async 
 			version: '56.0',
 		},
 	})
-	;(fileUtils.readFile as any).mockImplementationOnce(() => {
-		return { sourceApiVersion: '56.0' }
+	mockReadFile.mockImplementationOnce(() => {
+		return Promise.resolve({ sourceApiVersion: '56.0' } as unknown)
 	})
 	global.git = { append: true }
 	const result = await pkg.getPackageXML(fileUtils)
@@ -225,7 +229,7 @@ it('should correctly process the json object returned from the XML file', async 
 })
 
 it('should handle git.append = false', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
+	mockFileExists.mockReturnValue(true)
 	Object.defineProperty(global, 'git', {
 		value: { append: false },
 		writable: true,
@@ -237,8 +241,8 @@ it('should handle git.append = false', async () => {
 })
 
 it('should handle transformJSON error when JSON.parse throws', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -260,7 +264,7 @@ it('should handle transformJSON error when JSON.parse throws', async () => {
 })
 
 it('should handle xml2json error when toString throws', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
+	mockFileExists.mockReturnValue(true)
 	// Create a value that will cause toString to throw when xml2json processes it
 	// We need to create an array with one element that has a toString that throws
 	const problematicValue = {
@@ -268,7 +272,7 @@ it('should handle xml2json error when toString throws', async () => {
 			throw new Error('toString error')
 		},
 	}
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -287,8 +291,8 @@ it('should handle xml2json error when toString throws', async () => {
 })
 
 it('should handle undefined types in Package', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			version: '56.0',
 		},
@@ -302,8 +306,8 @@ it('should handle undefined types in Package', async () => {
 })
 
 it('should handle empty json object keys', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue(undefined)
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue(undefined)
 	global.git = { append: true }
 	const result = await pkg.getPackageXML(fileUtils)
 	expect(result).toBe('existing')
@@ -313,8 +317,8 @@ it('should handle empty json object keys', async () => {
 })
 
 it('should handle array members with single string value', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -334,8 +338,8 @@ it('should handle array members with single string value', async () => {
 })
 
 it('should handle readFile returning non-Promise value', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockReturnValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockReturnValue({
 		Package: {
 			types: [],
 			version: '56.0',
@@ -348,8 +352,8 @@ it('should handle readFile returning non-Promise value', async () => {
 })
 
 it('should handle readFile returning non-Promise empty object', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockReturnValue({})
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockReturnValue({})
 	global.git = { append: true }
 	const result = await pkg.getPackageXML(fileUtils)
 	expect(result).toBe('existing')
@@ -359,8 +363,8 @@ it('should handle readFile returning non-Promise empty object', async () => {
 })
 
 it('should handle processJSON with fileUtils when readFile throws', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockImplementation((filePath: string) => {
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockImplementation((filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			throw new Error('File not found')
 		}
@@ -382,8 +386,8 @@ it('should handle processJSON with fileUtils when readFile throws', async () => 
 })
 
 it('should handle processJSON with fileUtils when readFile returns non-Promise and throws', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockImplementation((filePath: string) => {
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockImplementation((filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			throw new Error('File not found')
 		}
@@ -405,8 +409,8 @@ it('should handle processJSON with fileUtils when readFile returns non-Promise a
 })
 
 it('should handle processJSON error when readFile throws in non-Promise path', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockImplementation(() => {
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockImplementation(() => {
 		throw new Error('Read error')
 	})
 	global.git = { append: true }
@@ -414,7 +418,7 @@ it('should handle processJSON error when readFile throws in non-Promise path', a
 })
 
 it('should handle cleanPackage when types is undefined', async () => {
-	;(fileUtils.fileExists as any).mockReturnValue(false)
+	mockFileExists.mockReturnValue(false)
 	const result = await pkg.getPackageXML(fileUtils)
 	expect(result).toBe('not found')
 	if (pkg.packageJSON) {
@@ -424,8 +428,8 @@ it('should handle cleanPackage when types is undefined', async () => {
 
 it('should reject when readFile promise rejects in catch block', async () => {
 	// Test line 115: reject(error) in catch block
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockImplementation(() => {
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockImplementation(() => {
 		return Promise.reject(new Error('Read failed'))
 	})
 	global.git = { append: true }
@@ -435,9 +439,9 @@ it('should reject when readFile promise rejects in catch block', async () => {
 it('should reject when readFile returns non-Promise and error occurs in catch block', async () => {
 	// Test line 115: reject(error) in catch block when readFile returns non-Promise value
 	// and an error is thrown in the try block (lines 96-113)
-	;(fileUtils.fileExists as any).mockReturnValue(true)
+	mockFileExists.mockReturnValue(true)
 	// Make readFile return a non-Promise value that will cause JSON.parse to throw
-	;(fileUtils.readFile as any).mockReturnValue({
+	mockReadFile.mockReturnValue({
 		Package: {
 			types: [
 				{
@@ -467,7 +471,7 @@ it('should reject when readFile returns non-Promise and error occurs in catch bl
 
 it('should reject when creating new package fails', async () => {
 	// Test line 129: reject(error) in catch block when creating new package
-	;(fileUtils.fileExists as any).mockReturnValue(false)
+	mockFileExists.mockReturnValue(false)
 	// Mock JSON.parse to throw to trigger the catch block
 	const originalParse = JSON.parse
 	JSON.parse = vi.fn(() => {
@@ -482,7 +486,7 @@ it('should throw error when packageJSON is undefined in cleanPackage', async () 
 	// Since cleanPackage runs synchronously, we need to intercept the property access
 	// We'll use Object.defineProperty to make packageJSON return undefined when cleanPackage checks it
 	const newPkg = new Package('test.xml')
-	;(fileUtils.fileExists as any).mockReturnValue(false)
+	mockFileExists.mockReturnValue(false)
 
 	let actualValue: unknown = undefined
 	let hasBeenSet = false
@@ -513,7 +517,7 @@ it('should throw error when Package is undefined in cleanPackage', async () => {
 	// Test line 166: throw when Package is undefined
 	// We need to make Package undefined when cleanPackage accesses it
 	const newPkg = new Package('test.xml')
-	;(fileUtils.fileExists as any).mockReturnValue(false)
+	mockFileExists.mockReturnValue(false)
 
 	let packageJSONValue: unknown = undefined
 	let hasBeenSet = false
@@ -553,9 +557,9 @@ it('should throw error when Package is undefined in cleanPackage', async () => {
 
 it('should read sfdx-project.json when fileUtils is provided', async () => {
 	// Test line 145: path.join(global.__basedir || '', 'sfdx-project.json')
-	;(fileUtils.fileExists as any).mockReturnValue(true)
+	mockFileExists.mockReturnValue(true)
 	// First call is for the package XML file (returns Promise), second call is for sfdx-project.json (synchronous)
-	;(fileUtils.readFile as any).mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			// This is called synchronously in processJSON, so return value directly
 			return { sourceApiVersion: '58.0' } as unknown
@@ -584,8 +588,8 @@ it('should read sfdx-project.json when fileUtils is provided', async () => {
 
 it('should filter members in cleanPackage when global.metaTypes exists', async () => {
 	// Test lines 171-175: forEach loop that filters members based on global.metaTypes
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -635,8 +639,8 @@ it('should filter members in cleanPackage when global.metaTypes exists', async (
 
 it('should handle xml2json with array length === 1', async () => {
 	// Test lines 336-338: array with length === 1 converts to string
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -656,8 +660,8 @@ it('should handle xml2json with array length === 1', async () => {
 
 it('should handle xml2json boolean conversion for true', async () => {
 	// Test line 340: value === 'true' converts to boolean true
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -683,8 +687,8 @@ it('should cover line 145 reading sfdx-project.json from test data', async () =>
 	)
 	const projectData = JSON.parse(fs.readFileSync(testDataPath, 'utf8'))
 
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{
@@ -697,7 +701,7 @@ it('should cover line 145 reading sfdx-project.json from test data', async () =>
 	})
 
 	// Mock reading sfdx-project.json - need to check if it's the package file or sfdx-project.json
-	;(fileUtils.readFile as any).mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((filePath: string) => {
 		if (
 			typeof filePath === 'string' &&
 			filePath.includes('sfdx-project.json')
@@ -745,9 +749,9 @@ it('should cover lines 266-267 sorting package types from test data', async () =
 		})
 	})
 
-	;(fileUtils.fileExists as any).mockReturnValue(true)
+	mockFileExists.mockReturnValue(true)
 	// Mock readFile to return parsed XML for package.xml, and handle sfdx-project.json call
-	;(fileUtils.readFile as any).mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			// Return a proper sourceApiVersion for sfdx-project.json
 			return Promise.resolve({ sourceApiVersion: '58.0' })
@@ -774,8 +778,8 @@ it('should cover lines 266-267 sorting package types from test data', async () =
 
 it('should handle xml2json boolean conversion for false', async () => {
 	// Test line 341: value === 'false' converts to boolean false
-	;(fileUtils.fileExists as any).mockReturnValue(true)
-	;(fileUtils.readFile as any).mockResolvedValue({
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
 		Package: {
 			types: [
 				{

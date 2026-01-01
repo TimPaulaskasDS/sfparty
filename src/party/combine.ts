@@ -3,6 +3,7 @@ import clc from 'cli-color'
 import { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
 import path from 'path'
+import { sanitizeErrorPath } from '../lib/errorUtils.js'
 import * as fileUtils from '../lib/fileUtils.js'
 import type { Package } from '../lib/packageUtil.js'
 import { getGlobalProgressTracker } from '../lib/tuiProgressTracker.js'
@@ -550,20 +551,34 @@ export class Combine {
 				'loginIpRanges'.toLocaleLowerCase()
 			let loginIpRangesSandboxFile: string | undefined
 			let loginIpRangesSandbox = false
+			let loginIpRangesStats: fs.Stats | undefined
+			let fileStats: fs.Stats | undefined
+
+			// Use stat() directly to combine existence and metadata check
 			if (loginIpRanges) {
 				loginIpRangesSandboxFile = fileObj.fullName.replace(
 					`.${global.format}`,
 					`-sandbox.${global.format}`,
 				)
-				loginIpRangesSandbox = await fileUtils.fileExists({
-					filePath: loginIpRangesSandboxFile,
-					fs,
-				})
+				try {
+					if (loginIpRangesSandboxFile) {
+						loginIpRangesStats = await fs.promises.stat(
+							loginIpRangesSandboxFile,
+						)
+						loginIpRangesSandbox = loginIpRangesStats.isFile()
+					}
+				} catch {
+					loginIpRangesSandbox = false
+				}
 			}
-			const fileExists = await fileUtils.fileExists({
-				filePath: fileObj.fullName,
-				fs,
-			})
+
+			try {
+				fileStats = await fs.promises.stat(fileObj.fullName)
+			} catch {
+				// File doesn't exist
+			}
+
+			const fileExists = fileStats?.isFile() ?? false
 
 			if (
 				(!fileExists && !loginIpRanges) ||
@@ -667,8 +682,10 @@ export class Combine {
 				}
 			} catch (error) {
 				// Suppress verbose output - errors are logged via global.logger
+				const errorMessage =
+					error instanceof Error ? error.message : String(error)
 				global.logger?.error(
-					`Error reading file: ${fileObj.fullName}: ${error instanceof Error ? error.message : String(error)}`,
+					`Error reading file: ${sanitizeErrorPath(fileObj.fullName)}: ${errorMessage}`,
 				)
 				throw error
 			}

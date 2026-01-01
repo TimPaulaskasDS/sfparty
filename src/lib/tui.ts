@@ -1,5 +1,6 @@
 import blessed from 'blessed'
 import contrib from 'blessed-contrib'
+import { suppressTerminalErrors } from './terminalUtils.js'
 
 export interface TUIStats {
 	completed: number // Only successful files
@@ -27,16 +28,55 @@ export interface ResourceStats {
  * Beautiful TUI (Text User Interface) for sfparty
  * Provides real-time progress tracking, resource monitoring, and visual feedback
  */
+// Minimal types for blessed widgets based on actual usage
+interface BlessedBox {
+	setContent: (content: string) => void
+	width?: number
+}
+
+interface BlessedList {
+	setItems: (items: string[]) => void
+}
+
+interface BlessedLog {
+	log: (message: string) => void
+	width?: number
+}
+
+interface BlessedScreen {
+	width?: number
+	height?: number
+	key: (keys: string[], handler: () => void) => void
+	on: (event: string, handler: () => void) => void
+	removeListener: (event: string, handler: () => void) => void
+	removeAllListeners: () => void
+	render: () => void
+	clearRegion: (x1: number, x2: number, y1: number, y2: number) => void
+	cursor: {
+		reset: () => void
+		hide: () => void
+		show: () => void
+	}
+	destroy: () => void
+	input?: {
+		pause?: () => void
+		resume?: () => void
+		removeAllListeners?: () => void
+		unref?: () => void
+		destroy?: () => void
+	}
+}
+
 export class TUI {
-	private screen: any
-	private grid: contrib.grid
-	private progressBox: any
-	private statsBox: any
-	private resourceBox: any
-	private fileListBox: any
-	private completedFilesBox: any
-	private logBox: any
-	private headerBox: any = null // Reference to header box for updates
+	private screen: BlessedScreen
+	private grid: InstanceType<typeof contrib.grid>
+	private progressBox: BlessedBox
+	private statsBox: BlessedBox
+	private resourceBox: BlessedBox
+	private fileListBox: BlessedList
+	private completedFilesBox: BlessedList
+	private logBox: BlessedLog
+	private headerBox: BlessedBox | null = null // Reference to header box for updates
 	private startTime: bigint
 	private completedFiles: string[] = []
 	private maxCompletedFiles: number = 20
@@ -54,42 +94,7 @@ export class TUI {
 	constructor(title: string = 'sfparty') {
 		// Suppress terminal capability errors BEFORE any blessed operations
 		// This must happen before blessed.screen() is called
-		const originalStderrWrite = process.stderr.write.bind(process.stderr)
-		process.stderr.write = function (
-			chunk: any,
-			encoding?: any,
-			cb?: any,
-		): boolean {
-			const message = chunk?.toString() || ''
-			// Filter out terminal capability errors - be very aggressive
-			if (
-				message.includes('xterm-256color.Setulc') ||
-				message.includes('stack.pop') ||
-				message.includes('out.push') ||
-				message.includes('var v,') ||
-				message.includes('stack.push') ||
-				message.includes('stack =') ||
-				message.includes('out =') ||
-				message.includes('return out.join') ||
-				message.includes('Error on xterm') ||
-				message.includes('\\u001b[58::') ||
-				message.includes('%p1%{65536}') ||
-				message.includes('\x1b[58::')
-			) {
-				// Call callback if provided to prevent hanging
-				if (typeof cb === 'function') {
-					cb()
-				}
-				return true // Suppress these messages
-			}
-			if (cb) {
-				return originalStderrWrite(chunk, encoding, cb)
-			} else if (encoding) {
-				return originalStderrWrite(chunk, encoding)
-			} else {
-				return originalStderrWrite(chunk)
-			}
-		}
+		suppressTerminalErrors()
 
 		this.startTime = process.hrtime.bigint()
 		this.stats = {
@@ -825,49 +830,15 @@ export class TUI {
 
 				// Suppress terminal capability errors from stderr - do this early and aggressively
 				// The xterm-256color.Setulc error is harmless but noisy
-				const originalStderrWrite = process.stderr.write.bind(
-					process.stderr,
-				)
-				process.stderr.write = function (
-					chunk: any,
-					encoding?: any,
-					cb?: any,
-				): boolean {
-					const message = chunk?.toString() || ''
-					// Filter out terminal capability errors - be very aggressive
-					if (
-						message.includes('xterm-256color.Setulc') ||
-						message.includes('stack.pop') ||
-						message.includes('out.push') ||
-						message.includes('var v,') ||
-						message.includes('stack.push') ||
-						message.includes('stack =') ||
-						message.includes('out =') ||
-						message.includes('return out.join') ||
-						message.includes('Error on xterm')
-					) {
-						// Call callback if provided to prevent hanging
-						if (typeof cb === 'function') {
-							cb()
-						}
-						return true // Suppress these messages
-					}
-					if (cb) {
-						return originalStderrWrite(chunk, encoding, cb)
-					} else if (encoding) {
-						return originalStderrWrite(chunk, encoding)
-					} else {
-						return originalStderrWrite(chunk)
-					}
-				}
+				suppressTerminalErrors()
 
 				// Clear the entire screen
 				try {
 					this.screen.clearRegion(
 						0,
-						this.screen.height,
+						this.screen.height ?? 0,
 						0,
-						this.screen.width,
+						this.screen.width ?? 0,
 					)
 				} catch {
 					// Ignore if screen already destroyed
@@ -916,7 +887,7 @@ export class TUI {
 	/**
 	 * Get the screen instance (for advanced usage)
 	 */
-	getScreen(): any {
+	getScreen(): BlessedScreen {
 		return this.screen
 	}
 }

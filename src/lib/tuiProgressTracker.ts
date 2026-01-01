@@ -1,6 +1,7 @@
 import clc from 'cli-color'
 import ora from 'ora'
 import path from 'path'
+import { suppressTerminalErrors } from './terminalUtils.js'
 import { type ResourceStats, TUI, type TUIStats } from './tui.js'
 
 interface GlobalContext {
@@ -53,44 +54,7 @@ export class TUIProgressTracker {
 
 		// Suppress terminal capability errors early - before TUI initialization
 		if (this.useTUI) {
-			const originalStderrWrite = process.stderr.write.bind(
-				process.stderr,
-			)
-			process.stderr.write = function (
-				chunk: any,
-				encoding?: any,
-				cb?: any,
-			): boolean {
-				const message = chunk?.toString() || ''
-				// Filter out terminal capability errors - be very aggressive
-				if (
-					message.includes('xterm-256color.Setulc') ||
-					message.includes('stack.pop') ||
-					message.includes('out.push') ||
-					message.includes('var v,') ||
-					message.includes('stack.push') ||
-					message.includes('stack =') ||
-					message.includes('out =') ||
-					message.includes('return out.join') ||
-					message.includes('Error on xterm') ||
-					message.includes('\\u001b[58::') ||
-					message.includes('%p1%{65536}') ||
-					message.includes('\x1b[58::')
-				) {
-					// Call callback if provided to prevent hanging
-					if (typeof cb === 'function') {
-						cb()
-					}
-					return true // Suppress these messages
-				}
-				if (cb) {
-					return originalStderrWrite(chunk, encoding, cb)
-				} else if (encoding) {
-					return originalStderrWrite(chunk, encoding)
-				} else {
-					return originalStderrWrite(chunk)
-				}
-			}
+			suppressTerminalErrors()
 		}
 
 		try {

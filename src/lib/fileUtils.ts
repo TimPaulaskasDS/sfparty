@@ -2,6 +2,8 @@ import { XMLParser } from 'fast-xml-parser'
 import * as fs from 'fs'
 import yaml from 'js-yaml'
 import * as path from 'path'
+import { handleFileError } from './errorUtils.js'
+import { replaceSpecialChars } from './pathUtils.js'
 import { serializeData, WriteBatcher } from './writeBatcher.js'
 
 // Global write batcher instance
@@ -111,19 +113,9 @@ export function safeJSONParse(jsonString: string): unknown {
 	return sanitizeObject(parsed)
 }
 
-// Security: Utility function instead of prototype pollution
-export function replaceSpecialChars(str: string): string {
-	if (typeof str !== 'string') return str
-	return str
-		.replace(/\*/g, '\u002a')
-		.replace(/\?/g, '\u003f')
-		.replace(/</g, '\u003c')
-		.replace(/>/g, '\u003e')
-		.replace(/"/g, '\u0022')
-		.replace(/\|/g, '\u007c')
-		.replace(/\\/g, '\u005c')
-		.replace(/:/g, '\u003a')
-}
+export { sanitizeErrorPath } from './errorUtils.js'
+// Re-export for backward compatibility
+export { clearPathSanitizationCache, replaceSpecialChars } from './pathUtils.js'
 
 // Security: Validate paths to prevent traversal attacks
 export function validatePath(userPath: string, workspaceRoot?: string): string {
@@ -151,21 +143,6 @@ export function validatePath(userPath: string, workspaceRoot?: string): string {
 	}
 
 	return normalized
-}
-
-// Security: Sanitize file paths in error messages
-export function sanitizeErrorPath(filePath: string): string {
-	if (!filePath || typeof filePath !== 'string') {
-		return 'unknown'
-	}
-
-	// If global basedir is set, replace it with <workspace>
-	if (global.__basedir && filePath.includes(global.__basedir)) {
-		return filePath.replace(global.__basedir, '<workspace>')
-	}
-
-	// Otherwise just return the basename
-	return path.basename(filePath)
 }
 
 export async function directoryExists({
@@ -217,9 +194,8 @@ export async function createDirectory(
 ): Promise<void> {
 	const sanitizedPath = replaceSpecialChars(dirPath)
 
-	// Check cache first - if we've verified it exists, skip
+	// Check cache first - if we've verified it exists, skip entirely
 	if (verifiedDirectories.has(sanitizedPath)) {
-		// Trust cache - only verify if mkdir fails
 		return
 	}
 
@@ -405,6 +381,18 @@ export async function saveFile(
 	}
 }
 
+/**
+ * Read and parse a file (YAML, JSON, or XML)
+ *
+ * @param filePath - Path to the file
+ * @param convert - Whether to parse the file (default: true)
+ * @param fsTmp - File system module (for testing)
+ * @returns Parsed file content or undefined if file doesn't exist
+ *
+ * @security Uses yaml.JSON_SCHEMA to prevent prototype pollution attacks.
+ * This schema only allows JSON-compatible types and rejects dangerous
+ * keys like __proto__ and constructor. See SECURITY.md for details.
+ */
 export async function readFile(
 	filePath: string,
 	convert = true,
@@ -419,13 +407,17 @@ export async function readFile(
 			validatedPath = validatePath(filePath)
 		}
 		const sanitizedPath = replaceSpecialChars(validatedPath)
-		const exists = await fileExists({ filePath: sanitizedPath, fs: fsTmp })
-		if (!exists) {
+		// Combine existence check and size check into single stat() call
+		let stats: fs.Stats
+		try {
+			stats = await fsTmp.promises.stat(sanitizedPath)
+		} catch {
+			// File doesn't exist
 			return undefined
 		}
 
 		// SEC-003: Check file size before reading to prevent memory exhaustion
-		const stats = await fsTmp.promises.stat(sanitizedPath)
+		// stats already obtained above
 		if (stats.size > MAX_FILE_SIZE) {
 			throw new Error(
 				`File size (${(stats.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit of ${MAX_FILE_SIZE / 1024 / 1024}MB`,
@@ -436,7 +428,9 @@ export async function readFile(
 		const data = await fsTmp.promises.readFile(sanitizedPath, 'utf8')
 
 		if (convert && filePath.indexOf('.yaml') !== -1) {
-			// Security: Use JSON schema to prevent prototype pollution
+			// Security: Use JSON_SCHEMA to prevent prototype pollution
+			// This prevents attackers from injecting __proto__ or constructor
+			// keys that could modify object prototypes. See SECURITY.md.
 			return yaml.load(data, {
 				schema: yaml.JSON_SCHEMA,
 				onWarning: (warning) => {
@@ -453,32 +447,16 @@ export async function readFile(
 			return data
 		}
 	} catch (error) {
-		// Security: Sanitize paths in error messages
-		if (
-			error instanceof Error &&
-			error.message &&
-			error.message.includes('/')
-		) {
-			const sanitized = new Error(
-				error.message.replace(/\/[^\s]+/g, (match) =>
-					sanitizeErrorPath(match),
-				),
-			)
-			sanitized.stack = error.stack
-			global.logger?.error(sanitized)
-			throw sanitized
-		}
-		global.logger?.error(error)
-		throw error
+		handleFileError(error, global.logger)
 	}
 }
 
-async function convertXML(data: string): Promise<unknown> {
-	try {
-		// Security: Configure parser with safe options
-		// SEC-001: fast-xml-parser doesn't parse DOCTYPE/entities by default, providing built-in XXE protection
-		// Configure to match xml2js output format for compatibility
-		const parser = new XMLParser({
+// Reuse XML parser instance for better performance
+let xmlParserInstance: XMLParser | null = null
+
+function getXmlParser(): XMLParser {
+	if (!xmlParserInstance) {
+		xmlParserInstance = new XMLParser({
 			ignoreAttributes: false, // Keep attributes (needed for xmlns)
 			attributesGroupName: '$', // Group attributes in $ object (matches xml2js format)
 			attributeNamePrefix: '', // No prefix needed when using attributesGroupName
@@ -490,6 +468,16 @@ async function convertXML(data: string): Promise<unknown> {
 			alwaysCreateTextNode: false,
 			isArray: () => false, // Don't force arrays (single elements stay as objects, like xml2js explicitArray: false)
 		})
+	}
+	return xmlParserInstance
+}
+
+async function convertXML(data: string): Promise<unknown> {
+	try {
+		// Security: Configure parser with safe options
+		// SEC-001: fast-xml-parser doesn't parse DOCTYPE/entities by default, providing built-in XXE protection
+		// Reuse parser instance for better performance
+		const parser = getXmlParser()
 		return parser.parse(data)
 	} catch (error) {
 		throw error
@@ -522,23 +510,7 @@ export async function writeFile(
 		// update XML file to match the latest atime and mtime of the files processed
 		await fsTmp.promises.utimes(sanitizedFileName, finalAtime, finalMtime)
 	} catch (error) {
-		// Security: Sanitize paths in error messages
-		if (
-			error instanceof Error &&
-			error.message &&
-			error.message.includes('/')
-		) {
-			const sanitized = new Error(
-				error.message.replace(/\/[^\s]+/g, (match) =>
-					sanitizeErrorPath(match),
-				),
-			)
-			sanitized.stack = error.stack
-			global.logger?.error(sanitized)
-			throw sanitized
-		}
-		global.logger?.error(error)
-		throw error
+		handleFileError(error, global.logger)
 	}
 }
 

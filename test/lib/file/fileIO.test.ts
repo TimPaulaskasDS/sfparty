@@ -178,8 +178,13 @@ describe('readFile', () => {
 	it('should read and parse JSON file', async () => {
 		// Mock stat for both fileExists check and size check
 		mockFs.promises.stat
-			.mockResolvedValueOnce({ isFile: () => true, size: 100 } as any)
-			.mockResolvedValueOnce({ size: 100 } as any)
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as import('fs').Stats)
+			.mockResolvedValueOnce({
+				size: 100,
+			} as unknown as import('fs').Stats)
 		mockFs.promises.readFile.mockResolvedValue('{"key":"value"}')
 
 		const result = await readFile(
@@ -194,8 +199,11 @@ describe('readFile', () => {
 	it('should read and parse YAML file', async () => {
 		// Mock stat for both fileExists check and size check
 		mockFs.promises.stat
-			.mockResolvedValueOnce({ isFile: () => true, size: 100 } as any)
-			.mockResolvedValueOnce({ size: 100 } as any)
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
 		mockFs.promises.readFile.mockResolvedValue('key: value')
 
 		const result = await readFile(
@@ -252,8 +260,11 @@ describe('readFile', () => {
 	it('should throw error on YAML parsing failure', async () => {
 		// Mock stat for both fileExists check and size check
 		mockFs.promises.stat
-			.mockResolvedValueOnce({ isFile: () => true, size: 100 } as any)
-			.mockResolvedValueOnce({ size: 100 } as any)
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
 		mockFs.promises.readFile.mockResolvedValue('invalid: yaml: content:')
 
 		await expect(
@@ -461,10 +472,12 @@ describe('readFile - XML error handling', () => {
 		}
 		// Reset yaml.load mock to ensure clean state
 		yaml.load.mockReset()
-		yaml.load.mockImplementation((...args: any[]) => {
-			const yamlActual = require('js-yaml')
-			return yamlActual.load(...args)
-		})
+		yaml.load.mockImplementation(
+			(...args: Parameters<typeof yaml.load>) => {
+				const yamlActual = require('js-yaml')
+				return yamlActual.load(...args)
+			},
+		)
 		;(
 			global as { logger?: { error: (error: Error | unknown) => void } }
 		).logger = {
@@ -519,8 +532,11 @@ describe('readFile - XML error handling', () => {
 		// Test line 436-437: YAML onWarning callback
 		// Mock stat for both fileExists check and size check
 		mockFs.promises.stat
-			.mockResolvedValueOnce({ isFile: () => true, size: 100 } as any)
-			.mockResolvedValueOnce({ size: 100 } as any)
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
 		mockFs.promises.readFile.mockResolvedValue('key: value')
 
 		// Get the actual yaml implementation and spy on it
@@ -531,28 +547,33 @@ describe('readFile - XML error handling', () => {
 		// Spy on the actual load function
 		const loadSpy = vi
 			.spyOn(yamlActual.default, 'load')
-			.mockImplementation((_data: string, options?: any) => {
-				// Check if onWarning callback is provided in options
-				if (
-					options &&
-					typeof options === 'object' &&
-					'onWarning' in options &&
-					typeof options.onWarning === 'function'
-				) {
-					// Simulate yaml.load calling onWarning with a warning message
-					// The onWarning callback throws: `YAML parsing /test/file.yaml: Test YAML warning message`
-					// which gets sanitized to: `YAML parsing file.yaml: Test YAML warning message`
-					// We'll throw the sanitized error directly to simulate what happens
-					throw new Error(
-						'YAML parsing file.yaml: Test YAML warning message',
-					)
-				}
-				// If onWarning wasn't provided, use the real yaml.load
-				return yamlActual.default.load(_data, options)
-			})
+			.mockImplementation(
+				(
+					_data: string,
+					options?: Parameters<typeof yamlActual.default.load>[1],
+				) => {
+					// Check if onWarning callback is provided in options
+					if (
+						options &&
+						typeof options === 'object' &&
+						'onWarning' in options &&
+						typeof options.onWarning === 'function'
+					) {
+						// Simulate yaml.load calling onWarning with a warning message
+						// The onWarning callback throws: `YAML parsing /test/file.yaml: Test YAML warning message`
+						// which gets sanitized to: `YAML parsing file.yaml: Test YAML warning message`
+						// We'll throw the sanitized error directly to simulate what happens
+						throw new Error(
+							'YAML parsing file.yaml: Test YAML warning message',
+						)
+					}
+					// If onWarning wasn't provided, use the real yaml.load
+					return yamlActual.default.load(_data, options)
+				},
+			)
 
 		// Replace yaml.load with our spy
-		yaml.load = loadSpy as any
+		yaml.load = loadSpy as typeof yaml.load
 
 		try {
 			// The onWarning callback should throw an error
