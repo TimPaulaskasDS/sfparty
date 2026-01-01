@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import * as fileUtils from '../lib/fileUtils.js'
 import { getPerformanceLogger } from '../lib/performanceLogger.js'
+import { getGlobalProgressTracker } from '../lib/tuiProgressTracker.js'
 import type { MetadataDefinition } from '../types/metadata.js'
 
 const processed = {
@@ -36,6 +37,9 @@ interface GlobalContext {
 	logger?: {
 		error: (message: string) => void
 		warn: (message: string) => void
+	}
+	consoleTransport?: {
+		silent?: boolean
 	}
 	format?: string
 	icons?: {
@@ -148,7 +152,18 @@ export class Split {
 			!that.targetDir ||
 			!that.metaFilePath
 		) {
-			global.logger?.error('Invalid information passed to split')
+			const message = 'Invalid information passed to split'
+			const progressTracker = getGlobalProgressTracker()
+			if (progressTracker) {
+				progressTracker.logError(message)
+			} else {
+				if (
+					!global.consoleTransport ||
+					!global.consoleTransport.silent
+				) {
+					global.logger?.error(message)
+				}
+			}
 			return false
 		}
 
@@ -167,7 +182,18 @@ export class Split {
 			stats = await fs.promises.stat(that.metaFilePath)
 		} catch (error) {
 			// File doesn't exist
-			global.logger?.error(`file not found: ${that.metaFilePath}`)
+			const message = `file not found: ${that.metaFilePath}`
+			const progressTracker = getGlobalProgressTracker()
+			if (progressTracker) {
+				progressTracker.logError(message)
+			} else {
+				if (
+					!global.consoleTransport ||
+					!global.consoleTransport.silent
+				) {
+					global.logger?.error(message)
+				}
+			}
 			const perfLogger = getPerformanceLogger()
 			perfLogger.completeFile(that.metaFilePath, false, 'File not found')
 			return false
@@ -215,9 +241,18 @@ export class Split {
 		try {
 			jsonData = parser.parse(data) as Record<string, unknown>
 		} catch (err) {
-			global.logger?.error(
-				`error converting xml to json: ${that.metaFilePath}`,
-			)
+			const message = `error converting xml to json: ${that.metaFilePath}`
+			const progressTracker = getGlobalProgressTracker()
+			if (progressTracker) {
+				progressTracker.logError(message)
+			} else {
+				if (
+					!global.consoleTransport ||
+					!global.consoleTransport.silent
+				) {
+					global.logger?.error(message)
+				}
+			}
 			throw new Error(
 				`error converting xml to json: ${that.metaFilePath}: ${err instanceof Error ? err.message : String(err)}`,
 			)
@@ -251,9 +286,18 @@ export class Split {
 				}
 			}
 		} catch (error) {
-			global.logger?.error(
-				`${that.#fileName.fullName} has an invalid XML root`,
-			)
+			const message = `${that.#fileName.fullName} has an invalid XML root`
+			const progressTracker = getGlobalProgressTracker()
+			if (progressTracker) {
+				progressTracker.logError(message)
+			} else {
+				if (
+					!global.consoleTransport ||
+					!global.consoleTransport.silent
+				) {
+					global.logger?.error(message)
+				}
+			}
 			const perfLogger = getPerformanceLogger()
 			perfLogger.completeFile(
 				that.metaFilePath,
@@ -267,9 +311,18 @@ export class Split {
 		try {
 			that.#json = transformJSON(that, jsonData, that.#root!)
 		} catch (error) {
-			global.logger?.error(
-				`${that.#fileName.fullName} has an invalid XML root`,
-			)
+			const message = `${that.#fileName.fullName} has an invalid XML root`
+			const progressTracker = getGlobalProgressTracker()
+			if (progressTracker) {
+				progressTracker.logError(message)
+			} else {
+				if (
+					!global.consoleTransport ||
+					!global.consoleTransport.silent
+				) {
+					global.logger?.error(message)
+				}
+			}
 			throw error
 		}
 
@@ -373,8 +426,20 @@ export class Split {
 					if (that.#task) {
 						that.#task.output = [`Unknown key: ${key}`]
 					} else {
-						// Log unknown key but don't update terminal
-						global.logger?.warn(`Unknown key: ${key}`)
+						// Log unknown key via TUI if active, otherwise via global.logger
+						const message = `Unknown key: ${key}`
+						const progressTracker = getGlobalProgressTracker()
+						if (progressTracker) {
+							progressTracker.logWarning(message)
+						} else {
+							// Only log to console if console transport is not silenced (TUI not active)
+							if (
+								!global.consoleTransport ||
+								!global.consoleTransport.silent
+							) {
+								global.logger?.warn(message)
+							}
+						}
 					}
 				}
 			}

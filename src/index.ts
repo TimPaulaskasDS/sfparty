@@ -28,7 +28,11 @@ import {
 	setPerformanceLogger,
 } from './lib/performanceLogger.js'
 import pkgObj from './lib/pkgObj.js'
-import { TUIProgressTracker } from './lib/tuiProgressTracker.js'
+import {
+	getGlobalProgressTracker,
+	setGlobalProgressTracker,
+	TUIProgressTracker,
+} from './lib/tuiProgressTracker.js'
 import * as labelDefinition from './meta/CustomLabels.js'
 import * as permsetDefinition from './meta/PermissionSets.js'
 import * as profileDefinition from './meta/Profiles.js'
@@ -137,6 +141,9 @@ interface ProcessedStats {
 interface GlobalContext {
 	__basedir?: string
 	logger?: Logger
+	consoleTransport?: {
+		silent?: boolean
+	}
 	icons?: Icons
 	displayError?: (error: string, quit?: boolean) => void
 	git?: GitConfig
@@ -159,6 +166,11 @@ if (!fs.existsSync(logDir)) {
 
 const logFile = path.join(logDir, 'sfparty.log')
 
+// Create logger with console transport that can be toggled
+const consoleTransport = new winston.transports.Console({
+	format: winston.format.cli(),
+})
+
 global.logger = winston.createLogger({
 	levels: {
 		error: 0,
@@ -176,9 +188,7 @@ global.logger = winston.createLogger({
 	),
 	defaultMeta: { service: 'sfparty' },
 	transports: [
-		new winston.transports.Console({
-			format: winston.format.cli(),
-		}),
+		consoleTransport,
 		// Only create file transport if we'll actually log something
 		// File logging is primarily for errors and warnings
 		new winston.transports.File({
@@ -189,6 +199,9 @@ global.logger = winston.createLogger({
 		}),
 	],
 }) as Logger
+
+// Store console transport reference for toggling
+global.consoleTransport = consoleTransport
 
 global.icons = {
 	warn: '🔕',
@@ -1151,6 +1164,7 @@ async function processSplit(
 
 		// Use TUI for beautiful real-time progress display
 		const progress = new TUIProgressTracker(processed.total, 'Split')
+		setGlobalProgressTracker(progress)
 
 		// Set startup information in TUI instead of console.log
 		progress.setStartupInfo({
@@ -1209,6 +1223,12 @@ async function processSplit(
 						processed.errors++
 						progress.readComplete(metaFile, false)
 						progress.writeComplete(metaFile, false)
+						// Mark file as failed in performance logger
+						perfLogger.completeFile(
+							filePath,
+							false,
+							'Split operation returned false',
+						)
 						return false
 					}
 
@@ -1221,9 +1241,22 @@ async function processSplit(
 					processed.errors++
 					progress.readComplete(metaFile, false)
 					progress.writeComplete(metaFile, false)
-					global.logger?.error(
-						`Failed to split ${metaFile}: ${error instanceof Error ? error.message : String(error)}`,
-					)
+					const message = `Failed to split ${metaFile}: ${error instanceof Error ? error.message : String(error)}`
+					// Mark file as failed in performance logger
+					const filePath = path.join(sourceDir, metaFile)
+					perfLogger.completeFile(filePath, false, message)
+					// Errors are already logged in split.ts, but log here too if TUI is active
+					const progressTracker = getGlobalProgressTracker()
+					if (progressTracker) {
+						progressTracker.logError(message)
+					} else {
+						if (
+							!global.consoleTransport ||
+							!global.consoleTransport.silent
+						) {
+							global.logger?.error(message)
+						}
+					}
 					return false
 				}
 			}
@@ -1280,6 +1313,7 @@ async function processSplit(
 		// Wait for all writes to complete before marking as done
 		// doneWithWrites() will cleanup the TUI, then we can safely output console messages
 		await progress.doneWithWrites()
+		setGlobalProgressTracker(null)
 
 		// Now safe to output console messages after TUI is cleaned up
 		// Show app name and version in ANSI box like before
@@ -1449,20 +1483,11 @@ async function processCombine(
 		}
 
 		processed.total = processList.length
-		console.log(
-			`${clc.bgBlackBright(
-				processed.total,
-			)} ${typeItem} file(s) to process`,
-		)
 
 		if (processed.total === 0) {
 			resolve(true)
 			return
 		}
-
-		console.log()
-		// Source and target paths will be shown in TUI
-		console.log()
 
 		// Resource-aware concurrency calculation
 		const resourceManager = new ResourceManager()
@@ -1471,15 +1496,9 @@ async function processCombine(
 			processed.total,
 		)
 
-		console.log(
-			`System resources: ${stats.cpuCores} CPU cores, ${(stats.totalMemory / 1024 / 1024 / 1024).toFixed(2)}GB total RAM, ${(stats.freeMemory / 1024 / 1024 / 1024).toFixed(2)}GB free (${stats.memoryUsagePercent.toFixed(1)}% used)`,
-		)
-		console.log(
-			`Processing ${processed.total} file(s) with concurrency: ${concurrency} (processing ${concurrency} file(s) simultaneously)`,
-		)
-
 		// Use TUI for beautiful real-time progress display
 		const progress = new TUIProgressTracker(processed.total, 'Combine')
+		setGlobalProgressTracker(progress)
 
 		// Set startup information in TUI instead of console.log
 		progress.setStartupInfo({
@@ -1564,14 +1583,21 @@ async function processCombine(
 
 		// Wait for TUI cleanup before console output
 		await progress.doneWithWrites()
+		setGlobalProgressTracker(null)
+
+		// Now safe to output console messages after TUI is cleaned up
+		// Show app name and version in ANSI box like before
+		displayHeader()
+		console.log(
+			`Combine operation completed: ${processed.total - processed.errors} successful, ${processed.errors} failed`,
+		)
 
 		// Print performance summary - use same startTime to avoid discrepancy
 		perfLogger.printSummary(startTime)
 
-		const successes = processed.total - processed.errors
-		// Show app name and version in ANSI box like before
-		displayHeader()
-		const message = `Combined ${clc.bgBlackBright(successes)} file(s) ${
+		const message = `Combined ${clc.bgBlackBright(
+			processed.total - processed.errors,
+		)} file(s) ${
 			processed.errors > 0
 				? 'with ' +
 					clc.bgBlackBright.red(processed.errors) +

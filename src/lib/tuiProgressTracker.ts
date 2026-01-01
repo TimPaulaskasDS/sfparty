@@ -3,6 +3,19 @@ import ora from 'ora'
 import path from 'path'
 import { type ResourceStats, TUI, type TUIStats } from './tui.js'
 
+interface GlobalContext {
+	consoleTransport?: {
+		silent?: boolean
+	}
+	logger?: {
+		warn: (message: string) => void
+		error: (message: string) => void
+		info: (message: string) => void
+	}
+}
+
+declare const global: GlobalContext & typeof globalThis
+
 /**
  * TUI-based ProgressTracker with beautiful real-time display
  * Replaces the simple ora spinner with a full TUI interface
@@ -13,7 +26,8 @@ export class TUIProgressTracker {
 	private fallbackSpinner: ReturnType<typeof ora> | null = null
 	private useTUI: boolean
 	private total: number
-	private completed: number = 0
+	private completed: number = 0 // Only successful files
+	private processed: number = 0 // All processed files (successful + failed)
 	private errors: number = 0
 	private currentFile: string = ''
 	private lastUpdateTime: number = 0
@@ -25,10 +39,17 @@ export class TUIProgressTracker {
 				isFlushing: boolean
 		  } | null)
 		| null = null
+	// Track which files have been completed to prevent double-counting
+	private completedFiles: Set<string> = new Set()
 
 	constructor(total: number, operation: string = 'Processing') {
 		this.total = total
 		this.useTUI = process.stdout.isTTY && process.env.TERM !== 'dumb'
+
+		// Disable Winston console transport when TUI is active to prevent console output
+		if (this.useTUI && global.consoleTransport) {
+			global.consoleTransport.silent = true
+		}
 
 		// Suppress terminal capability errors early - before TUI initialization
 		if (this.useTUI) {
@@ -129,39 +150,61 @@ export class TUIProgressTracker {
 	}
 
 	readComplete(file: string, success: boolean): void {
+		// Prevent double-counting: only process each file once
+		const fileKey = path.basename(file)
+		if (this.completedFiles.has(fileKey)) {
+			// File already processed, skip to prevent double-counting
+			return
+		}
+		this.completedFiles.add(fileKey)
+
+		// Track all processed files (for progress)
+		this.processed++
+		// Only increment completed for successful files
 		if (success) {
 			this.completed++
-		} else {
-			this.errors++
 		}
-		this.currentFile = path.basename(file)
+		// Don't increment errors here - TUI will count errors from files marked as 'error'
+		// This ensures errors = count of unique files with errors (never exceeds files)
+		this.currentFile = fileKey
 		if (this.tui) {
 			this.tui.addFile(file, success ? 'completed' : 'error')
 			// Log completion status
 			if (success) {
-				this.tui.log(`{green-fg}Completed: ${path.basename(file)}{/}`)
+				this.tui.log(`{green-fg}Completed: ${fileKey}{/}`)
 			} else {
-				this.tui.log(`{red-fg}Failed: ${path.basename(file)}{/}`)
+				this.tui.log(`{red-fg}Failed: ${fileKey}{/}`)
 			}
 		}
 		this.updateDisplay()
 	}
 
-	writeComplete(_file: string, success: boolean): void {
-		if (!success) {
-			this.errors++
-		}
+	writeComplete(_file: string, _success: boolean): void {
+		// Don't double-count errors - errors are already counted in readComplete
+		// Only update display for write completion
 		this.updateDisplay()
 	}
 
 	complete(file: string, _duration: string, success: boolean): void {
+		// Prevent double-counting: only process each file once
+		const fileKey = path.basename(file)
+		if (this.completedFiles.has(fileKey)) {
+			// File already processed, skip to prevent double-counting
+			return
+		}
+		this.completedFiles.add(fileKey)
+
+		// Track all processed files (for progress)
+		this.processed++
+		// Only increment completed for successful files
 		if (success) {
 			this.completed++
-		} else {
-			this.errors++
 		}
-		this.currentFile = path.basename(file)
+		// Don't increment errors here - TUI will count errors from files marked as 'error'
+		// This ensures errors = count of unique files with errors (never exceeds files)
+		this.currentFile = fileKey
 		if (this.tui) {
+			// Use success parameter to determine status
 			this.tui.addFile(file, success ? 'completed' : 'error')
 		}
 		this.updateDisplay()
@@ -198,6 +241,10 @@ export class TUIProgressTracker {
 				setTimeout(() => {
 					// Cleanup TUI first to prevent overwriting
 					this.tui?.cleanup()
+					// Re-enable Winston console transport after TUI is done
+					if (global.consoleTransport) {
+						global.consoleTransport.silent = false
+					}
 					// Small delay to ensure terminal is fully restored before console output
 					setTimeout(() => {
 						resolve()
@@ -229,13 +276,13 @@ export class TUIProgressTracker {
 		const now = Date.now()
 		if (
 			now - this.lastUpdateTime >= this.updateInterval ||
-			this.completed === this.total
+			this.processed === this.total
 		) {
 			if (this.tui) {
 				const stats: TUIStats = {
-					completed: this.completed,
+					completed: this.completed, // Only successful files
 					total: this.total,
-					errors: this.errors,
+					errors: 0, // Don't pass errors - TUI will count from files marked as 'error'
 					currentFile: this.currentFile,
 				}
 
@@ -302,4 +349,55 @@ export class TUIProgressTracker {
 			total: this.total,
 		}
 	}
+
+	/**
+	 * Log a warning message to TUI log box if TUI is active, otherwise to console
+	 */
+	logWarning(message: string): void {
+		if (this.tui) {
+			// Log to TUI status log box - this will not output to console
+			this.tui.log(`{yellow-fg}${message}{/}`)
+		} else if (this.fallbackSpinner) {
+			// For fallback spinner, use logger (console transport will be enabled)
+			// Only log if console transport is not silenced
+			if (!global.consoleTransport || !global.consoleTransport.silent) {
+				global.logger?.warn(message)
+			}
+		} else {
+			// No TUI and no spinner - use logger directly
+			global.logger?.warn(message)
+		}
+	}
+
+	/**
+	 * Log an error message to TUI log box if TUI is active, otherwise to console
+	 */
+	logError(message: string): void {
+		if (this.tui) {
+			// Log to TUI status log box - this will not output to console
+			this.tui.log(`{red-fg}${message}{/}`)
+		} else if (this.fallbackSpinner) {
+			// For fallback spinner, use logger (console transport will be enabled)
+			// Only log if console transport is not silenced
+			if (!global.consoleTransport || !global.consoleTransport.silent) {
+				global.logger?.error(message)
+			}
+		} else {
+			// No TUI and no spinner - use logger directly
+			global.logger?.error(message)
+		}
+	}
+}
+
+// Global instance to allow access from Combine/Split classes
+let globalProgressTracker: TUIProgressTracker | null = null
+
+export function setGlobalProgressTracker(
+	tracker: TUIProgressTracker | null,
+): void {
+	globalProgressTracker = tracker
+}
+
+export function getGlobalProgressTracker(): TUIProgressTracker | null {
+	return globalProgressTracker
 }

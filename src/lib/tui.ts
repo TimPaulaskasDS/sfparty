@@ -2,7 +2,8 @@ import blessed from 'blessed'
 import contrib from 'blessed-contrib'
 
 export interface TUIStats {
-	completed: number
+	completed: number // Only successful files
+	processed?: number // All processed files (successful + failed) - for progress tracking
 	total: number
 	errors: number
 	currentFile: string
@@ -35,9 +36,11 @@ export class TUI {
 	private fileListBox: any
 	private completedFilesBox: any
 	private logBox: any
+	private headerBox: any = null // Reference to header box for updates
 	private startTime: bigint
 	private completedFiles: string[] = []
 	private maxCompletedFiles: number = 20
+	private filesWithErrors: Set<string> = new Set() // Track unique files with errors
 	private stats: TUIStats
 	private resourceStats: ResourceStats | null = null
 	private fileItems: string[] = []
@@ -46,6 +49,7 @@ export class TUI {
 	private keyHandler: (() => void) | null = null
 	private resizeHandler: (() => void) | null = null
 	private peakQueueLength: number = 0
+	private operation: string = 'Processing' // Track operation type (Split/Combine)
 
 	constructor(title: string = 'sfparty') {
 		// Suppress terminal capability errors BEFORE any blessed operations
@@ -115,7 +119,7 @@ export class TUI {
 		})
 
 		// Header (rows 0-1, full width) - 2 rows to ensure content displays (TUI quirk)
-		this.grid.set(0, 0, 2, 12, blessed.box, {
+		this.headerBox = this.grid.set(0, 0, 2, 12, blessed.box, {
 			content: this.createHeader(title),
 			tags: true,
 			style: {
@@ -270,7 +274,11 @@ export class TUI {
 
 	private createHeader(title: string): string {
 		const version = 'v2.0.2'
-		const description = 'Salesforce metadata XML splitter for CI/CD'
+		// Use operation-specific description
+		const description =
+			this.operation.toLowerCase() === 'combine'
+				? 'Salesforce metadata XML combiner for CI/CD'
+				: 'Salesforce metadata XML splitter for CI/CD'
 		const width = this.screen.width || 80
 		// Two lines: app name/version on first line, description on second line
 		// Removed emojis as they cause unicode width issues with box borders
@@ -285,15 +293,22 @@ export class TUI {
 	 * Initialize TUI with total file count
 	 */
 	init(total: number, operation: string = 'Processing'): void {
+		this.operation = operation // Store operation type
 		this.stats.total = total
 		this.stats.completed = 0
 		this.stats.errors = 0
 		this.stats.currentFile = 'Initializing...'
 		this.fileItems = []
 		this.completedFiles = []
+		this.filesWithErrors.clear() // Reset error tracking
 		// Initialize completed files box with empty list
 		if (this.completedFilesBox) {
 			this.completedFilesBox.setItems([])
+		}
+		// Update header with operation-specific description
+		if (this.headerBox) {
+			this.headerBox.setContent(this.createHeader('sfparty'))
+			this.render()
 		}
 		this.log(
 			`{cyan-fg}Starting ${operation} operation: ${total} file(s){/}`,
@@ -341,6 +356,14 @@ export class TUI {
 	 */
 	updateStats(stats: Partial<TUIStats>): void {
 		this.stats = { ...this.stats, ...stats }
+		// Override errors count with actual count from files marked as errors
+		// This ensures errors = number of unique files with errors (never exceeds files)
+		// Errors can never exceed completed (files processed) or total (files to process)
+		this.stats.errors = Math.min(
+			this.filesWithErrors.size,
+			this.stats.completed || 0,
+			this.stats.total || 0,
+		)
 		this.updateProgress()
 		this.render()
 	}
@@ -391,6 +414,13 @@ export class TUI {
 			const icon = status === 'completed' ? '✓' : '✗'
 			const color = status === 'completed' ? 'green' : 'red'
 			const item = `{${color}-fg}${icon}{/} ${displayName}`
+
+			// Track files with errors (deduplicated by basename)
+			if (status === 'error' && !this.filesWithErrors.has(basename)) {
+				this.filesWithErrors.add(basename)
+				// Update stats.errors to match the count of unique files with errors
+				this.stats.errors = this.filesWithErrors.size
+			}
 
 			// Check if already in completed list to avoid duplicates
 			const alreadyCompleted = this.completedFiles.some((cf) => {
@@ -521,6 +551,7 @@ export class TUI {
 	private updateProgress(): void {
 		const {
 			completed,
+			processed,
 			total,
 			errors,
 			currentFile,
@@ -529,6 +560,9 @@ export class TUI {
 			totalWritesEstimate,
 			writesCompleted,
 		} = this.stats
+		// Use processed (all files) for progress, but completed (successful) for display
+		// Fallback to completed + errors if processed not provided (for backward compatibility)
+		const filesProcessed = processed ?? completed + errors
 
 		// Track peak queue length to estimate total writes
 		if (queueLength && queueLength > this.peakQueueLength) {
@@ -536,17 +570,18 @@ export class TUI {
 		}
 
 		// Estimate total writes if not provided
-		// Use peak queue + completed files as a rough estimate
+		// Use peak queue + processed files as a rough estimate
 		// Or use provided estimate if available
 		const estimatedTotalWrites =
-			totalWritesEstimate || this.peakQueueLength + completed * 100 // Rough estimate: peak + some per file
+			totalWritesEstimate || this.peakQueueLength + filesProcessed * 100 // Rough estimate: peak + some per file
 		const currentWritesRemaining = queueLength || 0
 		const currentWritesCompleted =
 			writesCompleted || estimatedTotalWrites - currentWritesRemaining
 
 		// Calculate combined progress: files + writes
 		// Weight: 70% files, 30% writes (files are more important, but writes matter too)
-		const fileProgress = total > 0 ? completed / total : 0
+		// Use processed (all files) for progress calculation
+		const fileProgress = total > 0 ? filesProcessed / total : 0
 		const writeProgress =
 			estimatedTotalWrites > 0
 				? Math.max(
@@ -565,14 +600,16 @@ export class TUI {
 		percent = Math.min(99, percent) // Cap at 99% until everything is truly done
 
 		// Clear processing queue when all files are done
-		if (completed >= total && this.fileItems.length > 0) {
+		if (filesProcessed >= total && this.fileItems.length > 0) {
 			this.fileItems = []
 			this.fileListBox.setItems([])
 		}
 
 		const elapsed =
 			Number(process.hrtime.bigint() - this.startTime) / 1_000_000_000
-		const fileRate = elapsed > 0 ? (completed / elapsed).toFixed(2) : '0.00'
+		// Use processed (all files) for rate calculation
+		const fileRate =
+			elapsed > 0 ? (filesProcessed / elapsed).toFixed(2) : '0.00'
 
 		// Calculate ETA as simple byproduct of elapsed time and % complete
 		// Formula: ETA = (elapsed / percent) - elapsed
@@ -632,15 +669,19 @@ export class TUI {
 		this.progressBox.setContent(progressContent)
 
 		// Update stats box - removed Elapsed (it's in Progress box)
+		// Success rate = (successful files / processed files) * 100
+		// completed = successful files only, errors = failed files
+		// processed = completed + errors (all files processed)
+		// filesProcessed already calculated above in updateProgress()
 		const successRate =
-			completed > 0
-				? (((completed - errors) / completed) * 100).toFixed(1)
+			filesProcessed > 0
+				? ((completed / filesProcessed) * 100).toFixed(1)
 				: '0.0'
 		const statsContent = ` {green-fg}Success Rate:{/green-fg} {bold}${successRate}%{/bold}
 
  {yellow-fg}Completed:{/yellow-fg} {bold}${completed}{/bold}
  {red-fg}Errors:{/red-fg} {bold}${errors}{/bold}
- {cyan-fg}Remaining:{/cyan-fg} {bold}${total - completed}{/bold}`
+ {cyan-fg}Remaining:{/cyan-fg} {bold}${total - filesProcessed}{/bold}`
 
 		this.statsBox.setContent(statsContent)
 	}

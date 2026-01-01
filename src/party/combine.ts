@@ -7,6 +7,7 @@ import type { ListrTaskWrapper } from 'listr2'
 import path from 'path'
 import * as fileUtils from '../lib/fileUtils.js'
 import type { Package } from '../lib/packageUtil.js'
+import { getGlobalProgressTracker } from '../lib/tuiProgressTracker.js'
 import type { MetadataDefinition } from '../types/metadata.js'
 
 const processed = {
@@ -78,6 +79,9 @@ interface GlobalContext {
 	logger?: {
 		error: (message: string) => void
 		warn: (message: string) => void
+	}
+	consoleTransport?: {
+		silent?: boolean
 	}
 	displayError?: (message: string, done: boolean) => void
 	format?: string
@@ -320,10 +324,21 @@ export class Combine {
 					return true
 				}
 
-				// Suppress verbose output - log via global.logger instead
-				global.logger?.warn(
-					`Source not found for ${that.#fileName.shortName || 'unknown'} - removing XML file`,
-				)
+				// Suppress verbose output - log via TUI if active, otherwise via global.logger
+				const message = `Source not found for ${that.#fileName.shortName || 'unknown'} - removing XML file`
+				// Try to use TUI progress tracker if available
+				const progressTracker = getGlobalProgressTracker()
+				if (progressTracker) {
+					progressTracker.logWarning(message)
+				} else {
+					// Only log to console if console transport is not silenced (TUI not active)
+					if (
+						!global.consoleTransport ||
+						!global.consoleTransport.silent
+					) {
+						global.logger?.warn(message)
+					}
+				}
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
 					global.git?.enabled
@@ -392,9 +407,19 @@ export class Combine {
 					) {
 						await processDirectory(that, key)
 					} else {
-						global.logger?.warn(
-							`Unexpected metadata type: ${clc.redBright(key)}`,
-						)
+						const message = `Unexpected metadata type: ${clc.redBright(key)}`
+						const progressTracker = getGlobalProgressTracker()
+						if (progressTracker) {
+							progressTracker.logWarning(message)
+						} else {
+							// Only log to console if console transport is not silenced (TUI not active)
+							if (
+								!global.consoleTransport ||
+								!global.consoleTransport.silent
+							) {
+								global.logger?.warn(message)
+							}
+						}
 					}
 				}
 				return true
@@ -833,11 +858,41 @@ export class Combine {
 			Object.keys(that.#json).forEach((key) => {
 				if (that.#json[key] === undefined) delete that.#json[key]
 			})
-			// Build XML from JSON object - wrap in root if needed
-			const jsonToBuild =
-				that.#root && that.#json[that.#root]
-					? { [that.#root]: that.#json[that.#root] }
-					: that.#json
+			// Build XML from JSON object - always wrap in root tag if root is defined
+			// This ensures split can find the expected root tag
+			let jsonToBuild: Record<string, unknown>
+			if (that.#root) {
+				// If root key exists in JSON, use it
+				if (
+					that.#json[that.#root] !== undefined &&
+					that.#json[that.#root] !== null
+				) {
+					jsonToBuild = { [that.#root]: that.#json[that.#root] }
+				} else {
+					// Root key not found in JSON - this is an error condition
+					// Log warning and create empty root to prevent split failures
+					const warning = `Root key "${that.#root}" not found in JSON structure for ${that.#fileName.shortName}. Creating empty root tag.`
+					const progressTracker = getGlobalProgressTracker()
+					if (progressTracker) {
+						progressTracker.logWarning(warning)
+					} else {
+						if (
+							!global.consoleTransport ||
+							!global.consoleTransport.silent
+						) {
+							global.logger?.warn(warning)
+						}
+					}
+					// Create root wrapper with all JSON data (excluding root key if it exists as undefined)
+					// This ensures split can find the expected root tag
+					const jsonWithoutRoot = { ...that.#json }
+					delete jsonWithoutRoot[that.#root] // Remove undefined root key
+					jsonToBuild = { [that.#root]: jsonWithoutRoot }
+				}
+			} else {
+				// No root defined - use JSON as-is
+				jsonToBuild = that.#json
+			}
 			// Add XML declaration manually since fast-xml-parser doesn't have xmlDeclaration option
 			const xml = `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build(jsonToBuild)}`
 

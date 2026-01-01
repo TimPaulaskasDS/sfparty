@@ -118,8 +118,9 @@ export class PerformanceLogger {
 	 */
 	completeFile(file: string, success: boolean, error?: string): void {
 		const timing = this.getOrCreateFileTiming(file)
-		if (!success && error) {
-			timing.error = error
+		if (!success) {
+			// Mark as failed - use provided error message or default
+			timing.error = error || 'Operation failed'
 		}
 		// Calculate total duration from read, parse, and write times
 		const readTime = timing.readTime || 0
