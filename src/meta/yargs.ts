@@ -55,6 +55,17 @@ function getOptions(type: string): YargsOptions {
 		}
 	})
 
+	if (type === 'split') {
+		optionObj.keepFalseValues = {
+			alias: 'k',
+			demand: false,
+			description:
+				'keep entries and files with all false values (default: false values are removed)',
+			type: 'boolean',
+			default: false,
+		}
+	}
+
 	if (type === 'combine') {
 		optionObj.git = {
 			alias: 'g',

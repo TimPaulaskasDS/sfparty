@@ -1,8 +1,8 @@
 object: Customer
 fieldPermissions:
   - field: CustomerStatusType
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'
   - field: TotalLifeTimeValue
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'

@@ -27,6 +27,7 @@ interface SplitConfig {
 	metaFilePath: string
 	sequence: number
 	total: number
+	keepFalseValues?: boolean
 	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
 	task?: ListrTaskWrapper<any, any, any>
 }
@@ -57,6 +58,7 @@ export class Split {
 	#json: Record<string, unknown> | undefined = undefined
 	#errorMessage = ''
 	#startTime: bigint = BigInt(0)
+	#keepFalseValues: boolean = false
 
 	private _metadataDefinition!: MetadataDefinition
 	sourceDir!: string
@@ -75,6 +77,7 @@ export class Split {
 		this.sequence = config.sequence
 		this.total = config.total
 		this.#task = config.task
+		this.#keepFalseValues = config.keepFalseValues || false
 	}
 
 	get metadataDefinition(): MetadataDefinition {
@@ -85,6 +88,10 @@ export class Split {
 		this._metadataDefinition = definition
 		this.#type = definition.filetype
 		this.#root = definition.root
+	}
+
+	get keepFalseValues(): boolean {
+		return this.#keepFalseValues
 	}
 
 	get metaFilePath(): string {
@@ -335,9 +342,25 @@ export class Split {
 					that.metadataDefinition.singleFiles !== undefined &&
 					that.metadataDefinition.singleFiles.includes(key)
 				) {
+					// For singleFiles, json[key] can be an array or a single object
+					// Convert single object to array for consistent processing
+					const value = json[key]
+					let arrayValue: unknown[]
+					if (Array.isArray(value)) {
+						arrayValue = value
+					} else if (value && typeof value === 'object') {
+						// Single element case - convert to array
+						arrayValue = [value]
+					} else {
+						// Invalid structure, skip
+						continue
+					}
+
+					// Apply keySort to sort entries and order keys within each entry
+					const sorted = keySort(that, key, arrayValue)
 					await processFile(
 						that,
-						json[key] as Record<string, unknown>,
+						sorted as Record<string, unknown>,
 						key,
 						baseDir,
 					)
@@ -480,6 +503,64 @@ async function processDirectory(
 	}
 }
 
+/**
+ * Check if a value is considered false (boolean false or string 'false')
+ */
+function isFalseValue(val: unknown): boolean {
+	return val === false || val === 'false'
+}
+
+/**
+ * Check if a fieldPermissions entry should be removed (both editable and readable are false)
+ * Matches the cleanup script logic: removes entries where BOTH editable AND readable are false
+ */
+function isFieldPermissionEmpty(entry: unknown): boolean {
+	if (!entry || typeof entry !== 'object') {
+		return false
+	}
+	const fieldPerm = entry as Record<string, unknown>
+	return isFalseValue(fieldPerm.editable) && isFalseValue(fieldPerm.readable)
+}
+
+/**
+ * Check if an objectPermissions entry should be removed (all 6 boolean permissions are false)
+ * Matches the cleanup script logic
+ */
+function isObjectPermissionEmpty(entry: unknown): boolean {
+	if (!entry || typeof entry !== 'object') {
+		return false
+	}
+	const objPerm = entry as Record<string, unknown>
+	return (
+		isFalseValue(objPerm.allowCreate) &&
+		isFalseValue(objPerm.allowRead) &&
+		isFalseValue(objPerm.allowEdit) &&
+		isFalseValue(objPerm.allowDelete) &&
+		isFalseValue(objPerm.viewAllRecords) &&
+		isFalseValue(objPerm.modifyAllRecords)
+	)
+}
+
+/**
+ * Filter out entries based on the key type (fieldPermissions, objectPermissions, etc.)
+ * Matches the cleanup script behavior:
+ * - fieldPermissions: Remove entries where both editable AND readable are false
+ * - objectPermissions: Remove entries where all 6 permissions are false
+ * - Other types: Don't filter (the cleanup script doesn't handle them)
+ */
+function filterFalseEntries(arr: unknown[], key: string): unknown[] {
+	if (key === 'fieldPermissions') {
+		// Remove entries where both editable and readable are false
+		return arr.filter((item) => !isFieldPermissionEmpty(item))
+	} else if (key === 'objectPermissions') {
+		// Remove entries where all 6 permissions are false
+		return arr.filter((item) => !isObjectPermissionEmpty(item))
+	}
+	// For all other types, don't filter (return as-is)
+	// The cleanup script only handles fieldPermissions and objectPermissions
+	return arr
+}
+
 async function processFile(
 	that: Split,
 	json: Record<string, unknown>,
@@ -487,22 +568,81 @@ async function processFile(
 	baseDir: string,
 	fileNameOverride?: string,
 ): Promise<void> {
+	// Apply cleanup for profiles and permission sets only
+	const metadataType = that.metadataDefinition.filetype
+	const shouldCleanup =
+		!that.keepFalseValues &&
+		(metadataType === 'profile' || metadataType === 'permset')
+
+	// Handle cleanup - json can be an array (for singleFiles) or an object (for directories)
+	let cleanedJson = json
+	let cleanedArray: unknown[] | null = null
+
+	if (shouldCleanup) {
+		// For singleFiles, json is actually an array (despite the type)
+		if (Array.isArray(json)) {
+			// Filter the array directly
+			const filtered = filterFalseEntries(json, key)
+			if (filtered.length === 0) {
+				// All entries were false, don't write the file
+				return
+			}
+			cleanedArray = filtered
+		} else {
+			// For directories, json is an object with arrays inside
+			cleanedJson = { ...json }
+			for (const jsonKey of Object.keys(cleanedJson)) {
+				const value = cleanedJson[jsonKey]
+				if (Array.isArray(value)) {
+					// Filter based on the key type (fieldPermissions, objectPermissions, etc.)
+					const filtered = filterFalseEntries(value, jsonKey)
+					if (filtered.length === 0) {
+						// All entries were false, remove the key entirely
+						delete cleanedJson[jsonKey]
+					} else {
+						cleanedJson[jsonKey] = filtered
+					}
+				}
+			}
+
+			// If the entire object has no meaningful data (only object/field keys), skip writing
+			const meaningfulKeys = Object.keys(cleanedJson).filter(
+				(k) => k !== 'object' && k !== 'field',
+			)
+			if (meaningfulKeys.length === 0) {
+				// File would be empty, don't write it
+				return
+			}
+		}
+	}
+
 	let newJSON: Record<string, unknown>
 	let fileName: string
 	if (fileNameOverride !== undefined) {
+		// For files split by object (e.g., fieldPermissions/Account.yaml)
 		fileName = path.join(baseDir, `${fileNameOverride}.${global.format}`)
-		newJSON = json
+		// cleanedJson is already the object structure (e.g., {object: 'Account', fieldPermissions: [...]})
+		newJSON = cleanedJson
+
+		// Check if file should be skipped after cleanup
+		if (shouldCleanup) {
+			const meaningfulKeys = Object.keys(newJSON).filter(
+				(k) => k !== 'object' && k !== 'field',
+			)
+			if (meaningfulKeys.length === 0) {
+				// File would be empty, don't write it
+				return
+			}
+		}
 	} else {
-		const sortKey = that.metadataDefinition.sortKeys[key]
-		fileName = path.join(
-			baseDir,
-			`${json[sortKey] !== undefined ? json[sortKey] : key}.${
-				global.format
-			}`,
-		)
+		// For singleFiles (e.g., classAccesses.yaml)
+		fileName = path.join(baseDir, `${key}.${global.format}`)
+
+		// Use cleanedArray if cleanup was applied, otherwise use cleanedJson
 		newJSON = {}
-		newJSON[key] = json
+		newJSON[key] = cleanedArray !== null ? cleanedArray : cleanedJson
 	}
+
 	await fileUtils.saveFile(newJSON, fileName, global.format)
 }
 
@@ -533,8 +673,27 @@ function transformJSONInPlace(obj: unknown, sortKeys: string[]): unknown {
 		if (Object.prototype.hasOwnProperty.call(objRecord, key)) {
 			const value = objRecord[key]
 			if (sortKeys.includes(key)) {
-				// Don't transform sortKey fields - copy as-is
-				result[key] = value
+				// For sortKey fields, still need to recursively transform array items
+				// to convert boolean strings to booleans in nested objects
+				if (Array.isArray(value)) {
+					// Transform array items in-place
+					const transformedArray = transformJSONInPlace(
+						value,
+						sortKeys,
+					)
+					result[key] = transformedArray
+				} else if (
+					value &&
+					typeof value === 'object' &&
+					!Array.isArray(value)
+				) {
+					// For objects, recursively transform nested properties
+					const transformed = transformJSONInPlace(value, sortKeys)
+					result[key] = transformed
+				} else {
+					// For primitives, copy as-is
+					result[key] = value
+				}
 			} else {
 				// Transform non-sortKey fields recursively, then apply xml2json
 				const transformed = transformJSONInPlace(value, sortKeys)

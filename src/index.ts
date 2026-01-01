@@ -594,6 +594,7 @@ interface SplitCombineArgv {
 	type?: string
 	name?: string
 	all?: boolean
+	keepFalseValues?: boolean
 }
 
 yargs(hideBin(process.argv))
@@ -881,6 +882,14 @@ function yargCheck(argv: Yargs.Arguments, _options: Yargs.Options): boolean {
 			} else if (Array.isArray(alias)) {
 				alias.forEach((a: string) => validKeys.add(a))
 			}
+		}
+	})
+	// Also add kebab-case versions of camelCase keys (yargs converts these)
+	// Convert camelCase to kebab-case for validation
+	validKeys.forEach((key) => {
+		const kebabCase = key.replace(/([A-Z])/g, '-$1').toLowerCase()
+		if (kebabCase !== key) {
+			validKeys.add(kebabCase)
 		}
 	})
 	const invalidKeys = argvKeys.filter(
@@ -1192,6 +1201,7 @@ async function processSplit(
 						metaFilePath: filePath,
 						sequence: index + 1,
 						total: processed.total,
+						keepFalseValues: argv.keepFalseValues || false,
 					})
 					const result = await metadataItem.split()
 

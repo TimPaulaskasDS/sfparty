@@ -1,8 +1,8 @@
 object: AuthorizationFormConsent
 fieldPermissions:
   - field: DocumentVersionId
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'
   - field: Status
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'

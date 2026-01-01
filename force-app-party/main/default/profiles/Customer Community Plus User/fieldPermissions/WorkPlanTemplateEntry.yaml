@@ -1,5 +1,5 @@
 object: WorkPlanTemplateEntry
 fieldPermissions:
   - field: ExecutionOrder
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'

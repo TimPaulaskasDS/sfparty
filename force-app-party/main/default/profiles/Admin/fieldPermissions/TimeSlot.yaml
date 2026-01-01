@@ -1,8 +1,8 @@
 object: TimeSlot
 fieldPermissions:
   - field: MaxAppointments
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'
   - field: WorkTypeGroupId
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'

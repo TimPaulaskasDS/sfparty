@@ -1,5 +1,5 @@
 object: Idea
 recordTypeVisibilities:
-  - default: false
+  - default: 'false'
     recordType: InternalIdeasIdeaRecordType
-    visible: false
+    visible: 'false'

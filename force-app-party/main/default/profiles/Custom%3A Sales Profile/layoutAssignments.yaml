@@ -101,9 +101,7 @@ layoutAssignments:
   - layout: ServiceTerritoryMember-Service Territory Member Layout
   - layout: SessionHijackingEventStore-Session Hijacking Event Store Layout
   - layout: Shift-Shift Layout
-  - layout: >-
-      ShiftWorkTopic-%5F%5FMISSING LABEL%5F%5F PropertyFile - val ShiftWorkTopic
-      not found in section StandardLayouts
+  - layout: ShiftWorkTopic-%5F%5FMISSING LABEL%5F%5F PropertyFile - val ShiftWorkTopic not found in section StandardLayouts
   - layout: SkillRequirement-Skill Requirement Layout
   - layout: SocialPersona-Social Persona Layout
   - layout: Solution-Solution Layout
