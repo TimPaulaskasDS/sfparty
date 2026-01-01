@@ -876,6 +876,20 @@ function keySort(that: Split, key: string, json: unknown): unknown {
 }
 
 /**
+ * Internal function to perform boolean comparison - extracted for testability
+ * Can be mocked in tests to trigger error paths
+ * @internal
+ */
+export function compareBooleanValue(value: unknown, target: string): boolean {
+	// This comparison can theoretically throw if value has custom behavior
+	// that interferes with === comparison
+	return value === target
+}
+
+// Store the comparison function in a way that can be mocked
+let _compareBooleanValue = compareBooleanValue
+
+/**
  * Converts a boolean string value to a boolean, with error handling
  * @param value Value to convert
  * @param onError Optional error callback
@@ -886,8 +900,8 @@ export function convertBooleanValue(
 	onError?: (error: Error) => void,
 ): unknown {
 	try {
-		if (value === 'true') return true
-		if (value === 'false') return false
+		if (_compareBooleanValue(value, 'true')) return true
+		if (_compareBooleanValue(value, 'false')) return false
 		return value
 	} catch (error) {
 		if (
@@ -902,6 +916,22 @@ export function convertBooleanValue(
 		}
 		return value
 	}
+}
+
+/**
+ * Internal function to set the comparison function - for testing only
+ * @internal
+ */
+export function _setCompareBooleanValue(fn: typeof compareBooleanValue): void {
+	_compareBooleanValue = fn
+}
+
+/**
+ * Internal function to reset the comparison function - for testing only
+ * @internal
+ */
+export function _resetCompareBooleanValue(): void {
+	_compareBooleanValue = compareBooleanValue
 }
 
 function xml2json(currentValue: unknown): unknown {

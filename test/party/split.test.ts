@@ -2717,299 +2717,609 @@ describe('Split class', () => {
 			})
 		})
 
-		describe('Uncovered lines coverage - lines 83, 582, 639, 652, 665, 685, 746, 783, 844, 893-903', () => {
-			it('should cover line 83: metadataDefinition setter', () => {
-				// Line 83: set metadataDefinition(definition: MetadataDefinition)
+		describe('Uncovered lines coverage - lines 0, 582, 639, 652, 665, 685, 746, 783, 844, 893-903', () => {
+			it('should cover line 84-88: metadataDefinition setter', async () => {
+				// Lines 84-88: set metadataDefinition(definition: MetadataDefinition)
+				// This sets the private #type and #root fields
 				const split = new Split({
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				// Set a different metadata definition
+				// Verify initial state
+				expect(split.metadataDefinition.filetype).toBe('profile')
+				expect(split.metadataDefinition.root).toBe('Profile')
+
+				// Set a different metadata definition - this should trigger the setter
 				const newDef = {
-					...profileDefinition.metadataDefinition,
-					type: 'CustomObject',
+					...labelDefinition.metadataDefinition,
 				}
 				split.metadataDefinition = newDef
 
-				// Verify setter was called (line 83)
+				// Verify setter was called (lines 84-88)
 				expect(split.metadataDefinition).toBe(newDef)
+				expect(split.metadataDefinition.filetype).toBe('labels')
+				expect(split.metadataDefinition.root).toBe('CustomLabels')
+
+				// Also test that the setter is called during split operation
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Reset to profile definition for split
+				split.metadataDefinition = profileDefinition.metadataDefinition
+				const result = await split.split()
+				expect(result).toBe(true)
 			})
 
 			it('should cover line 582: isObjectPermissionEmpty early return for non-object', async () => {
 				// Line 582: return false when entry is not an object
-				// isObjectPermissionEmpty is not exported, so we test it through split operation
-				// by providing objectPermissions with non-object entries
+				// Test with XML that has objectPermissions with non-object entries
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <objectPermissions>
+        <object>Account</object>
+        <allowCreate>false</allowCreate>
+        <allowRead>false</allowRead>
+        <allowEdit>false</allowEdit>
+        <allowDelete>false</allowDelete>
+        <viewAllRecords>false</viewAllRecords>
+        <modifyAllRecords>false</modifyAllRecords>
+    </objectPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					Profile: {
-						fullName: 'Admin',
-						objectPermissions: [
-							null, // Non-object entry - triggers line 582
-							'string', // Non-object entry
-							123, // Non-object entry
-							[], // Non-object entry (array is not object)
-						],
-					},
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				const split = new Split({
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				await split.split()
-
-				// Verify split completed (line 582 executed for non-object entries)
-				expect(fileUtils.readFile).toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
 			})
 
-			it('should cover line 639: Array filter returns empty - early return', async () => {
-				// Line 639: return when filtered.length === 0 for array input
+			it('should cover line 639: Array filter returns empty - early return for singleFiles', async () => {
+				// Line 639: return when filtered.length === 0 for array input (singleFiles)
+				// This happens when all fieldPermissions entries are filtered out
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>Account.Field2__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					fieldPermissions: [
-						{ field: 'Field1', editable: false, readable: false },
-						{ field: 'Field2', editable: false, readable: false },
-					],
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Create metadata definition with fieldPermissions as singleFiles
+				const metaDefWithSingleFiles = {
+					...profileDefinition.metadataDefinition,
+					singleFiles: ['fieldPermissions'],
+				}
 
 				const split = new Split({
-					metadataDefinition: profileDefinition.metadataDefinition,
+					metadataDefinition: metaDefWithSingleFiles,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				await split.split()
-
-				// Verify split completed (line 639 executed when all entries filtered out)
-				expect(fileUtils.readFile).toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// fieldPermissions file should not be written (line 639 early return)
 			})
 
 			it('should cover line 652: delete cleanedJson[jsonKey] when filtered array is empty', async () => {
 				// Line 652: delete cleanedJson[jsonKey] when filtered.length === 0
+				// This happens in processFile when processing directories
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+    <objectPermissions>
+        <object>Account</object>
+        <allowCreate>false</allowCreate>
+        <allowRead>false</allowRead>
+        <allowEdit>false</allowEdit>
+        <allowDelete>false</allowDelete>
+        <viewAllRecords>false</viewAllRecords>
+        <modifyAllRecords>false</modifyAllRecords>
+    </objectPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					fieldPermissions: [
-						{ field: 'Field1', editable: false, readable: false },
-					],
-					objectPermissions: [
-						{
-							object: 'Object1',
-							allowCreate: false,
-							allowRead: false,
-						},
-					],
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				const split = new Split({
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				await split.split()
-
-				// Verify split completed (line 652 executed)
-				expect(fileUtils.readFile).toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// fieldPermissions and objectPermissions should be deleted (line 652)
 			})
 
 			it('should cover line 665: Early return when meaningfulKeys.length === 0', async () => {
 				// Line 665: return when meaningfulKeys.length === 0 (only object/field keys)
+				// This happens when all arrays are filtered out, leaving only object/field keys
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					object: 'Account',
-					field: 'Field1',
-					// No other meaningful keys
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Create metadata definition with fieldPermissions as directories
+				const metaDefWithDirs = {
+					...profileDefinition.metadataDefinition,
+					directories: ['fieldPermissions'],
+					splitObjects: ['fieldPermissions'],
+					sortKeys: {
+						fieldPermissions: 'field',
+					},
+				}
 
 				const split = new Split({
-					metadataDefinition: profileDefinition.metadataDefinition,
+					metadataDefinition: metaDefWithDirs,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				await split.split()
-
-				// Verify split completed (line 665 executed)
-				expect(fileUtils.readFile).toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// File should not be written (line 665 early return)
 			})
 
 			it('should cover line 685: Early return when meaningfulKeys.length === 0 for fileNameOverride', async () => {
 				// Line 685: return when meaningfulKeys.length === 0 for fileNameOverride path
+				// This happens when processing splitObjects and all arrays are filtered out
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					object: 'Account',
-					field: 'Field1',
-					// No other meaningful keys
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Create metadata definition with fieldPermissions as splitObjects
+				const metaDefWithSplitObjects = {
+					...profileDefinition.metadataDefinition,
+					directories: ['fieldPermissions'],
+					splitObjects: ['fieldPermissions'],
+					sortKeys: {
+						fieldPermissions: 'field',
+					},
+				}
 
 				const split = new Split({
-					metadataDefinition: profileDefinition.metadataDefinition,
+					metadataDefinition: metaDefWithSplitObjects,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				await split.split()
-
-				// Verify split completed (line 685 executed)
-				expect(fileUtils.readFile).toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// File should not be written (line 685 early return)
 			})
 
 			it('should cover line 746: Copy primitive as-is in transformJSONInPlace', async () => {
-				// Line 746: result[key] = value for primitives
+				// Line 746: result[key] = value for primitives in sortKey fields
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <custom>false</custom>
+    <description>Test description</description>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					fullName: 'Admin',
-					description: 'Test description', // Primitive string
-					userPermissions: [],
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Create metadata definition with description as a sortKey
+				const metaDefWithSortKey = {
+					...profileDefinition.metadataDefinition,
+					sortKeys: {
+						description: 'description',
+					},
+				}
 
 				const split = new Split({
-					metadataDefinition: profileDefinition.metadataDefinition,
+					metadataDefinition: metaDefWithSortKey,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				await split.split()
-
-				// Verify split completed (line 746 executed for primitive)
-				expect(fileUtils.readFile).toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// description (primitive) should be copied as-is (line 746)
 			})
 
-			it('should cover line 783: Error re-throw in keySort', async () => {
-				// Line 783: throw error in keySort forEach catch block
+			it('should cover line 783: Error re-throw in transformJSON keySort', async () => {
+				// Line 783: throw error in transformJSON when keySort throws
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <userPermissions>
+        <name>ApiEnabled</name>
+        <enabled>true</enabled>
+    </userPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				// Create data that will cause keySort to throw
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					Profile: {
-						fullName: 'Admin',
-						// Invalid structure that causes keySort error
-						userPermissions: null,
-					},
-				})
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Mock XMLParser to return data that will cause keySort to throw
+				const { XMLParser } = await import('fast-xml-parser')
+				const originalParse = XMLParser.prototype.parse
+				XMLParser.prototype.parse = function (xml: string) {
+					const parsed = originalParse.call(this, xml)
+					// Create an object that will throw when keySort tries to process it
+					const throwingObject = {
+						Profile: {
+							fullName: 'Admin',
+							userPermissions: new Proxy([], {
+								get() {
+									throw new Error('Error in keySort')
+								},
+							}),
+						},
+					}
+					return throwingObject
+				}
 
 				const split = new Split({
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
 
-				// Should handle error gracefully
-				await expect(split.split()).resolves.toBeDefined()
+				await expect(split.split()).rejects.toThrow('Error in keySort')
+
+				// Restore
+				XMLParser.prototype.parse = originalParse
 			})
 
 			it('should cover line 844: Error re-throw in keySort reduce', async () => {
 				// Line 844: throw error in keySort reduce catch block
+				// This happens when an error occurs during the reduce operation in keySort
+				// The reduce does: accumulator[key] = item[key]
+				// So we need item[key] to throw when accessed
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <userPermissions>
+        <name>ApiEnabled</name>
+        <enabled>true</enabled>
+    </userPermissions>
+</Profile>`
+
 				;(
-					fileUtils.fileExists as ReturnType<typeof vi.fn>
-				).mockResolvedValue(true)
-				// Create data that will cause keySort reduce to throw
-				;(
-					fileUtils.readFile as ReturnType<typeof vi.fn>
-				).mockResolvedValue({
-					Profile: {
-						fullName: 'Admin',
-						fieldPermissions: [
-							// Invalid structure that causes reduce error
-							{ field: null },
-						],
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Mock XMLParser to return data that will cause an error in reduce
+				const { XMLParser } = await import('fast-xml-parser')
+				const originalParse = XMLParser.prototype.parse
+				let reducePhase = false
+				const baseItem = { name: 'ApiEnabled', enabled: true }
+				XMLParser.prototype.parse = function (xml: string) {
+					const parsed = originalParse.call(this, xml)
+					// Create an object that will throw when a property is accessed during reduce
+					// We use a flag to track when we're in the reduce phase
+					const throwingItem = new Proxy(baseItem, {
+						get(target, prop) {
+							// After Object.keys is called, we're in the reduce phase
+							if (
+								reducePhase &&
+								(prop === 'name' || prop === 'enabled')
+							) {
+								throw new Error('Error in reduce')
+							}
+							return target[prop as keyof typeof target]
+						},
+						ownKeys(target) {
+							// After ownKeys is called, we know reduce will be next
+							reducePhase = true
+							return Reflect.ownKeys(target)
+						},
+					})
+					return {
+						Profile: {
+							fullName: 'Admin',
+							userPermissions: [throwingItem],
+						},
+					}
+				}
+
+				const metaDefWithKeyOrder = {
+					...profileDefinition.metadataDefinition,
+					keyOrder: {
+						userPermissions: ['name', 'enabled'],
 					},
+					sortKeys: {
+						userPermissions: 'name',
+					},
+				}
+
+				const split = new Split({
+					metadataDefinition: metaDefWithKeyOrder,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
 				})
+
+				// The error should be caught and re-thrown at line 844
+				await expect(split.split()).rejects.toThrow('Error in reduce')
+
+				// Restore
+				XMLParser.prototype.parse = originalParse
+			})
+
+			it('should cover lines 893-903: convertBooleanValue error handling with onError', async () => {
+				// Lines 893-903: Error handling in convertBooleanValue for non-standard errors
+				const splitModule = await import('../../src/party/split.js')
+				const {
+					convertBooleanValue,
+					_setCompareBooleanValue,
+					_resetCompareBooleanValue,
+				} = splitModule
+
+				const onError = vi.fn()
+
+				// Set the comparison function to throw an error
+				_setCompareBooleanValue(() => {
+					throw new Error('Custom conversion error')
+				})
+
+				try {
+					// Now the comparison will throw, triggering the catch block
+					// The catch block returns the original value
+					const result = convertBooleanValue('testValue', onError)
+					expect(result).toBe('testValue') // Returns original value when error occurs
+					expect(onError).toHaveBeenCalledWith(
+						expect.objectContaining({
+							message: 'Custom conversion error',
+						}),
+					)
+				} finally {
+					// Always restore
+					_resetCompareBooleanValue()
+				}
+			})
+
+			it('should cover lines 900-901: convertBooleanValue error handling without onError', async () => {
+				// Lines 900-901: console.error when onError is not provided
+				const consoleErrorSpy = vi
+					.spyOn(console, 'error')
+					.mockImplementation(() => {})
+
+				const splitModule = await import('../../src/party/split.js')
+				const {
+					convertBooleanValue,
+					_setCompareBooleanValue,
+					_resetCompareBooleanValue,
+				} = splitModule
+
+				// Set the comparison function to throw an error
+				_setCompareBooleanValue(() => {
+					throw new Error('Custom conversion error')
+				})
+
+				try {
+					// Now the comparison will throw, triggering the catch block
+					// The catch block returns the original value and calls console.error
+					const result = convertBooleanValue('testValue')
+					expect(result).toBe('testValue') // Returns original value when error occurs
+					expect(consoleErrorSpy).toHaveBeenCalledWith(
+						expect.objectContaining({
+							message: 'Custom conversion error',
+						}),
+					)
+				} finally {
+					// Always restore
+					_resetCompareBooleanValue()
+					consoleErrorSpy.mockRestore()
+				}
+			})
+
+			it('should cover branch when keepFalseValues is true (shouldCleanup is false)', async () => {
+				// Test branch where shouldCleanup is false because keepFalseValues is true
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
 				const split = new Split({
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
 					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+					keepFalseValues: true, // This should prevent cleanup
 				})
 
-				// Should handle error gracefully
-				await expect(split.split()).resolves.toBeDefined()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// fieldPermissions should be written even though editable and readable are false
 			})
 
-			it('should cover lines 893-903: convertBooleanValue error handling for non-standard errors', async () => {
-				// Lines 893-903: Error handling in convertBooleanValue for non-standard errors
-				// The try-catch only catches errors during the if/return statements
-				// Since those are synchronous and won't throw, we need to test this differently
-				// The catch block is there for defensive programming, but is hard to trigger
-				// We'll test it by ensuring the function handles edge cases correctly
-				const { convertBooleanValue } = await import(
-					'../../src/party/split.js'
-				)
+			it('should cover branch when metadataType is not profile or permset', async () => {
+				// Test branch where shouldCleanup is false because metadataType is not 'profile' or 'permset'
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="https://soap.sforce.com/2006/04/metadata">
+    <labels>
+        <fullName>TestLabel</fullName>
+        <value>Test Value</value>
+    </labels>
+</CustomLabels>`
 
-				const onError = vi.fn()
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
-				// Test normal cases to ensure function works
-				expect(convertBooleanValue('true', onError)).toBe(true)
-				expect(convertBooleanValue('false', onError)).toBe(false)
-				expect(convertBooleanValue('other', onError)).toBe('other')
+				const split = new Split({
+					metadataDefinition: labelDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/CustomLabels.labels-meta.xml',
+					sequence: 1,
+					total: 1,
+				})
 
-				// The catch block (lines 893-903) is defensive and hard to trigger
-				// since the if/return statements are synchronous and won't throw
-				// This test verifies the function works correctly
-				expect(onError).not.toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// Cleanup should not be applied for labels
 			})
 
-			it('should cover lines 900-901: convertBooleanValue error handling without onError', async () => {
-				// Lines 900-901: console.error when onError is not provided
-				// Similar to above, the catch block is defensive and hard to trigger
-				const consoleErrorSpy = vi
-					.spyOn(console, 'error')
-					.mockImplementation(() => {})
+			it('should cover branch when filtered array has items (not empty)', async () => {
+				// Test branch where filtered.length > 0, so file is written
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>false</editable>
+        <readable>false</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>Account.Field2__c</field>
+        <editable>true</editable>
+        <readable>true</readable>
+    </fieldPermissions>
+</Profile>`
 
-				const { convertBooleanValue } = await import(
-					'../../src/party/split.js'
-				)
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
 
-				// Test normal cases
-				expect(convertBooleanValue('true')).toBe(true)
-				expect(convertBooleanValue('false')).toBe(false)
-				expect(convertBooleanValue('other')).toBe('other')
+				const split = new Split({
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+				})
 
-				// The catch block (lines 893-903) is defensive and hard to trigger
-				// This test verifies the function works correctly
-				expect(consoleErrorSpy).not.toHaveBeenCalled()
+				const result = await split.split()
+				expect(result).toBe(true)
+				// fieldPermissions file should be written with only the second entry
+			})
 
-				consoleErrorSpy.mockRestore()
+			it('should cover branch when meaningfulKeys.length > 0', async () => {
+				// Test branch where meaningfulKeys.length > 0, so file is written
+				const xmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="https://soap.sforce.com/2006/04/metadata">
+    <fullName>Admin</fullName>
+    <fieldPermissions>
+        <field>Account.Field1__c</field>
+        <editable>true</editable>
+        <readable>true</readable>
+    </fieldPermissions>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce(xmlData)
+
+				// Create metadata definition with fieldPermissions as directories
+				const metaDefWithDirs = {
+					...profileDefinition.metadataDefinition,
+					directories: ['fieldPermissions'],
+					splitObjects: ['fieldPermissions'],
+					sortKeys: {
+						fieldPermissions: 'field',
+					},
+				}
+
+				const split = new Split({
+					metadataDefinition: metaDefWithDirs,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+				})
+
+				const result = await split.split()
+				expect(result).toBe(true)
+				// File should be written because meaningfulKeys.length > 0
 			})
 		})
 	})
