@@ -116,4 +116,25 @@ describe('createDirectory', () => {
 			createDirectory('/test/path', mockFs as unknown as typeof fs),
 		).rejects.toThrow('Permission denied')
 	})
+
+	it('should use cache on second call (covers line 199)', async () => {
+		// Test cache hit path (line 199: verifiedDirectories.has check returns early)
+		const uniquePath = '/cached/path/unique-' + Date.now()
+
+		// First call: creates directory and caches it
+		mockFs.promises.stat.mockRejectedValueOnce(new Error('ENOENT'))
+		mockFs.promises.mkdir.mockResolvedValueOnce(undefined)
+
+		await createDirectory(uniquePath, mockFs as unknown as typeof fs)
+		expect(mockFs.promises.mkdir).toHaveBeenCalledTimes(1)
+
+		// Second call: should hit cache (line 199) and return early without calling mkdir
+		// Note: directoryExists will be called to check cache, which calls stat
+		mockFs.promises.stat.mockResolvedValueOnce({ isDirectory: () => true })
+
+		await createDirectory(uniquePath, mockFs as unknown as typeof fs)
+
+		// mkdir should NOT be called again (cache hit at line 199)
+		expect(mockFs.promises.mkdir).toHaveBeenCalledTimes(1)
+	})
 })

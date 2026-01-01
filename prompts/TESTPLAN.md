@@ -150,11 +150,47 @@
 
 **Goal**: For each file/function/branch that is NOT at 100% coverage, investigate why it's not fully covered and determine what is needed to reach 100% coverage.
 
+### CRITICAL: Code Correctness Verification (MUST DO FIRST)
+
+**Before classifying uncovered code, you MUST verify the code actually works as intended:**
+
+1. **For Each Uncovered Line/Branch**:
+   - Read the code and understand what it's supposed to do
+   - **Verify the code logic is correct** - check for logic bugs that prevent execution
+   - Test the code manually or with a simple script to see if it actually executes
+   - Check if conditions can ever be true (e.g., `if (x !== x)` will never execute)
+   - Verify dependencies and state (e.g., cache, module-level variables) work as expected
+
+2. **Common Logic Bugs to Check**:
+   - Conditions that are always false (e.g., `if (sanitized !== str)` when they're always equal)
+   - Module-level state that never gets set (e.g., cache that never populates)
+   - Type comparisons that can never match
+   - String comparisons with Unicode escapes that are identical in JavaScript
+   - Dead code paths due to impossible conditions
+
+3. **If Logic Bug Found**:
+   - **FIX THE BUG FIRST** before writing tests
+   - Document the bug in the reachability analysis
+   - Then proceed with test writing
+   - **DO NOT** write tests for unreachable code caused by bugs
+
+4. **Verification Steps**:
+   ```bash
+   # For functions: Test manually
+   node -e "const {func} = require('./dist/lib/file.js'); console.log(func('test'))"
+   
+   # For cache/state: Check if it actually populates
+   node -e "const {func, getState} = require('./dist/lib/file.js'); func('test'); console.log(getState())"
+   
+   # For conditions: Verify they can be true
+   node -e "const x = 'test'; const y = x.replace(/a/g, '\\u0061'); console.log(x === y)" # Should show if condition can be true
+   ```
+
 ### Classification Categories
 
 - **A) Reachable via existing public API/CLI path** → Write tests using public entrypoints
 - **B) Reachable only with controlled dependencies** → Introduce test seams (dependency injection, mocks, fakes)
-- **C) Truly unreachable** → Propose delete/refactor (dead code, impossible branch, legacy path)
+- **C) Truly unreachable** → Propose delete/refactor (dead code, impossible branch, legacy path, **OR LOGIC BUG**)
 - **D) Error-only paths** → Write tests using targeted fakes/mocks to trigger exceptions
 - **E) Environment-conditional code** → Write tests by simulating environment (platform, env vars, TTY)
 
@@ -163,12 +199,15 @@
 1. **For Each File Not at 100% Coverage**:
    - Read the source file completely
    - Identify specific uncovered lines, branches, and functions
+   - **CRITICAL: Verify code correctness first** (see "Code Correctness Verification" above)
+   - **If logic bug found, fix it before proceeding**
    - Trace call paths (who calls this? from where?)
    - Identify dependencies (fs, process, network, time, TTY, env vars)
    - For each uncovered item:
+     - **First**: Verify the code can actually execute (not a logic bug)
      - Determine why it's not covered
-     - Classify into category A–E
-     - Determine what is needed to reach 100% coverage
+     - Classify into category A–E (use Category C if it's a logic bug)
+     - Determine what is needed to reach 100% coverage (fix bug first if needed)
      - Identify specific test scenarios needed
 
 2. **For Category B (Dependency-Controlled)**:
@@ -176,9 +215,10 @@
    - Propose minimal refactor (dependency injection, adapter layer, pure function extraction)
    - Ensure behavior-preserving
 
-3. **For Category C (Unreachable)**:
-   - Prove unreachability (no callers, impossible conditions, legacy code)
-   - Propose deletion or refactor to remove dead code
+3. **For Category C (Unreachable or Logic Bug)**:
+   - Prove unreachability (no callers, impossible conditions, legacy code, **OR LOGIC BUG**)
+   - **If logic bug**: Fix the bug first, then write tests
+   - **If truly unreachable**: Propose deletion or refactor to remove dead code
    - If refactor, ensure behavior-preserving
 
 4. **For Category D (Error Paths)**:
@@ -212,9 +252,15 @@
    - **Target**: 100% for all metrics
    - **Uncovered Items**:
      - [List specific uncovered lines, branches, functions]
+   - **Code Correctness Verification**:
+     - [Verify each uncovered item can actually execute]
+     - [Check for logic bugs that prevent execution]
+     - [Test manually if needed to verify behavior]
+     - [If logic bug found, document and fix before proceeding]
    - **Analysis**:
      - [Why each uncovered item is not covered]
      - [What dependencies or conditions prevent coverage]
+     - [If logic bug: describe the bug and fix]
    - **Classification**: [A/B/C/D/E for each uncovered item]
    - **What's Needed to Reach 100%**:
      - [Detailed strategy for each uncovered item]

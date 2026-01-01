@@ -95,6 +95,22 @@ describe('getFiles', () => {
 		expect(result).toEqual(['File1.XML'])
 		expect(mockFs.promises.readdir).toHaveBeenCalledWith('/test/path')
 	})
+
+	it('should return empty array when readdir fails (covers line 284)', async () => {
+		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
+		// readdir fails - should catch and return empty array (line 284)
+		mockFs.promises.readdir.mockRejectedValue(
+			new Error('Permission denied'),
+		)
+
+		const result = await getFiles(
+			'/test/path',
+			undefined,
+			mockFs as unknown as typeof fs,
+		)
+
+		expect(result).toEqual([])
+	})
 })
 
 describe('getDirectories', () => {
@@ -136,6 +152,21 @@ describe('getDirectories', () => {
 
 		const result = await getDirectories(
 			'/nonexistent',
+			mockFs as unknown as typeof fs,
+		)
+
+		expect(result).toEqual([])
+	})
+
+	it('should return empty array when readdir fails (covers line 306)', async () => {
+		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
+		// readdir fails - should catch and return empty array (line 306)
+		mockFs.promises.readdir.mockRejectedValue(
+			new Error('Permission denied'),
+		)
+
+		const result = await getDirectories(
+			'/test/path',
 			mockFs as unknown as typeof fs,
 		)
 
@@ -302,5 +333,17 @@ describe('deleteFile', () => {
 		)
 
 		expect(result).toBe(false)
+	})
+
+	it('should throw error when unlink fails with non-ENOENT error (covers line 327)', async () => {
+		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
+		// unlink fails with non-ENOENT error - should throw (line 327)
+		const error = new Error('Permission denied')
+		;(error as NodeJS.ErrnoException).code = 'EACCES'
+		mockFs.promises.unlink.mockRejectedValueOnce(error)
+
+		await expect(
+			deleteFile('/test/file.txt', mockFs as unknown as typeof fs),
+		).rejects.toThrow('Permission denied')
 	})
 })

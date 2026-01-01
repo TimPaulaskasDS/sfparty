@@ -105,9 +105,7 @@ export class WriteBatcher {
 			// If there are more writes, schedule another flush
 			if (this.writeQueue.length > 0) {
 				this.flushTimer = setTimeout(() => {
-					this.flush().catch((err) => {
-						console.error('WriteBatcher flush error:', err)
-					})
+					this.scheduleNextFlush()
 				}, this.batchDelay)
 			}
 		}
@@ -133,6 +131,26 @@ export class WriteBatcher {
 			batchSize: this.batchSize,
 			isFlushing: this.flushing,
 		}
+	}
+
+	/**
+	 * Schedule the next flush (extracted for testability)
+	 * This method is called from the setTimeout callback to handle errors
+	 * @private
+	 */
+	private scheduleNextFlush(): void {
+		this.flush().catch((err) => {
+			console.error('WriteBatcher flush error:', err)
+		})
+	}
+
+	/**
+	 * Test helper to check if flush timer is set
+	 * This is only used in tests to verify timer scheduling for coverage
+	 * @returns true if flush timer is set, false otherwise
+	 */
+	hasFlushTimer(): boolean {
+		return this.flushTimer !== null
 	}
 
 	/**

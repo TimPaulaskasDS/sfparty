@@ -381,6 +381,53 @@ describe('WriteBatcher', () => {
 				consoleErrorSpy.mockRestore()
 			}
 		})
+
+		it('should handle error in scheduleNextFlush callback (covers line 143)', async () => {
+			// CRITICAL: Test line 143 - console.error in scheduleNextFlush catch block
+			// This happens when flush() throws an error in the setTimeout callback
+			const batcher = new WriteBatcher(2, 10)
+			const consoleErrorSpy = vi
+				.spyOn(console, 'error')
+				.mockImplementation(() => {})
+
+			// Add writes to queue manually
+			const file1 = path.join(tempDir, 'error1.txt')
+			const file2 = path.join(tempDir, 'error2.txt')
+			const file3 = path.join(tempDir, 'error3.txt')
+			;(batcher as any).writeQueue.push(
+				{ fileName: file1, data: 'content1' },
+				{ fileName: file2, data: 'content2' },
+				{ fileName: file3, data: 'content3' },
+			)
+
+			// Mock writeFile to throw an error on the second flush
+			const writeFileSpy = vi
+				.spyOn(fs.promises, 'writeFile')
+				// First flush succeeds (file1, file2)
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce(undefined)
+				// Second flush (from scheduleNextFlush) throws error (file3)
+				.mockRejectedValueOnce(new Error('Write error'))
+
+			// Trigger first flush - processes 2, leaves 1 in queue
+			await batcher.flush()
+
+			// Verify timer was set (line 107)
+			expect(batcher.hasFlushTimer()).toBe(true)
+
+			// Wait for setTimeout callback to execute (line 108 calls scheduleNextFlush)
+			// scheduleNextFlush will call flush(), which will throw (line 143: console.error)
+			await new Promise((resolve) => setTimeout(resolve, 15))
+
+			// Verify error was logged (line 143 executed)
+			expect(consoleErrorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('WriteBatcher flush error'),
+				expect.any(Error),
+			)
+
+			writeFileSpy.mockRestore()
+			consoleErrorSpy.mockRestore()
+		})
 	})
 })
 
@@ -428,6 +475,147 @@ describe('serializeData', () => {
 			const result = serializeData(obj, 'yaml')
 			// YAML should have consistent indentation
 			expect(result).toBeDefined()
+		})
+	})
+
+	describe('flush timer coverage', () => {
+		let testTempDir: string
+
+		beforeEach(() => {
+			testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-timer',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+		})
+
+		afterEach(() => {
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+		})
+
+		it('should schedule another flush when more writes are queued (covers lines 107-109)', async () => {
+			// CRITICAL: Test lines 107-109 - setTimeout callback that schedules another flush
+			// We extract the callback to scheduleNextFlush() method for better testability
+			const batcher = new WriteBatcher(2, 10) // Small batch size = 2
+			const consoleErrorSpy = vi
+				.spyOn(console, 'error')
+				.mockImplementation(() => {})
+
+			const files: string[] = []
+			// Add writes directly to queue to avoid auto-flush from addWrite
+			for (let i = 0; i < 5; i++) {
+				const filePath = path.join(testTempDir, `timer${i}.txt`)
+				files.push(filePath)
+				// Access private queue to add writes without triggering auto-flush
+				;(batcher as any).writeQueue.push({
+					fileName: filePath,
+					data: `content${i}`,
+				})
+			}
+
+			// Verify queue has 5 items
+			expect(batcher.getQueueLength()).toBe(5)
+
+			// Manually trigger flush to process first batch (batchSize=2)
+			// This will:
+			// - Process 2 writes (splice(0, 2))
+			// - Leave 3 in queue
+			// - Finally block: queue.length > 0 → schedules setTimeout (line 107)
+			await batcher.flush()
+
+			// Verify queue still has 3 items (line 107 scheduled another flush)
+			expect(batcher.getQueueLength()).toBe(3)
+			// Verify flush timer was set (line 107 executed)
+			expect(batcher.hasFlushTimer()).toBe(true)
+
+			// CRITICAL: Manually call scheduleNextFlush() to cover lines 108-109
+			// This simulates what the setTimeout callback does
+			// In production, this is called by the setTimeout callback
+			;(batcher as any).scheduleNextFlush()
+
+			// Wait for the scheduled flush to complete
+			await batcher.waitForCompletion()
+
+			// Verify queue is now empty
+			expect(batcher.getQueueLength()).toBe(0)
+
+			// All files should be written
+			for (let i = 0; i < 5; i++) {
+				expect(fs.existsSync(files[i])).toBe(true)
+				expect(fs.readFileSync(files[i], 'utf8')).toBe(`content${i}`)
+			}
+
+			consoleErrorSpy.mockRestore()
+		})
+	})
+
+	describe('concurrent flush coverage', () => {
+		let testTempDir: string
+
+		beforeEach(() => {
+			testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-concurrent',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+		})
+
+		afterEach(() => {
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+		})
+
+		it('should wait for in-progress flush before processing (covers line 163)', async () => {
+			// CRITICAL: Test line 163 - await inside while loop that waits for in-progress flush
+			// We need to ensure flushAll() is called while flush() is actually executing
+			const batcher = new WriteBatcher(10, 50)
+
+			const file1 = path.join(testTempDir, 'concurrent1.txt')
+			const file2 = path.join(testTempDir, 'concurrent2.txt')
+
+			// Add writes directly to queue to avoid auto-flush
+			;(batcher as any).writeQueue.push(
+				{ fileName: file1, data: 'content1' },
+				{ fileName: file2, data: 'content2' },
+			)
+
+			// Verify queue has writes
+			expect(batcher.getQueueLength()).toBe(2)
+
+			// Start a flush (don't await - let it run in background)
+			// This sets this.flushing = true (line 71)
+			const flushPromise = batcher.flush()
+
+			// CRITICAL: Call flushAll() IMMEDIATELY while flush is in progress
+			// This should trigger line 163: await new Promise(...) inside while loop
+			// We use a small delay to ensure flush has started but not completed
+			// The while loop at line 163 will execute and wait
+			await new Promise((resolve) => setImmediate(resolve))
+
+			// Verify flush is in progress (line 163 condition will be true)
+			expect(batcher.getQueueStats().isFlushing).toBe(true)
+
+			// Now call flushAll() - should wait at line 163
+			const flushAllPromise = batcher.flushAll()
+
+			// Wait for both to complete
+			await Promise.all([flushPromise, flushAllPromise])
+
+			// Verify queue is empty
+			expect(batcher.getQueueLength()).toBe(0)
+
+			// Both files should be written
+			expect(fs.existsSync(file1)).toBe(true)
+			expect(fs.existsSync(file2)).toBe(true)
 		})
 	})
 
