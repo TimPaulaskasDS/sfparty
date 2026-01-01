@@ -43,7 +43,11 @@ Nothing else should be required.
   - `bun test` (test warnings/errors)
   - typecheck (TypeScript warnings)
   - build (compilation warnings)
-  - lint (linting warnings)
+  - lint (linting warnings, including Biome if configured)
+- For Biome specifically, capture:
+  - linting errors and warnings (e.g., `noExplicitAny`, `useConst`, etc.)
+  - formatting issues (auto-fixable with `biome check --write`)
+  - import organization issues (auto-fixable with Biome's organize imports)
 - Store raw warning output (or summarized counts + categories) in `WARNINGS_BASELINE.md`
 - **Important:** Warnings ≠ acceptable noise. Baseline warnings must be enumerated so regressions can be detected.
 
@@ -105,6 +109,9 @@ For each warning discovered in baseline or introduced during optimization:
   - unreachable code
   - deprecated API usage
   - type-only import that should be `import type`
+  - Biome linting warnings (e.g., `noExplicitAny`, `useConst`, etc.)
+  - Biome formatting issues (line length, spacing, function parameter formatting, etc.)
+  - Biome import organization issues (unsorted imports/exports)
   - other (specify)
 
 - **Identify** for each warning:
@@ -121,6 +128,13 @@ For each warning discovered in baseline or introduced during optimization:
 - **Do not ignore warnings**
 - If a warning remains, justification is required and must be explicit
 - Unused code, dead exports, unused imports, unused function calls, and unreachable code are treated as **mandatory cleanup**, not optional polish
+- **Biome-specific rules:**
+  - Formatting issues are **mandatory fixes** (use `bun run lint:fix` or `biome check --write`)
+  - Import organization issues are **mandatory fixes** (Biome can auto-fix these)
+  - Linting warnings (e.g., `noExplicitAny`) must be addressed by:
+    1. Fixing the underlying issue (preferred - replace `any` with proper types)
+    2. Explicitly justifying why the warning cannot be resolved (rare, must document)
+  - All Biome errors and warnings discovered in baseline must be resolved or justified before optimization is complete
 
 ## Output
 - `WARNINGS.md` containing:
@@ -140,9 +154,10 @@ Create `PATCH_PLAN.md`:
   - files touched
   - exact edits described
   - verification commands
-  - **warnings resolved** (list specific warnings that will be fixed)
+  - **warnings resolved** (list specific warnings that will be fixed, including Biome formatting/import/linting issues)
   - **warnings introduced** (should be zero; if any, must be justified)
 - Cleanup of unused code triggered by refactors is **in-scope** (remove newly unused symbols immediately, not defer)
+- **Biome auto-fixes should be applied early:** If Biome formatting or import organization issues exist, they should be fixed in the first commit using `bun run lint:fix` or `biome check --write`
 
 Also create `PATCHES/` folder containing one file per commit (not per finding):
 - `PATCHES/COMMIT_1.md`
@@ -162,11 +177,13 @@ Create `ORCHESTRATE.md` that:
      - IMPORTANT: Do not require me to run `@PATCHES/COMMIT_N.md` separately.
      - ORCHESTRATE must include everything needed to execute without extra prompts.
   4) after each commit: run verification commands + **warning gates**:
-     - run lint, typecheck, and build
+     - run lint (e.g., `bun run lint`), typecheck, and build
+     - **For Biome projects:** Run `bun run lint` to check for linting errors/warnings, and `bun run lint:fix` to auto-fix formatting and import organization issues
      - scan output for warnings
      - **If new warnings appear** → stop, fix them, then continue
      - **If existing warnings disappear** → note success
      - **If warnings remain** → they must be listed in `WARNINGS.md` with explicit justification
+     - **Biome-specific:** Ensure zero Biome errors remain; all formatting and import issues must be resolved
      - stop if failing and report what failed
   5) final summary:
      - what changed
@@ -200,7 +217,8 @@ When ORCHESTRATE is executed:
 - Prefer mechanical refactors first, then behavior-sensitive changes
 - Never "handwave"; if uncertain, add a TODO and a small focused test.
 - **Enforce warning gates:** After every step, run lint, typecheck, and build. If new warnings appear, stop and fix them before proceeding.
-- **Failure condition:** Optimization is incomplete if unresolved warnings remain without justification.
+- **Biome enforcement:** For projects using Biome, run `bun run lint` after each change. Auto-fix formatting/import issues with `bun run lint:fix` when appropriate. All Biome errors must be resolved; warnings must be fixed or explicitly justified.
+- **Failure condition:** Optimization is incomplete if unresolved warnings remain without justification. This includes all Biome linting errors, formatting issues, and import organization problems.
 
 ---
 
