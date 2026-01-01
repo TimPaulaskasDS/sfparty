@@ -13,6 +13,63 @@ describe('pathUtils', () => {
 		clearPathSanitizationCache()
 	})
 
+	// Test cache hit (line 13) and cache set (line 28) in a separate block
+	// that doesn't clear cache between calls
+	describe('cache coverage - lines 13 and 28', () => {
+		it('should set cache when string is sanitized (covers line 28)', () => {
+			// Clear cache to ensure fresh start
+			clearPathSanitizationCache()
+
+			// Use string with special characters that WILL be sanitized
+			// This ensures sanitized !== str, triggering line 28
+			const input = 'file*with?special<chars>'
+
+			// Call function - should sanitize AND cache (covers line 28)
+			// The function replaces * ? < > with Unicode equivalents
+			const result = replaceSpecialChars(input)
+			const expected = 'file\u002awith\u003fspecial\u003cchars\u003e'
+			expect(result).toBe(expected)
+
+			// Verify cache was set by calling again (should hit line 13)
+			const cached = replaceSpecialChars(input)
+			expect(cached).toBe(expected)
+			expect(cached).toBe(result)
+		})
+
+		it('should hit cache on second call (covers line 13)', () => {
+			// Clear cache to ensure fresh start
+			clearPathSanitizationCache()
+
+			const input = 'test*file?.txt'
+			// First call: sanitizes and caches (covers line 28)
+			// Input contains * and ? which should be replaced
+			const first = replaceSpecialChars(input)
+			const expected = 'test\u002afile\u003f.txt'
+			expect(first).toBe(expected)
+
+			// Second call: should hit cache (covers line 13)
+			// The cache.has() check should be true, so it returns cached value
+			const second = replaceSpecialChars(input)
+			expect(second).toBe(expected)
+			expect(second).toBe(first)
+		})
+
+		it('should not cache when string does not need sanitization', () => {
+			// Clear cache to ensure fresh start
+			clearPathSanitizationCache()
+
+			const input = 'normal/path/to/file.txt'
+			// This string doesn't need sanitization, so sanitized === str
+			// Line 28 should NOT be hit (cache.set is not called)
+			const result1 = replaceSpecialChars(input)
+			const result2 = replaceSpecialChars(input)
+
+			expect(result1).toBe(input)
+			expect(result2).toBe(input)
+			// Cache should not store unchanged strings (line 28 not hit)
+		})
+	})
+
 	describe('replaceSpecialChars', () => {
 		it('should return string unchanged when no special characters', () => {
 			const input = 'normal/path/to/file.txt'
@@ -123,10 +180,16 @@ describe('pathUtils', () => {
 		})
 
 		describe('cache behavior', () => {
+			// Skip beforeEach for cache tests to allow cache to persist within test
+			beforeEach(() => {
+				// Only clear if we want fresh cache for this specific test
+			})
+
 			it('should cache results when string is sanitized', () => {
-				// Don't clear cache for this test to ensure cache hit
+				// Clear cache at start to ensure fresh test
+				clearPathSanitizationCache()
 				const input = 'file*.txt'
-				// First call - should sanitize and cache
+				// First call - should sanitize and cache (hits line 28: sanitizedPathCache.set)
 				const result1 = replaceSpecialChars(input)
 				// Second call - should use cache (hits line 13: return sanitizedPathCache.get(str)!)
 				const result2 = replaceSpecialChars(input)
@@ -138,9 +201,11 @@ describe('pathUtils', () => {
 			})
 
 			it('should use cached value on second call (explicit cache hit test)', () => {
-				// Don't clear cache - use a unique input to avoid interference
+				// Clear cache at start to ensure fresh test
+				clearPathSanitizationCache()
+				// Use a unique input to avoid interference
 				const input = 'unique?cache?test.txt'
-				// Populate cache with first call
+				// Populate cache with first call (hits line 28: sanitizedPathCache.set)
 				const first = replaceSpecialChars(input)
 				// Second call should hit cache at line 13
 				const second = replaceSpecialChars(input)

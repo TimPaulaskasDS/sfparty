@@ -575,3 +575,38 @@ When executing this prompt:
 - Focus on files at 80-99% coverage as well as lower coverage files—all need to reach 100%
 - **NO FAILED TESTS**: The work is incomplete and unacceptable if there are any failing tests at the end
 
+## Known Intentional Patterns (DO NOT REFACTOR)
+
+These code patterns are intentional and should NOT be refactored or removed during test plan execution:
+
+### YAML Parsing Error Handling (src/lib/fileUtils.ts, lines 434-476)
+
+**CRITICAL**: The try-catch wrapper around `yaml.load()` in `readFile()` is REQUIRED and must NOT be removed or refactored.
+
+**Location**: `src/lib/fileUtils.ts`, lines 434-476 (the try-catch block wrapping `yaml.load()`)
+
+**Why This Exists**:
+- js-yaml has two error paths:
+  1. **Warnings**: Calls `onWarning` callback → gets "YAML parsing" prefix from callback
+  2. **Errors**: Throws directly (e.g., duplicate keys, invalid syntax) → does NOT call `onWarning`
+- When js-yaml encounters duplicate keys or other fatal errors, it throws directly WITHOUT calling `onWarning`
+- Without the try-catch wrapper, these direct throws lack the "YAML parsing" prefix
+- The test `test/lib/file/fileIO.test.ts` "should handle YAML parsing warnings" requires this prefix
+
+**What the Code Does**:
+- Wraps `yaml.load()` in try-catch to catch ALL YAML errors (both from `onWarning` and direct throws)
+- Ensures all YAML parsing errors have consistent "YAML parsing" prefix
+- Checks if error already includes "YAML parsing" to avoid double-wrapping
+
+**DO NOT**:
+- Remove the try-catch wrapper
+- Refactor it into a separate function (it needs to be inline to catch direct throws)
+- Simplify it by removing the error message check
+- "Fix" it by assuming `onWarning` always gets called
+
+**Documentation**: See extensive comments in `src/lib/fileUtils.ts` lines 434-456 explaining this pattern.
+
+**Test**: `test/lib/file/fileIO.test.ts` - "should handle YAML parsing warnings (line 437)"
+
+**History**: This has been fixed multiple times. See git history for context. The try-catch wrapper is the correct solution.
+

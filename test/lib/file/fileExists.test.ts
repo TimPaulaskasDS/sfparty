@@ -1,6 +1,14 @@
 import * as fs from 'fs'
 import { expect, it, vi } from 'vitest'
-import { fileExists } from '../../../src/lib/fileUtils'
+
+// Override any hoisted mocks from combine.test.ts and split.test.ts by providing our own mock
+// that returns the actual implementation. This ensures we get the real fileUtils.
+vi.mock('../../../src/lib/fileUtils.js', async () => {
+	const actual = await import('../../../src/lib/fileUtils.js')
+	return actual
+})
+
+import { fileExists } from '../../../src/lib/fileUtils.js'
 
 it('should return true if file exists', async () => {
 	const mockFs = {

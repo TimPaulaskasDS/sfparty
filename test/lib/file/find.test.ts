@@ -125,4 +125,25 @@ describe('find', () => {
 
 		expect(result).toBeNull()
 	})
+
+	it('should continue searching when directory exists at expected file path (line 548)', async () => {
+		// Line 548: stat exists but isFile() returns false (directory exists, not a file)
+		mockFs.promises.stat
+			.mockResolvedValueOnce({
+				isFile: () => false, // Directory exists but is not a file
+			} as fs.Stats)
+			.mockResolvedValueOnce({
+				isFile: () => true, // File found in parent directory
+			} as fs.Stats)
+
+		const result = await find(
+			'package.json',
+			'/test/project/subdir',
+			mockFs as unknown as typeof fs,
+		)
+
+		// Should continue searching and find file in parent
+		expect(result).toBe('/test/project/package.json')
+		expect(mockFs.promises.stat).toHaveBeenCalledTimes(2)
+	})
 })

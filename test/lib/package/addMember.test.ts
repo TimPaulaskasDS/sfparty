@@ -115,6 +115,32 @@ it('should initialize members array if undefined', () => {
 	}
 })
 
+it('should initialize members array when members property is undefined (covers lines 204-206)', () => {
+	// Set up packageJSON with a type that has name but members is undefined (not empty array)
+	// This should trigger lines 204-206 in addMember
+	if (pkg.packageJSON) {
+		pkg.packageJSON.Package.types = [
+			{
+				name: 'Workflow',
+				// members is undefined (not set) - should trigger initialization at lines 204-206
+			} as { name: string; members?: string[] },
+		]
+	}
+
+	// Add a member - this should hit lines 204-206 to initialize members
+	pkg.addMember('Workflow', 'TestMember')
+
+	// Verify members array was initialized
+	const workflowType = pkg.packageJSON?.Package.types?.find(
+		(t) => t.name?.toLowerCase() === 'workflow',
+	)
+	expect(workflowType).toBeDefined()
+	expect(workflowType?.members).toBeDefined()
+	expect(Array.isArray(workflowType?.members)).toBe(true)
+	expect(workflowType?.members).toContain('TestMember')
+	expect(workflowType?.name).toBe('Workflow')
+})
+
 it('should handle case-insensitive type matching', () => {
 	if (pkg.packageJSON) {
 		pkg.packageJSON.Package.types = [

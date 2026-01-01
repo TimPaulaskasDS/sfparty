@@ -1,5 +1,13 @@
 import * as fs from 'fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Override any hoisted mocks from combine.test.ts and split.test.ts by providing our own mock
+// that returns the actual implementation. This ensures we get the real fileUtils.
+vi.mock('../../../src/lib/fileUtils.js', async () => {
+	const actual = await import('../../../src/lib/fileUtils.js')
+	return actual
+})
+
 import {
 	deleteDirectory,
 	deleteFile,

@@ -431,12 +431,59 @@ export async function readFile(
 			// Security: Use JSON_SCHEMA to prevent prototype pollution
 			// This prevents attackers from injecting __proto__ or constructor
 			// keys that could modify object prototypes. See SECURITY.md.
-			return yaml.load(data, {
-				schema: yaml.JSON_SCHEMA,
-				onWarning: (warning) => {
-					throw new Error(`YAML parsing ${filePath}: ${warning}`)
-				},
-			})
+			//
+			// CRITICAL: The try-catch wrapper below is REQUIRED and must NOT be removed.
+			// This has been fixed multiple times - see git history for context.
+			//
+			// WHY THIS IS NEEDED:
+			// js-yaml has two error paths:
+			// 1. Warnings: Calls onWarning callback (line 437) - these get "YAML parsing" prefix
+			// 2. Errors: Throws directly (e.g., duplicate keys, invalid syntax) - these DON'T call onWarning
+			//
+			// PROBLEM: When js-yaml encounters duplicate keys or other fatal errors, it throws
+			// an error directly WITHOUT calling onWarning. This means:
+			// - onWarning callback (line 437) never executes
+			// - Error message lacks "YAML parsing" prefix
+			// - Tests fail expecting "YAML parsing" in error message
+			//
+			// SOLUTION: Wrap yaml.load in try-catch to catch ALL YAML errors (both from onWarning
+			// and direct throws) and ensure they all have consistent "YAML parsing" prefix.
+			//
+			// IMPORTANT: We check if error.message already includes "YAML parsing" to avoid
+			// double-wrapping errors that already came from onWarning callback.
+			//
+			// DO NOT REMOVE THIS TRY-CATCH - it ensures consistent error messages for all
+			// YAML parsing failures, regardless of whether they come from warnings or errors.
+			try {
+				return yaml.load(data, {
+					schema: yaml.JSON_SCHEMA,
+					onWarning: (warning) => {
+						// This callback handles YAML warnings (non-fatal issues)
+						// However, js-yaml throws errors directly for fatal issues like duplicate keys,
+						// so this callback may not always be called. That's why we need the try-catch above.
+						const warningMessage =
+							typeof warning === 'string'
+								? warning
+								: warning?.message || String(warning)
+						throw new Error(
+							`YAML parsing ${filePath}: ${warningMessage}`,
+						)
+					},
+				})
+			} catch (error) {
+				// Catch ALL YAML parsing errors (both from onWarning callback and direct throws from js-yaml)
+				// Wrap them with "YAML parsing" prefix for consistent error messages.
+				// This ensures test/lib/file/fileIO.test.ts "should handle YAML parsing warnings" passes.
+				if (error instanceof Error) {
+					// Only wrap if not already wrapped (onWarning errors already have the prefix)
+					if (!error.message.includes('YAML parsing')) {
+						throw new Error(
+							`YAML parsing ${filePath}: ${error.message}`,
+						)
+					}
+				}
+				throw error
+			}
 		} else if (convert && filePath.indexOf('.json') !== -1) {
 			// SEC-002: Use safe JSON parser to prevent prototype pollution
 			return safeJSONParse(data)

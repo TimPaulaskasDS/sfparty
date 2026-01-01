@@ -1,20 +1,17 @@
 import * as fs from 'fs'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Import the actual implementation using dynamic import to bypass hoisted mocks
-// This is necessary because combine.test.ts and split.test.ts have module-level mocks
-// that leak to other test files. We use dynamic imports to get the real implementation.
-let createDirectory: typeof import('../../../src/lib/fileUtils.js')['createDirectory']
-let clearVerifiedDirectoriesCache: typeof import('../../../src/lib/fileUtils.js')['clearVerifiedDirectoriesCache']
-
-// Load the actual implementation once before all tests
-beforeAll(async () => {
-	// Use dynamic import to get the actual implementation, bypassing any mocks
-	const fileUtilsModule = await import('../../../src/lib/fileUtils.js')
-	createDirectory = fileUtilsModule.createDirectory
-	clearVerifiedDirectoriesCache =
-		fileUtilsModule.clearVerifiedDirectoriesCache
+// Override any hoisted mocks from combine.test.ts and split.test.ts by providing our own mock
+// that returns the actual implementation. This ensures we get the real fileUtils.
+vi.mock('../../../src/lib/fileUtils.js', async () => {
+	const actual = await import('../../../src/lib/fileUtils.js')
+	return actual
 })
+
+import {
+	clearVerifiedDirectoriesCache,
+	createDirectory,
+} from '../../../src/lib/fileUtils.js'
 
 describe('createDirectory', () => {
 	let mockFs: {
