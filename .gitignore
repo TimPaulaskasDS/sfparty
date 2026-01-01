@@ -233,3 +233,6 @@ config/user/**
 # Test coverage reports
 html/
 coverage/
+
+# Security documentation (contains sensitive vulnerability details)
+.security/
