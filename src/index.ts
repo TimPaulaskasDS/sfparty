@@ -5,12 +5,8 @@ import clc from 'cli-color'
 import convertHrtime from 'convert-hrtime'
 import { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
-import { marked } from 'marked'
+// marked and marked-terminal are lazy-loaded in help command
 // ora is now only used in TUIProgressTracker fallback
-// @ts-expect-error - no type definitions available
-import markedTerminal from 'marked-terminal'
-// @ts-ignore - no types available
-import { createRequire } from 'module'
 import os from 'os'
 import path, { dirname, resolve } from 'path'
 import { argv, env } from 'process'
@@ -86,11 +82,7 @@ const processStartTime = process.hrtime.bigint()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-marked.setOptions({
-	renderer: new markedTerminal() as unknown as Parameters<
-		typeof marked.setOptions
-	>[0]['renderer'],
-})
+// Marked setup moved to help command handler for lazy loading
 
 interface Logger {
 	error: (message: string) => void
@@ -617,7 +609,15 @@ yargs(hideBin(process.argv))
 		builder: (yargs) => {
 			return yargs.check(yargCheck)
 		},
-		handler: (_argv) => {
+		handler: async (_argv) => {
+			const { marked } = await import('marked')
+			// @ts-expect-error - no type definitions available
+			const markedTerminal = (await import('marked-terminal')).default
+			marked.setOptions({
+				renderer: new markedTerminal() as unknown as Parameters<
+					typeof marked.setOptions
+				>[0]['renderer'],
+			})
 			const data = fs.readFileSync(
 				path.join(process.cwd(), 'README.md'),
 				'utf8',

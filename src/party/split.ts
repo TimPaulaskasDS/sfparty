@@ -1,4 +1,3 @@
-import convertHrtime from 'convert-hrtime'
 import { XMLParser } from 'fast-xml-parser'
 import fs from 'fs'
 import path from 'path'
@@ -19,8 +18,6 @@ interface FileNameInfo {
 	shortName: string | undefined
 }
 
-import type { ListrTaskWrapper } from 'listr2'
-
 interface SplitConfig {
 	metadataDefinition: MetadataDefinition
 	sourceDir: string
@@ -29,8 +26,6 @@ interface SplitConfig {
 	sequence: number
 	total: number
 	keepFalseValues?: boolean
-	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
-	task?: ListrTaskWrapper<any, any, any>
 }
 
 interface GlobalContext {
@@ -61,8 +56,8 @@ export class Split {
 	}
 	#json: Record<string, unknown> | undefined = undefined
 	#errorMessage = ''
-	#startTime: bigint = BigInt(0)
 	#keepFalseValues: boolean = false
+	#xmlParser: XMLParser | undefined = undefined
 
 	private _metadataDefinition!: MetadataDefinition
 	sourceDir!: string
@@ -70,8 +65,6 @@ export class Split {
 	private _metaFilePath!: string
 	private _sequence!: number
 	total!: number
-	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
-	#task?: ListrTaskWrapper<any, any, any>
 
 	constructor(config: SplitConfig) {
 		this.metadataDefinition = config.metadataDefinition
@@ -80,7 +73,6 @@ export class Split {
 		this.metaFilePath = config.metaFilePath
 		this.sequence = config.sequence
 		this.total = config.total
-		this.#task = config.task
 		this.#keepFalseValues = config.keepFalseValues || false
 	}
 
@@ -96,6 +88,24 @@ export class Split {
 
 	get keepFalseValues(): boolean {
 		return this.#keepFalseValues
+	}
+
+	private getXmlParser(): XMLParser {
+		if (!this.#xmlParser) {
+			this.#xmlParser = new XMLParser({
+				ignoreAttributes: false,
+				attributesGroupName: '$',
+				attributeNamePrefix: '',
+				ignoreDeclaration: false,
+				ignorePiTags: true,
+				trimValues: true,
+				parseAttributeValue: false,
+				parseTagValue: false,
+				alwaysCreateTextNode: false,
+				isArray: () => false,
+			})
+		}
+		return this.#xmlParser
 	}
 
 	get metaFilePath(): string {
@@ -206,7 +216,6 @@ export class Split {
 			)
 		}
 
-		that.#startTime = process.hrtime.bigint()
 		const perfLogger = getPerformanceLogger()
 		perfLogger.setFileSize(that.metaFilePath, stats.size)
 
@@ -223,19 +232,8 @@ export class Split {
 		const parseStart = process.hrtime.bigint()
 		// Security: Configure parser with safe options
 		// SEC-001: fast-xml-parser doesn't parse DOCTYPE/entities by default, providing built-in XXE protection
-		// Configure to match xml2js output format for compatibility
-		const parser = new XMLParser({
-			ignoreAttributes: false, // Keep attributes (needed for xmlns)
-			attributesGroupName: '$', // Group attributes in $ object (matches xml2js format)
-			attributeNamePrefix: '', // No prefix needed when using attributesGroupName
-			ignoreDeclaration: false, // Keep XML declaration
-			ignorePiTags: true, // Ignore processing instructions
-			trimValues: true, // Trim whitespace from values
-			parseAttributeValue: false, // Don't parse attribute values as numbers/booleans
-			parseTagValue: false, // Don't parse tag values as numbers/booleans
-			alwaysCreateTextNode: false,
-			isArray: () => false, // Don't force arrays (single elements stay as objects, like xml2js explicitArray: false)
-		})
+		// Reuse parser instance for better performance
+		const parser = this.getXmlParser()
 
 		let jsonData: Record<string, unknown>
 		try {
@@ -369,10 +367,7 @@ export class Split {
 			processed.current++
 			for (const key of Object.keys(json)) {
 				that.sequence = processed.current
-				if (that.#task) {
-					that.#task.output = [`Processing ${key}...`]
-				}
-				// Suppress verbose output - main progress is handled by ProgressTracker
+				// Progress is handled by ProgressTracker
 
 				if (
 					that.metadataDefinition.directories !== undefined &&
@@ -423,22 +418,18 @@ export class Split {
 				) {
 					// Main will get processed in it's own call
 				} else {
-					if (that.#task) {
-						that.#task.output = [`Unknown key: ${key}`]
+					// Log unknown key via TUI if active, otherwise via global.logger
+					const message = `Unknown key: ${key}`
+					const progressTracker = getGlobalProgressTracker()
+					if (progressTracker) {
+						progressTracker.logWarning(message)
 					} else {
-						// Log unknown key via TUI if active, otherwise via global.logger
-						const message = `Unknown key: ${key}`
-						const progressTracker = getGlobalProgressTracker()
-						if (progressTracker) {
-							progressTracker.logWarning(message)
-						} else {
-							// Only log to console if console transport is not silenced (TUI not active)
-							if (
-								!global.consoleTransport ||
-								!global.consoleTransport.silent
-							) {
-								global.logger?.warn(message)
-							}
+						// Only log to console if console transport is not silenced (TUI not active)
+						if (
+							!global.consoleTransport ||
+							!global.consoleTransport.silent
+						) {
+							global.logger?.warn(message)
 						}
 					}
 				}
@@ -457,10 +448,7 @@ export class Split {
 			mainInfo.main.name = that.#fileName.shortName
 			for (const key of that.metadataDefinition.main || []) {
 				that.sequence = processed.current
-				if (that.#task) {
-					that.#task.output = [`Processing main: ${key}...`]
-				}
-				// Suppress verbose output - main progress is handled by ProgressTracker
+				// Progress is handled by ProgressTracker
 
 				const rootKey = that.#root
 				if (rootKey && that.#json && rootKey in that.#json) {
@@ -482,12 +470,7 @@ export class Split {
 		}
 
 		function completeFile(that: Split): void {
-			const executionTime = getTimeDiff(that.#startTime)
-			const durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
-			if (that.#task) {
-				that.#task.title = `${that.#fileName.shortName || ''} - Processed in ${durationMessage}`
-			}
-			// Suppress verbose output - main progress is handled by ProgressTracker
+			// Progress is handled by ProgressTracker
 			// Errors are logged via global.logger
 			if (that.#errorMessage !== '') {
 				global.logger?.error(
@@ -955,17 +938,4 @@ export async function handleSandboxLoginIpRanges(
 			'yaml',
 		)
 	}
-}
-
-function getTimeDiff(
-	startTime: bigint,
-	endTime: bigint = process.hrtime.bigint(),
-): ReturnType<typeof convertHrtime> {
-	const diff = endTime - startTime
-	const executionTime = convertHrtime(diff)
-	executionTime.seconds = Math.round(executionTime.seconds)
-	executionTime.milliseconds = Math.round(executionTime.milliseconds / 1000)
-	if (executionTime.milliseconds === 0 && executionTime.nanoseconds > 0)
-		executionTime.milliseconds = 1
-	return executionTime
 }

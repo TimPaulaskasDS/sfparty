@@ -1,9 +1,7 @@
 import ci from 'ci-info'
 import clc from 'cli-color'
-import convertHrtime from 'convert-hrtime'
 import { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
-import type { ListrTaskWrapper } from 'listr2'
 import path from 'path'
 import * as fileUtils from '../lib/fileUtils.js'
 import type { Package } from '../lib/packageUtil.js'
@@ -71,8 +69,6 @@ interface CombineConfig {
 	total: number
 	addPkg: Package
 	desPkg: Package
-	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
-	task?: ListrTaskWrapper<any, any, any>
 }
 
 interface GlobalContext {
@@ -116,7 +112,6 @@ declare const global: GlobalContext & typeof globalThis
 export class Combine {
 	#type: string | undefined = undefined
 	#root: string | undefined = undefined
-	#startTime: bigint = BigInt(0)
 	#fileName: FileNameInfo = {
 		fullName: undefined,
 		shortName: undefined,
@@ -133,8 +128,6 @@ export class Combine {
 	#addedFiles: string[] = []
 	#deletedFiles: string[] = []
 	#mainDeleted = false
-	// biome-ignore lint/suspicious/noExplicitAny: listr2 requires generic type parameters
-	#task?: ListrTaskWrapper<any, any, any>
 
 	private _metadataDefinition!: MetadataDefinition
 	sourceDir!: string
@@ -154,7 +147,6 @@ export class Combine {
 		this.total = config.total
 		this.addPkg = config.addPkg
 		this.desPkg = config.desPkg
-		this.#task = config.task
 	}
 
 	get metadataDefinition(): MetadataDefinition {
@@ -364,15 +356,9 @@ export class Combine {
 			}
 			processed.current++
 
-			that.#startTime = process.hrtime.bigint()
-
 			try {
 				for (const key of that.#types) {
-					// display message
-					if (that.#task) {
-						that.#task.output = [`Processing ${key}...`]
-					}
-					// Suppress verbose output - main progress is handled by ProgressTracker
+					// Progress is handled by ProgressTracker
 
 					if (that.metadataDefinition.main?.includes(key)) {
 						const fileObj: FileObj = {
@@ -479,11 +465,7 @@ export class Combine {
 				for (let index = 0; index < fileList.length; index++) {
 					const file = fileList[index]
 					if (!ci.isCI) {
-						if (that.#task) {
-							that.#task.output = [
-								`${key} - ${index + 1} of ${fileList.length} - ${file}`,
-							]
-						}
+						// Progress is handled by ProgressTracker
 						// Suppress verbose output - main progress is handled by ProgressTracker
 					}
 
@@ -908,12 +890,7 @@ export class Combine {
 		}
 
 		function finishMessage(that: Combine): void {
-			const executionTime = getTimeDiff(that.#startTime)
-			const durationMessage = `${executionTime.seconds}.${executionTime.milliseconds}s`
-			if (that.#task) {
-				that.#task.title = `${that.#fileName.shortName || ''} - Processed in ${durationMessage}`
-			}
-			// Suppress verbose output - main progress is handled by ProgressTracker
+			// Progress is handled by ProgressTracker
 			// Errors are logged via global.logger
 			if (that.#errorMessage !== '') {
 				global.logger?.error(
@@ -1042,17 +1019,4 @@ function arrangeKeys(
 			return accumulator
 		}, {})
 	return sortedKeys
-}
-
-function getTimeDiff(
-	startTime: bigint,
-	endTime: bigint = process.hrtime.bigint(),
-): ReturnType<typeof convertHrtime> {
-	const diff = endTime - startTime
-	const executionTime = convertHrtime(diff)
-	executionTime.seconds = Math.round(executionTime.seconds)
-	executionTime.milliseconds = Math.round(executionTime.milliseconds / 1000)
-	if (executionTime.milliseconds === 0 && executionTime.nanoseconds > 0)
-		executionTime.milliseconds = 1
-	return executionTime
 }

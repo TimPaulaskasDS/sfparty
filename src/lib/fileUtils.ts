@@ -219,16 +219,8 @@ export async function createDirectory(
 
 	// Check cache first - if we've verified it exists, skip
 	if (verifiedDirectories.has(sanitizedPath)) {
-		// Double-check it still exists (in case it was deleted)
-		const exists = await directoryExists({
-			dirPath: sanitizedPath,
-			fs: fsTmp,
-		})
-		if (exists) {
-			return
-		}
-		// Directory was deleted, remove from cache and recreate
-		verifiedDirectories.delete(sanitizedPath)
+		// Trust cache - only verify if mkdir fails
+		return
 	}
 
 	try {

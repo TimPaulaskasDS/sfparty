@@ -237,6 +237,8 @@ export function serializeData(json: unknown, format: string): string {
 				noRefs: true, // Don't use anchors/aliases (faster)
 				skipInvalid: false,
 				sortKeys: false, // Don't sort keys (faster)
+				flowLevel: -1, // Disable flow style for faster serialization
+				quotingType: '"', // Consistent double-quoting
 			})
 		default:
 			throw new Error(`Unsupported format: ${format}`)
