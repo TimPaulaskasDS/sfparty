@@ -26,16 +26,23 @@
    - List test directories (`test/`, `tests/`, `__tests__/`, etc.)
    - Identify entry points (CLI, library exports)
 
-3. **Count Current Tests**
-   - Run: `bun test` (or detected test command) to get test count
-   - Save output to `.testplan/run/logs/baseline-test.log`
+3. **Verify All Tests Pass (REQUIRED)**
+   - Run: `bun test` (or detected test command)
+   - **CRITICAL**: All tests must pass before proceeding
+   - If any tests fail, document failures in `.testplan/run/logs/baseline-test-failures.log`
+   - Save full test output to `.testplan/run/logs/baseline-test.log`
+   - **STOP**: If tests fail, fix them first before continuing to PHASE 1
 
-4. **Check Current Coverage (if available)**
+4. **Count Current Tests**
+   - Extract test count from the test run output
+   - Note number of test files and test cases
+
+5. **Check Current Coverage (if available)**
    - Attempt to run coverage command
    - If coverage data exists, note current state
    - Save output to `.testplan/run/logs/baseline-coverage.log`
 
-5. **Write Baseline Report**
+6. **Write Baseline Report**
    Create `.testplan/run/BASELINE.md` with:
    ```markdown
    # Baseline Report
@@ -50,8 +57,10 @@
    - **Typecheck**: `[command]`
    - **Build**: `[command]`
 
-   ## Current Test Count
-   [Number of test files, number of test cases]
+   ## Test Status
+   - **All Tests Pass**: ✅ Yes / ❌ No
+   - **Test Count**: [Number of test files, number of test cases]
+   - **Failures** (if any): [List of failing tests or "None"]
 
    ## Current Coverage (if available)
    [Summary of existing coverage, or "Not yet measured"]
@@ -67,7 +76,7 @@
 
 ## PHASE 1 — Coverage Measurement (Real, Not Guessy)
 
-**Goal**: Obtain accurate, real coverage data using the project's actual tooling.
+**Goal**: Obtain accurate, real coverage data using the project's actual tooling and identify ALL files that are not at 100% coverage.
 
 ### Tasks
 
@@ -82,11 +91,18 @@
    - Identify per-file coverage percentages
    - Identify per-function/branch coverage where available
 
-3. **Identify Worst Offenders**
+3. **Identify Files Not at 100% Coverage**
+   - **PRIMARY FOCUS**: List ALL files that are not at 100% coverage (any metric: statements, branches, functions, or lines)
    - Sort files by coverage (lowest first)
-   - List functions/branches with 0% coverage
-   - List files with <50% coverage
-   - List files with <80% coverage
+   - For each file not at 100%, identify:
+     - Which metrics are below 100% (statements, branches, functions, lines)
+     - Specific functions/branches with less than 100% coverage
+     - Exact coverage percentages for each metric
+   - Also note:
+     - Files with 0% coverage
+     - Files with <50% coverage
+     - Files with <80% coverage
+     - Files with 80-99% coverage (still need attention)
 
 4. **Write Coverage Summary**
    Create `.testplan/run/COVERAGE_SUMMARY.md` with:
@@ -100,16 +116,22 @@
    - **Lines**: [X]%
 
    ## Coverage by File
-   | File | Statements | Branches | Functions | Lines |
-   |------|------------|----------|-----------|-------|
-   | [file] | [%] | [%] | [%] | [%] |
+   | File | Statements | Branches | Functions | Lines | Status |
+   |------|------------|----------|-----------|-------|--------|
+   | [file] | [%] | [%] | [%] | [%] | ✅ 100% / ⚠️ <100% |
    ...
 
-   ## Worst Offenders (<50% coverage)
-   [List of files with low coverage, sorted by coverage %]
+   ## Files Not at 100% Coverage (PRIMARY FOCUS)
+   [List ALL files that are not at 100% for ANY metric, sorted by lowest coverage first]
+   - For each file, show which metrics are below 100% and by how much
+   - Include specific functions/branches that need coverage
 
-   ## Zero Coverage Files
-   [Files with 0% coverage]
+   ## Coverage Breakdown
+   - **Files at 100%**: [count]
+   - **Files at 80-99%**: [count and list]
+   - **Files at 50-79%**: [count and list]
+   - **Files at <50%**: [count and list]
+   - **Files at 0%**: [count and list]
 
    ## Zero Coverage Functions/Branches
    [Specific functions/branches with 0% coverage]
@@ -126,7 +148,7 @@
 
 ## PHASE 2 — "Hard to Reach" Root Cause Analysis
 
-**Goal**: For each low-coverage file/function/branch, classify why it's hard to reach and determine strategy.
+**Goal**: For each file/function/branch that is NOT at 100% coverage, investigate why it's not fully covered and determine what is needed to reach 100% coverage.
 
 ### Classification Categories
 
@@ -138,12 +160,16 @@
 
 ### Tasks
 
-1. **For Each Low-Coverage Item**:
-   - Read the source file
+1. **For Each File Not at 100% Coverage**:
+   - Read the source file completely
+   - Identify specific uncovered lines, branches, and functions
    - Trace call paths (who calls this? from where?)
    - Identify dependencies (fs, process, network, time, TTY, env vars)
-   - Classify into category A–E
-   - Determine strategy
+   - For each uncovered item:
+     - Determine why it's not covered
+     - Classify into category A–E
+     - Determine what is needed to reach 100% coverage
+     - Identify specific test scenarios needed
 
 2. **For Category B (Dependency-Controlled)**:
    - Identify exact dependencies that need to be controlled
@@ -169,26 +195,41 @@
    # Reachability Analysis
 
    ## Methodology
-   For each low-coverage item, we classify why it's hard to reach and determine a strategy.
+   For each file that is NOT at 100% coverage, we investigate:
+   1. What specific code is not covered (lines, branches, functions)
+   2. Why it's not covered
+   3. What is needed to reach 100% coverage
+   4. Classify each uncovered item and determine strategy
 
-   ## Items Requiring Attention
+   ## Files Requiring Attention (Not at 100% Coverage)
 
-   ### [File: path/to/file.ts] - [Function/Branch Name]
-   - **Coverage**: [X]% (statements/branches/functions/lines)
-   - **Why Hard to Reach**: [Explanation]
-   - **Classification**: [A/B/C/D/E]
-   - **Strategy**: [Detailed strategy]
+   ### [File: path/to/file.ts]
+   - **Current Coverage**: 
+     - Statements: [X]%
+     - Branches: [X]%
+     - Functions: [X]%
+     - Lines: [X]%
+   - **Target**: 100% for all metrics
+   - **Uncovered Items**:
+     - [List specific uncovered lines, branches, functions]
+   - **Analysis**:
+     - [Why each uncovered item is not covered]
+     - [What dependencies or conditions prevent coverage]
+   - **Classification**: [A/B/C/D/E for each uncovered item]
+   - **What's Needed to Reach 100%**:
+     - [Detailed strategy for each uncovered item]
+     - [Specific test scenarios required]
    - **Required Refactor** (if any):
      - [Description of minimal, behavior-preserving refactor]
      - Files to modify: `[list]`
      - Verification: [test + typecheck + build commands]
    - **Test Approach**:
-     - [How to write tests]
+     - [How to write tests for each uncovered item]
      - [Fixtures/mocks needed]
      - [Verification command]
    - **Evidence**: [Code references, call traces, etc.]
 
-   [Repeat for each item]
+   [Repeat for each file not at 100%]
    ```
 
 ---
@@ -364,9 +405,11 @@
    - Treat warnings as work to fix (no ignoring)
 
 4. **Define Stop Conditions**
+   - **REQUIRED**: All tests must pass (`bun test` must exit with success)
    - Coverage target reached (~100% where reasonable)
    - OR remaining gap is justified (unreachable, not worth risk)
    - Justification must be written to `.testplan/run/EXCEPTIONS.md`
+   - **CRITICAL**: Work is NOT complete until all tests pass—do not leave failed tests
 
 5. **Write TRIAGE.md**
    Create `.testplan/run/TRIAGE.md`:
@@ -389,9 +432,11 @@
    bun run lint
    ```
    **Rules**:
-   - All commands must pass
+   - **CRITICAL**: All commands must pass—especially `bun test`
+   - **NO FAILED TESTS**: If `bun test` fails, you MUST fix the failures before proceeding
    - Warnings are treated as failures (fix them)
    - If any command fails, stop and fix before proceeding
+   - Do not leave failed tests—the work is incomplete until all tests pass
 
    ### Phase 1: Refactors (if any)
    [List APPLY_REFACTOR files in order]
@@ -407,27 +452,42 @@
 
    ## Stop Conditions
 
+   **REQUIRED BEFORE COMPLETION**: All tests must pass (`bun test` must exit with success)
+
    Continue until:
+   - ✅ **ALL TESTS PASS** (`bun test` exits successfully)
    - ✅ Coverage target reached (~100% where reasonable)
    - OR
    - ✅ Remaining gap is justified (see EXCEPTIONS.md)
 
+   **CRITICAL**: Do NOT consider the work complete if there are any failing tests. Fix all test failures before stopping.
+
    If stopping with remaining gaps, you MUST:
-   1. Write `.testplan/run/EXCEPTIONS.md` with evidence for each gap
-   2. Re-run coverage to verify current state
-   3. Update COVERAGE_SUMMARY.md with final numbers
+   1. **Verify all tests pass**: Run `bun test` and ensure it exits successfully
+   2. Write `.testplan/run/EXCEPTIONS.md` with evidence for each gap
+   3. Re-run coverage to verify current state
+   4. Update COVERAGE_SUMMARY.md with final numbers
 
    ## Final Verification
 
-   After all APPLY files are complete:
+   **REQUIRED**: After all APPLY files are complete, you MUST verify everything passes:
+
    ```bash
+   bun test
    bun run test:coverage
    bun run typecheck
    bun run build
    bun run lint
    ```
 
-   Compare final coverage to baseline. Document any exceptions in EXCEPTIONS.md.
+   **CRITICAL REQUIREMENTS**:
+   - ✅ **ALL TESTS MUST PASS**: `bun test` must exit with success (exit code 0)
+   - ✅ No test failures, no skipped tests that should run
+   - ✅ All other commands must pass
+   - ✅ Compare final coverage to baseline
+   - ✅ Document any exceptions in EXCEPTIONS.md
+
+   **DO NOT STOP UNTIL ALL TESTS PASS**: If any tests fail, you must fix them. The work is incomplete and unacceptable if there are failing tests.
 
    ## Related Files
 
@@ -469,12 +529,16 @@ When executing this prompt:
 
 2. **Execute Each Phase Sequentially**
    - PHASE 0 → PHASE 1 → PHASE 2 → PHASE 3 → PHASE 4 → PHASE 5
+   - **CRITICAL**: In PHASE 0, ensure ALL tests pass before proceeding
+   - **FOCUS**: In PHASE 1, identify ALL files not at 100% coverage
+   - **INVESTIGATE**: In PHASE 2, investigate each file not at 100% to determine what's needed
    - Save all outputs to `.testplan/run/`
    - Do not modify `prompts/TESTPLAN.md` (it is committed and immutable)
 
 3. **After Execution**
    - Verify `.testplan/run/TRIAGE.md` exists and is complete
    - User will then execute: "Triage @.testplan/run/TRIAGE.md"
+   - **CRITICAL**: When executing TRIAGE.md, ensure all tests pass at the end—do not leave failed tests
 
 ---
 
@@ -501,8 +565,13 @@ When executing this prompt:
 - This prompt is **committed and immutable**—never modify it during runs
 - All run artifacts are under `.testplan/run/` (assumed gitignored)
 - The single entrypoint is `.testplan/run/TRIAGE.md`
+- **CRITICAL**: All tests must pass before starting coverage analysis
+- **CRITICAL**: All tests must pass after TRIAGE execution—do not leave failed tests
+- **PRIMARY GOAL**: Identify ALL files not at 100% coverage and investigate what's needed to reach 100%
 - Treat "hard to reach" code as an investigation, not an excuse
 - Refactors must be minimal and behavior-preserving
 - Tests should be meaningful, not just coverage-driven
 - Diagnostics gates ensure quality at each step
+- Focus on files at 80-99% coverage as well as lower coverage files—all need to reach 100%
+- **NO FAILED TESTS**: The work is incomplete and unacceptable if there are any failing tests at the end
 
