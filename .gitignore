@@ -236,3 +236,6 @@ coverage/
 
 # Security documentation (contains sensitive vulnerability details)
 .security/
+
+# Codebase optimization review outputs
+.optimization/
