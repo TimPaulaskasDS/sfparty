@@ -64,6 +64,14 @@ function getOptions(type: string): YargsOptions {
 			type: 'boolean',
 			default: false,
 		}
+
+		optionObj.maxConcurrency = {
+			alias: 'c',
+			demand: false,
+			description:
+				'maximum number of files to process concurrently (min: 1, max: 100, default: auto-calculated based on system resources)',
+			type: 'number',
+		}
 	}
 
 	if (type === 'combine') {
@@ -106,6 +114,14 @@ function getOptions(type: string): YargsOptions {
 			description: 'path to your destructive change package XML file',
 			type: 'string',
 			implies: 'git',
+		}
+
+		optionObj.maxConcurrency = {
+			alias: 'c',
+			demand: false,
+			description:
+				'maximum number of files to process concurrently (min: 1, max: 100, default: auto-calculated based on system resources)',
+			type: 'number',
 		}
 	}
 

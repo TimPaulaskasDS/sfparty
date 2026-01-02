@@ -205,11 +205,20 @@ class ResourceManager {
 	private readonly totalMemory: number
 	private readonly estimatedMemoryPerFile: number = 30 * 1024 * 1024 // 30MB per file (more realistic for profiles)
 	private readonly minConcurrency: number = 10
-	private readonly maxConcurrency: number = 100
+	public readonly maxConcurrency: number
 
-	constructor() {
+	constructor(maxConcurrencyOverride?: number) {
 		this.cpuCores = os.cpus().length
 		this.totalMemory = os.totalmem()
+		// SEC-014: Allow CLI override of max concurrency (min: 1, max: 100)
+		if (maxConcurrencyOverride !== undefined) {
+			this.maxConcurrency = Math.max(
+				1,
+				Math.min(100, maxConcurrencyOverride),
+			)
+		} else {
+			this.maxConcurrency = 100
+		}
 	}
 
 	/**
@@ -425,10 +434,13 @@ async function limitConcurrency<T>(
 					}
 				}
 
-				// Apply adjustments
+				// Apply adjustments (respect maxConcurrency from ResourceManager)
 				const newConcurrency = Math.max(
 					10,
-					Math.min(100, resourceConcurrency + performanceAdjustment),
+					Math.min(
+						resourceManager.maxConcurrency,
+						resourceConcurrency + performanceAdjustment,
+					),
 				)
 
 				if (newConcurrency !== currentConcurrency) {
@@ -611,6 +623,7 @@ interface SplitCombineArgv {
 	name?: string
 	all?: boolean
 	keepFalseValues?: boolean
+	maxConcurrency?: number
 }
 
 yargs(hideBin(process.argv))
@@ -697,9 +710,20 @@ yargs(hideBin(process.argv))
 			return yargs
 		},
 		handler: (argv) => {
-			global.format = (argv as unknown as SplitCombineArgv).format
+			const argvTyped = argv as unknown as SplitCombineArgv
+			global.format = argvTyped.format
+			// SEC-014: Validate concurrency if provided
+			if (argvTyped.maxConcurrency !== undefined) {
+				if (
+					argvTyped.maxConcurrency < 1 ||
+					argvTyped.maxConcurrency > 100
+				) {
+					throw new Error(
+						'Concurrency must be between 1 and 100 (inclusive)',
+					)
+				}
+			}
 			const startProm = new Promise<boolean>((resolve, reject) => {
-				const argvTyped = argv as unknown as SplitCombineArgv
 				if (argvTyped.git !== undefined) {
 					const gitRef = sanitizeGitRef(argvTyped.git)
 					global.git!.append = argvTyped.append || global.git!.append
@@ -1143,7 +1167,8 @@ async function processSplit(
 		}
 
 		// Resource-aware concurrency calculation
-		const resourceManager = new ResourceManager()
+		// SEC-014: Allow CLI override of max concurrency
+		const resourceManager = new ResourceManager(argv.maxConcurrency)
 		const stats = resourceManager.getResourceStats()
 		const concurrency = resourceManager.calculateOptimalConcurrency(
 			processed.total,
@@ -1509,7 +1534,8 @@ async function processCombine(
 		}
 
 		// Resource-aware concurrency calculation
-		const resourceManager = new ResourceManager()
+		// SEC-014: Allow CLI override of max concurrency
+		const resourceManager = new ResourceManager(argv.maxConcurrency)
 		const stats = resourceManager.getResourceStats()
 		const concurrency = resourceManager.calculateOptimalConcurrency(
 			processed.total,
