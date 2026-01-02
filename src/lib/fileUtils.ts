@@ -78,18 +78,97 @@ declare const global: GlobalContext & typeof globalThis
 // SEC-003: Maximum file size limit (100MB) to prevent memory exhaustion
 const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB in bytes
 
+// SEC-006: Maximum parsing depth to prevent XML bomb and YAML anchor attacks
+const MAX_PARSING_DEPTH = 100 // Maximum nesting depth for XML/YAML structures
+
+// SEC-006: Maximum parsed content size (10MB) to prevent memory exhaustion from parsed data
+const MAX_PARSED_CONTENT_SIZE = 10 * 1024 * 1024 // 10MB in bytes
+
+// SEC-006: Check object depth to prevent deep nesting attacks
+export function checkDepth(
+	obj: unknown,
+	maxDepth: number,
+	currentDepth = 0,
+): void {
+	if (currentDepth > maxDepth) {
+		throw new Error(
+			`Parsing depth (${currentDepth}) exceeds maximum allowed depth (${maxDepth})`,
+		)
+	}
+
+	if (obj === null || typeof obj !== 'object') {
+		return
+	}
+
+	if (Array.isArray(obj)) {
+		for (const item of obj) {
+			checkDepth(item, maxDepth, currentDepth + 1)
+		}
+	} else {
+		for (const key in obj) {
+			checkDepth(
+				(obj as Record<string, unknown>)[key],
+				maxDepth,
+				currentDepth + 1,
+			)
+		}
+	}
+}
+
+// SEC-006: Estimate size of parsed object (rough approximation)
+export function estimateObjectSize(obj: unknown): number {
+	if (obj === null || typeof obj === 'undefined') {
+		return 8 // null/undefined overhead
+	}
+
+	if (typeof obj === 'string') {
+		return obj.length * 2 // UTF-16 encoding
+	}
+
+	if (typeof obj === 'number' || typeof obj === 'boolean') {
+		return 8 // number/boolean size
+	}
+
+	if (Array.isArray(obj)) {
+		let size = 8 // array overhead
+		for (const item of obj) {
+			size += estimateObjectSize(item)
+		}
+		return size
+	}
+
+	if (typeof obj === 'object') {
+		let size = 8 // object overhead
+		for (const key in obj) {
+			size += key.length * 2 // key size (UTF-16)
+			size += estimateObjectSize((obj as Record<string, unknown>)[key])
+		}
+		return size
+	}
+
+	return 8 // fallback
+}
+
 // Security: Safe JSON parser that prevents prototype pollution
 export function safeJSONParse(jsonString: string): unknown {
 	const parsed = JSON.parse(jsonString)
 
 	// SEC-002: Prevent prototype pollution by rejecting dangerous keys
-	function sanitizeObject(obj: unknown): unknown {
+	// SEC-006: Check depth to prevent deep nesting attacks
+	function sanitizeObject(obj: unknown, depth = 0): unknown {
+		// SEC-006: Check depth before processing
+		if (depth > MAX_PARSING_DEPTH) {
+			throw new Error(
+				`JSON parsing depth (${depth}) exceeds maximum allowed depth (${MAX_PARSING_DEPTH})`,
+			)
+		}
+
 		if (obj === null || typeof obj !== 'object') {
 			return obj
 		}
 
 		if (Array.isArray(obj)) {
-			return obj.map(sanitizeObject)
+			return obj.map((item) => sanitizeObject(item, depth + 1))
 		}
 
 		const sanitized: Record<string, unknown> = {}
@@ -105,12 +184,23 @@ export function safeJSONParse(jsonString: string): unknown {
 			// Recursively sanitize nested objects
 			sanitized[key] = sanitizeObject(
 				(obj as Record<string, unknown>)[key],
+				depth + 1,
 			)
 		}
 		return sanitized
 	}
 
-	return sanitizeObject(parsed)
+	const sanitized = sanitizeObject(parsed)
+
+	// SEC-006: Check parsed content size
+	const estimatedSize = estimateObjectSize(sanitized)
+	if (estimatedSize > MAX_PARSED_CONTENT_SIZE) {
+		throw new Error(
+			`Parsed content size (${(estimatedSize / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit of ${MAX_PARSED_CONTENT_SIZE / 1024 / 1024}MB`,
+		)
+	}
+
+	return sanitized
 }
 
 export { sanitizeErrorPath } from './errorUtils.js'
@@ -145,6 +235,63 @@ export function validatePath(userPath: string, workspaceRoot?: string): string {
 	return normalized
 }
 
+/**
+ * SEC-011: Validate symlink and ensure it doesn't point outside workspace
+ * @param filePath - Path to check
+ * @param workspaceRoot - Workspace root directory
+ * @param fsTmp - File system module (for testing)
+ * @returns Resolved path if symlink is safe, throws error if unsafe
+ */
+export async function validateSymlink(
+	filePath: string,
+	workspaceRoot: string | undefined,
+	fsTmp: typeof fs = fs,
+): Promise<string> {
+	try {
+		// Use lstat() to detect symlinks (doesn't follow them)
+		const linkStats = await fsTmp.promises.lstat(filePath)
+
+		if (linkStats.isSymbolicLink()) {
+			// Resolve the symlink target
+			const targetPath = await fsTmp.promises.readlink(filePath)
+			const resolvedTarget = path.resolve(
+				path.dirname(filePath),
+				targetPath,
+			)
+
+			// Validate the resolved target is within workspace
+			if (workspaceRoot) {
+				const resolvedRoot = path.resolve(workspaceRoot)
+				if (!resolvedTarget.startsWith(resolvedRoot)) {
+					throw new Error(
+						`Symlink points outside workspace: ${filePath} -> ${targetPath}`,
+					)
+				}
+			} else {
+				// If no workspace root, validate against current working directory
+				const cwd = process.cwd()
+				if (!resolvedTarget.startsWith(cwd)) {
+					throw new Error(
+						`Symlink points outside current directory: ${filePath} -> ${targetPath}`,
+					)
+				}
+			}
+
+			return resolvedTarget
+		}
+
+		// Not a symlink, return original path
+		return filePath
+	} catch (error) {
+		// If lstat fails (file doesn't exist), re-throw
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			throw error
+		}
+		// For other errors (like symlink validation failure), re-throw
+		throw error
+	}
+}
+
 export async function directoryExists({
 	dirPath,
 	fs: fsTmp,
@@ -154,6 +301,13 @@ export async function directoryExists({
 }): Promise<boolean> {
 	const sanitizedPath = replaceSpecialChars(dirPath)
 	try {
+		// SEC-011: Use lstat() to detect symlinks, then validate
+		const linkStats = await fsTmp.promises.lstat(sanitizedPath)
+		if (linkStats.isSymbolicLink()) {
+			// Validate symlink is safe
+			await validateSymlink(sanitizedPath, global.__basedir, fsTmp)
+		}
+		// Use stat() to check if it's a directory (follows symlinks after validation)
 		const stats = await fsTmp.promises.stat(sanitizedPath)
 		return stats.isDirectory()
 	} catch {
@@ -170,6 +324,13 @@ export async function fileExists({
 }): Promise<boolean> {
 	const sanitizedPath = replaceSpecialChars(filePath)
 	try {
+		// SEC-011: Use lstat() to detect symlinks, then validate
+		const linkStats = await fsTmp.promises.lstat(sanitizedPath)
+		if (linkStats.isSymbolicLink()) {
+			// Validate symlink is safe
+			await validateSymlink(sanitizedPath, global.__basedir, fsTmp)
+		}
+		// Use stat() to check if it's a file (follows symlinks after validation)
 		const stats = await fsTmp.promises.stat(sanitizedPath)
 		return stats.isFile()
 	} catch {
@@ -337,6 +498,13 @@ export async function fileInfo(
 	let stats: fs.Stats | undefined = undefined
 
 	try {
+		// SEC-011: Use lstat() to detect symlinks, then validate
+		const linkStats = await fsTmp.promises.lstat(sanitizedPath)
+		if (linkStats.isSymbolicLink()) {
+			// Validate symlink is safe
+			await validateSymlink(sanitizedPath, global.__basedir, fsTmp)
+		}
+		// Use stat() to get file info (follows symlinks after validation)
 		stats = await fsTmp.promises.stat(sanitizedPath)
 		exists = true
 	} catch {
@@ -407,10 +575,28 @@ export async function readFile(
 			validatedPath = validatePath(filePath)
 		}
 		const sanitizedPath = replaceSpecialChars(validatedPath)
+
+		// SEC-011: Validate symlink before reading
+		let finalPath = sanitizedPath
+		try {
+			const linkStats = await fsTmp.promises.lstat(sanitizedPath)
+			if (linkStats.isSymbolicLink()) {
+				// Validate symlink is safe and get resolved path
+				finalPath = await validateSymlink(
+					sanitizedPath,
+					global.__basedir,
+					fsTmp,
+				)
+			}
+		} catch {
+			// File doesn't exist or symlink validation failed
+			return undefined
+		}
+
 		// Combine existence check and size check into single stat() call
 		let stats: fs.Stats
 		try {
-			stats = await fsTmp.promises.stat(sanitizedPath)
+			stats = await fsTmp.promises.stat(finalPath)
 		} catch {
 			// File doesn't exist
 			return undefined
@@ -425,7 +611,8 @@ export async function readFile(
 		}
 
 		// Direct read - read queue was adding overhead
-		const data = await fsTmp.promises.readFile(sanitizedPath, 'utf8')
+		// SEC-011: Use finalPath (validated symlink target) instead of sanitizedPath
+		const data = await fsTmp.promises.readFile(finalPath, 'utf8')
 
 		if (convert && filePath.indexOf('.yaml') !== -1) {
 			// Security: Use JSON_SCHEMA to prevent prototype pollution
@@ -455,7 +642,7 @@ export async function readFile(
 			// DO NOT REMOVE THIS TRY-CATCH - it ensures consistent error messages for all
 			// YAML parsing failures, regardless of whether they come from warnings or errors.
 			try {
-				return yaml.load(data, {
+				const parsed = yaml.load(data, {
 					schema: yaml.JSON_SCHEMA,
 					onWarning: (warning) => {
 						// This callback handles YAML warnings (non-fatal issues)
@@ -470,6 +657,19 @@ export async function readFile(
 						)
 					},
 				})
+
+				// SEC-006: Check parsing depth to prevent YAML anchor attacks
+				checkDepth(parsed, MAX_PARSING_DEPTH)
+
+				// SEC-006: Check parsed content size
+				const estimatedSize = estimateObjectSize(parsed)
+				if (estimatedSize > MAX_PARSED_CONTENT_SIZE) {
+					throw new Error(
+						`YAML parsed content size (${(estimatedSize / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit of ${MAX_PARSED_CONTENT_SIZE / 1024 / 1024}MB`,
+					)
+				}
+
+				return parsed
 			} catch (error) {
 				// Catch ALL YAML parsing errors (both from onWarning callback and direct throws from js-yaml)
 				// Wrap them with "YAML parsing" prefix for consistent error messages.
@@ -503,6 +703,9 @@ let xmlParserInstance: XMLParser | null = null
 
 function getXmlParser(): XMLParser {
 	if (!xmlParserInstance) {
+		// SEC-006: XML parser configuration
+		// Note: fast-xml-parser doesn't have explicit depth limit option,
+		// but we validate depth after parsing in convertXML()
 		xmlParserInstance = new XMLParser({
 			ignoreAttributes: false, // Keep attributes (needed for xmlns)
 			attributesGroupName: '$', // Group attributes in $ object (matches xml2js format)
@@ -525,7 +728,20 @@ async function convertXML(data: string): Promise<unknown> {
 		// SEC-001: fast-xml-parser doesn't parse DOCTYPE/entities by default, providing built-in XXE protection
 		// Reuse parser instance for better performance
 		const parser = getXmlParser()
-		return parser.parse(data)
+		const parsed = parser.parse(data)
+
+		// SEC-006: Check parsing depth to prevent XML bomb attacks
+		checkDepth(parsed, MAX_PARSING_DEPTH)
+
+		// SEC-006: Check parsed content size
+		const estimatedSize = estimateObjectSize(parsed)
+		if (estimatedSize > MAX_PARSED_CONTENT_SIZE) {
+			throw new Error(
+				`XML parsed content size (${(estimatedSize / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit of ${MAX_PARSED_CONTENT_SIZE / 1024 / 1024}MB`,
+			)
+		}
+
+		return parsed
 	} catch (error) {
 		throw error
 	}
@@ -589,6 +805,13 @@ export async function find(
 		const file = path.join(directory, filename)
 
 		try {
+			// SEC-011: Use lstat() to detect symlinks, then validate
+			const linkStats = await fsTmp.promises.lstat(file)
+			if (linkStats.isSymbolicLink()) {
+				// Validate symlink is safe (use actualRoot as workspace root)
+				await validateSymlink(file, actualRoot, fsTmp)
+			}
+			// Use stat() to check if it's a file (follows symlinks after validation)
 			const stats = await fsTmp.promises.stat(file)
 			if (stats.isFile()) return file
 			// stat existed, but isFile() returned false

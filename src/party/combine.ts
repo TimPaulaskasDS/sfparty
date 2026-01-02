@@ -151,7 +151,14 @@ export class Combine {
 
 		// Test helper to set error message for coverage testing (line 913)
 		// This is only used in tests to cover the unreachable code path
-		if (process.env.NODE_ENV === 'test') {
+		// SEC-005: Validate NODE_ENV environment variable
+		const nodeEnv = process.env.NODE_ENV
+		const isValidNodeEnv =
+			nodeEnv &&
+			typeof nodeEnv === 'string' &&
+			nodeEnv.length <= 20 &&
+			!/[\0\n\r<>"|\\]/.test(nodeEnv)
+		if (isValidNodeEnv && nodeEnv === 'test') {
 			// biome-ignore lint/suspicious/noExplicitAny: Test helper - TypeScript doesn't allow adding properties to 'this' without type assertion
 			;(this as any).__testSetErrorMessage = (msg: string) => {
 				this.#errorMessage = msg
@@ -564,6 +571,7 @@ export class Combine {
 			let fileStats: fs.Stats | undefined
 
 			// Use stat() directly to combine existence and metadata check
+			// SEC-011: Validate symlinks before stat()
 			if (loginIpRanges) {
 				loginIpRangesSandboxFile = fileObj.fullName.replace(
 					`.${global.format}`,
@@ -571,6 +579,16 @@ export class Combine {
 				)
 				try {
 					if (loginIpRangesSandboxFile) {
+						// SEC-011: Validate symlink before stat()
+						const linkStats = await fs.promises.lstat(
+							loginIpRangesSandboxFile,
+						)
+						if (linkStats.isSymbolicLink()) {
+							await fileUtils.validateSymlink(
+								loginIpRangesSandboxFile,
+								global.__basedir,
+							)
+						}
 						loginIpRangesStats = await fs.promises.stat(
 							loginIpRangesSandboxFile,
 						)
@@ -582,6 +600,14 @@ export class Combine {
 			}
 
 			try {
+				// SEC-011: Validate symlink before stat()
+				const linkStats = await fs.promises.lstat(fileObj.fullName)
+				if (linkStats.isSymbolicLink()) {
+					await fileUtils.validateSymlink(
+						fileObj.fullName,
+						global.__basedir,
+					)
+				}
 				fileStats = await fs.promises.stat(fileObj.fullName)
 			} catch {
 				// File doesn't exist

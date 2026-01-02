@@ -64,7 +64,7 @@ Follow these rules for all optimizations you suggest:
 
 ## Boundaries
 - ✅ **Always:** 
-  - Write analysis to `.optimization/run/<timestamp>/` only
+  - Write analysis to `.optimization/` only
   - Check `.optimization/DECISIONS.md` before suggesting anything
   - Run `bun run lint`, `bun run typecheck`, `bun run build` to verify changes
   - Focus on meaningful changes (>5% impact or addressing bottlenecks)
@@ -132,16 +132,15 @@ for (const file of files) process(file)  // Suggested
 
 ## How to run
 When I execute this prompt, you will:
-1) Create a new run folder: `.optimization/run/<YYYYMMDD-HHMMSS>/`
-2) Write all analysis + plans into that folder
-3) Create ONE orchestration file: `.optimization/run/<run>/ORCHESTRATE.md`
-4) Print a single next-step line:
-   - `Next: execute @.optimization/run/<run>/ORCHESTRATE.md`
+1) Write all analysis + plans directly to `.optimization/`
+2) Create ONE orchestration file: `.optimization/ORCHESTRATE.md`
+3) Print a single next-step line:
+   - `Next: execute @.optimization/ORCHESTRATE.md`
 Nothing else should be required.
 
 ---
 
-# Phase 0 — Setup & Baseline (read-only)
+# Phase 0 — Setup & Baseline (read-only analysis + MANDATORY performance benchmark execution)
 ## Tasks
 - **CRITICAL FIRST STEP:** Read `.optimization/DECISIONS.md` if it exists
   - Review all previous optimization decisions (✅ Applied, ❌ Rejected, ⏸️ Deferred)
@@ -177,35 +176,54 @@ Nothing else should be required.
 - **Compare with DECISIONS.md:** If warnings match previously rejected items, note them but don't suggest fixes unless circumstances changed
 
 ## Performance Baseline (CRITICAL)
-**MANDATORY:** Before making any optimizations, establish a performance baseline using the same workflow as debugging:
+**⚠️ MANDATORY EXECUTION - DO NOT SKIP OR DEFER:** You MUST **EXECUTE** the performance benchmark command during Phase 0, not just document it. The baseline must be **RUN and CAPTURED** before proceeding to Phase 1.
 
-1. **Build the application:**
+**CRITICAL:** This is NOT optional documentation. You MUST:
+1. **EXECUTE** `bun run build`
+2. **EXECUTE** the benchmark command in the SalesforceCI directory
+3. **CAPTURE** the complete output
+4. **STORE** the actual metrics in `PERFORMANCE_BASELINE.md`
+
+**DO NOT:**
+- ❌ Create a "PENDING" or "TODO" status
+- ❌ Defer execution to Phase 3
+- ❌ Just document how to run it
+- ❌ Proceed to Phase 1 without executing the benchmark
+
+**YOU MUST EXECUTE:**
+
+1. **Build the application (EXECUTE THIS):**
    ```bash
+   cd /Users/tim.paulaskas/Code/sfparty
    bun run build
    ```
    - This ensures the latest code is compiled and ready for benchmarking
    - Verify build completes without errors
+   - **If build fails, stop and report the error**
 
-2. **Run the benchmark command in the SalesforceCI directory (same as debugging workflow):**
+2. **Run the benchmark command (EXECUTE THIS - DO NOT SKIP):**
    ```bash
    cd ~/Code/SalesforceCI
    node /Users/tim.paulaskas/Code/sfparty/dist/index.js split --type=profile -k
    ```
+   - **YOU MUST RUN THIS COMMAND** - it takes ~2 minutes but is MANDATORY
    - This runs the application in the same environment used for debugging
    - The output will baseline the current performance time
+   - **Capture the COMPLETE, UNEDITED output** - copy everything from the command output
 
-3. **Capture the performance metrics from the output:**
-   - Total duration (e.g., "2m 0s")
-   - Average per file (e.g., "3.14s")
-   - Breakdown: read time, parse time, write time
-   - Number of files processed
-   - Any other relevant metrics from the performance summary
+3. **Capture the performance metrics from the ACTUAL OUTPUT (not placeholders):**
+   - Total duration (e.g., "2m 0s") - **from actual output**
+   - Average per file (e.g., "3.14s") - **from actual output**
+   - Breakdown: read time, parse time, write time - **from actual output**
+   - Number of files processed - **from actual output**
+   - Any other relevant metrics from the performance summary - **from actual output**
    - **CRITICAL:** Capture the complete, unedited output for accurate comparison
+   - **DO NOT use placeholder values like "(e.g., '2m 0s')" - use the ACTUAL values**
 
-4. **Store baseline in `PERFORMANCE_BASELINE.md`:**
-   - Full command used
-   - Complete performance summary output (copy-paste entire output)
-   - Date/time of baseline
+4. **Store ACTUAL baseline in `PERFORMANCE_BASELINE.md` (not a template):**
+   - Full command used (the actual command you ran)
+   - **Complete performance summary output (copy-paste the ENTIRE actual output)**
+   - Date/time of baseline (actual timestamp)
    - System information if relevant (CPU cores, memory, etc.)
    - Git commit hash or branch name for reference
 
@@ -215,7 +233,10 @@ Nothing else should be required.
 - Real-world benchmarking in the SalesforceCI environment is the only way to validate optimizations
 - Heavy I/O contention means that theoretical optimizations can have inverse effects in real-world performance
 - Example: Reducing concurrency from 3x to 2x CPU cores caused a 57% regression (see DECISIONS.md OPT-016)
-- **The baseline must be established BEFORE any code changes are made**
+- **The baseline must be EXECUTED and CAPTURED BEFORE any code changes are made**
+- **Without a real baseline, you cannot detect performance regressions after optimizations**
+
+**⚠️ BLOCKING:** Do NOT proceed to Phase 1 (Findings) until the performance baseline has been EXECUTED and the actual metrics are stored in `PERFORMANCE_BASELINE.md`.
 
 ## Outputs (write these files)
 - `STATUS.md` (short run header + what you're doing + one-line next step)
@@ -430,18 +451,15 @@ Create `ORCHESTRATE.md` that:
 - Is the **only** file I need to run to do the work
 - Contains:
   1) preflight checks (clean working tree guidance; do not force)
-  2) **Establish performance baseline** (if not already done in Phase 0):
-     - **CRITICAL:** This must be done BEFORE any code changes
-     - Build: `bun run build`
-     - Run benchmark in SalesforceCI directory (same workflow as debugging):
-       ```bash
-       cd ~/Code/SalesforceCI
-       node /Users/tim.paulaskas/Code/sfparty/dist/index.js split --type=profile -k
-       ```
-     - Capture the complete, unedited performance output
-     - Capture performance metrics (total duration, average per file, breakdown)
-     - Store in `PERFORMANCE_BASELINE.md` if not already created
-     - **Do not proceed with optimizations until baseline is established**
+  2) **Verify performance baseline exists** (should already be done in Phase 0):
+     - **CRITICAL:** The baseline MUST have been executed in Phase 0
+     - If `PERFORMANCE_BASELINE.md` contains "PENDING" or placeholder values, STOP - baseline was not executed
+     - If baseline exists with actual metrics, proceed
+     - If baseline does not exist or is incomplete, EXECUTE it now:
+       - Build: `bun run build`
+       - Run benchmark: `cd ~/Code/SalesforceCI && node /Users/tim.paulaskas/Code/sfparty/dist/index.js split --type=profile -k`
+       - Capture complete output and store in `PERFORMANCE_BASELINE.md`
+     - **Do not proceed with optimizations until baseline is established with ACTUAL metrics**
   3) apply each commit sequentially by *inlining the instructions* from `PATCHES/COMMIT_N.md`
      - IMPORTANT: Do not require me to run `@PATCHES/COMMIT_N.md` separately.
      - ORCHESTRATE must include everything needed to execute without extra prompts.
@@ -503,7 +521,7 @@ Create `ORCHESTRATE.md` that:
 
 ## Output structure
 Write everything under:
-`.optimization/run/<run>/`
+`.optimization/`
 Example:
 - STATUS.md
 - BASELINE.md
@@ -541,8 +559,8 @@ When ORCHESTRATE is executed:
 
 ## Final console output (after generating artifacts)
 Print exactly:
-- `Created: .optimization/run/<run>/ORCHESTRATE.md`
-- `Next: execute @.optimization/run/<run>/ORCHESTRATE.md`
+- `Created: .optimization/ORCHESTRATE.md`
+- `Next: execute @.optimization/ORCHESTRATE.md`
 
 ## Post-Execution: Update Decisions Log
 After the orchestration is executed (or if findings are reviewed and decisions are made):

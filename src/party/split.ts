@@ -30,6 +30,7 @@ interface SplitConfig {
 }
 
 interface GlobalContext {
+	__basedir?: string
 	logger?: {
 		error: (message: string) => void
 		warn: (message: string) => void
@@ -93,6 +94,9 @@ export class Split {
 
 	private getXmlParser(): XMLParser {
 		if (!this.#xmlParser) {
+			// SEC-006: XML parser configuration with depth limits
+			// Note: fast-xml-parser doesn't have explicit depth limit option,
+			// but we validate depth after parsing in fileUtils.convertXML()
 			this.#xmlParser = new XMLParser({
 				ignoreAttributes: false,
 				attributesGroupName: '$',
@@ -187,10 +191,39 @@ export class Split {
 		)
 
 		// SEC-003: Check file size before reading to prevent memory exhaustion
+		// SEC-011: Validate symlink before reading
+		let finalPath = that.metaFilePath
+		try {
+			const linkStats = await fs.promises.lstat(that.metaFilePath)
+			if (linkStats.isSymbolicLink()) {
+				// Validate symlink is safe
+				const targetPath = await fs.promises.readlink(that.metaFilePath)
+				const resolvedTarget = path.resolve(
+					path.dirname(that.metaFilePath),
+					targetPath,
+				)
+				if (global.__basedir) {
+					const resolvedRoot = path.resolve(global.__basedir)
+					if (!resolvedTarget.startsWith(resolvedRoot)) {
+						throw new Error(
+							`Symlink points outside workspace: ${that.metaFilePath} -> ${targetPath}`,
+						)
+					}
+				}
+				finalPath = resolvedTarget
+			}
+		} catch (error) {
+			// If lstat fails or symlink validation fails, handle error
+			if (error instanceof Error && error.message.includes('Symlink')) {
+				throw error
+			}
+			// Otherwise continue to stat() check below
+		}
+
 		// Combine file existence check and stat call into single operation for better performance
 		let stats: fs.Stats
 		try {
-			stats = await fs.promises.stat(that.metaFilePath)
+			stats = await fs.promises.stat(finalPath)
 		} catch (error) {
 			// File doesn't exist
 			const message = `file not found: ${that.metaFilePath}`
@@ -224,7 +257,8 @@ export class Split {
 		const readStart = process.hrtime.bigint()
 		// Read and parse XML asynchronously
 		// Direct read - read queue was adding overhead
-		const data = await fs.promises.readFile(that.metaFilePath, 'utf8')
+		// SEC-011: Use finalPath (validated symlink target) instead of metaFilePath
+		const data = await fs.promises.readFile(finalPath, 'utf8')
 		const readEnd = process.hrtime.bigint()
 		const readDuration = Number(readEnd - readStart) / 1_000_000 // Convert to milliseconds
 		perfLogger.recordRead(that.metaFilePath, readDuration)
@@ -239,6 +273,18 @@ export class Split {
 		let jsonData: Record<string, unknown>
 		try {
 			jsonData = parser.parse(data) as Record<string, unknown>
+
+			// SEC-006: Check parsing depth to prevent XML bomb attacks
+			fileUtils.checkDepth(jsonData, 100) // MAX_PARSING_DEPTH
+
+			// SEC-006: Check parsed content size
+			const estimatedSize = fileUtils.estimateObjectSize(jsonData)
+			const MAX_PARSED_CONTENT_SIZE = 10 * 1024 * 1024 // 10MB
+			if (estimatedSize > MAX_PARSED_CONTENT_SIZE) {
+				throw new Error(
+					`XML parsed content size (${(estimatedSize / 1024 / 1024).toFixed(2)}MB) exceeds maximum limit of ${MAX_PARSED_CONTENT_SIZE / 1024 / 1024}MB`,
+				)
+			}
 		} catch (err) {
 			const message = `error converting xml to json: ${that.metaFilePath}`
 			const progressTracker = getGlobalProgressTracker()

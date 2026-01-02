@@ -43,9 +43,40 @@ export class TUIProgressTracker {
 	// Track which files have been completed to prevent double-counting
 	private completedFiles: Set<string> = new Set()
 
+	/**
+	 * SEC-005: Validate environment variable value
+	 * @param value - Environment variable value
+	 * @param maxLength - Maximum allowed length (default: 256)
+	 * @returns Sanitized value or undefined if invalid
+	 */
+	private validateEnvVar(
+		value: string | undefined,
+		maxLength = 256,
+	): string | undefined {
+		if (!value || typeof value !== 'string') {
+			return undefined
+		}
+
+		// Remove null bytes and control characters
+		const sanitized = value.replace(/[\0\n\r]/g, '').trim()
+
+		// Basic validation
+		if (
+			sanitized.length === 0 ||
+			sanitized.length > maxLength ||
+			/[<>"|\\]/.test(sanitized) // Dangerous characters
+		) {
+			return undefined
+		}
+
+		return sanitized
+	}
+
 	constructor(total: number, operation: string = 'Processing') {
 		this.total = total
-		this.useTUI = process.stdout.isTTY && process.env.TERM !== 'dumb'
+		// SEC-005: Validate TERM environment variable
+		const term = this.validateEnvVar(process.env.TERM, 64)
+		this.useTUI = process.stdout.isTTY && term !== 'dumb'
 
 		// Disable Winston console transport when TUI is active to prevent console output
 		if (this.useTUI && global.consoleTransport) {
@@ -71,7 +102,9 @@ export class TUIProgressTracker {
 			this.tui = null
 			this.fallbackSpinner = ora('Starting...').start()
 			// Log error in development (but don't break the tool)
-			if (process.env.DEBUG) {
+			// SEC-005: Validate DEBUG environment variable
+			const debug = this.validateEnvVar(process.env.DEBUG, 10)
+			if (debug) {
 				console.error('TUI initialization failed:', error)
 			}
 		}

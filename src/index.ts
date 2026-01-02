@@ -524,9 +524,49 @@ let desPkg: packageUtil.Package
 
 let checkYargs = false
 
+/**
+ * SEC-005: Validate and sanitize INIT_CWD environment variable
+ * @param initCwd - INIT_CWD environment variable value
+ * @returns Sanitized path or undefined if invalid
+ */
+function validateInitCwd(initCwd: string | undefined): string | undefined {
+	if (!initCwd || typeof initCwd !== 'string') {
+		return undefined
+	}
+
+	// Remove null bytes and other dangerous characters
+	const sanitized = initCwd.replace(/\0/g, '').trim()
+
+	// Basic validation: should be a valid path
+	// Don't allow paths with dangerous patterns
+	if (
+		sanitized.includes('..') ||
+		sanitized.includes('\n') ||
+		sanitized.includes('\r') ||
+		sanitized.length === 0 ||
+		sanitized.length > 4096 // Max path length on most systems
+	) {
+		global.logger?.warn(
+			`Invalid INIT_CWD environment variable detected, ignoring: ${sanitized.substring(0, 100)}`,
+		)
+		return undefined
+	}
+
+	// Validate it's an absolute path (INIT_CWD should always be absolute)
+	if (!path.isAbsolute(sanitized)) {
+		global.logger?.warn(
+			`INIT_CWD is not an absolute path, ignoring: ${sanitized}`,
+		)
+		return undefined
+	}
+
+	return sanitized
+}
+
 const isRunningUnderNpx = (): boolean => {
 	const npxIndicator = argv.some((arg) => arg.includes('_npx'))
-	const initCwd = env.INIT_CWD
+	// SEC-005: Validate and sanitize INIT_CWD before use
+	const initCwd = validateInitCwd(env.INIT_CWD)
 	return npxIndicator || initCwd !== undefined
 }
 

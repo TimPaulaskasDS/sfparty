@@ -1,8 +1,41 @@
 import * as os from 'node:os'
-import { type ChildProcess, execFileSync } from 'child_process'
+import {
+	type ChildProcess,
+	execFileSync,
+	spawn as nodeSpawn,
+} from 'child_process'
 import type * as fs from 'fs'
 import path from 'path'
 import type * as fileUtils from './fileUtils.js'
+
+// SEC-004: Default timeout for git operations (30 seconds)
+const DEFAULT_GIT_TIMEOUT = 30000 // 30 seconds in milliseconds
+
+// SEC-004: Get git timeout from environment variable or use default
+function getGitTimeout(): number {
+	const timeoutEnv = process.env.SFPARTY_GIT_TIMEOUT
+	if (timeoutEnv) {
+		const timeout = parseInt(timeoutEnv, 10)
+		if (!isNaN(timeout) && timeout > 0 && timeout <= 300000) {
+			// Max 5 minutes, min 1 second
+			return Math.max(1000, Math.min(timeout, 300000))
+		}
+	}
+	return DEFAULT_GIT_TIMEOUT
+}
+
+// SEC-004: Create timeout wrapper for spawn operations
+function createTimeoutPromise(timeoutMs: number): Promise<never> {
+	return new Promise((_, reject) => {
+		setTimeout(() => {
+			reject(
+				new Error(
+					`Git operation timed out after ${timeoutMs / 1000} seconds`,
+				),
+			)
+		}, timeoutMs)
+	})
+}
 
 // Security: Validate git references to prevent command injection
 function validateGitRef(gitRef: string): string {
@@ -103,94 +136,190 @@ export function diff({
 	existsSync,
 	spawn,
 }: DiffOptions): Promise<GitFileInfo[]> {
+	// SEC-004: Get timeout from environment or use default
+	const timeoutMs = getGitTimeout()
+
 	return new Promise((resolve, reject) => {
-		try {
-			if (!existsSync(dir)) {
-				throw new Error(`The directory "${dir}" does not exist`)
-			}
-			if (!existsSync(path.join(dir, '.git'))) {
-				throw new Error(
-					`The directory "${dir}" is not a git repository`,
-				)
-			}
+		// SEC-004: Set up timeout
+		const timeoutPromise = createTimeoutPromise(timeoutMs)
+		let timeoutCleared = false
 
-			const git = spawn('git', ['--version'])
-			git.on('error', () => {
-				throw new Error('Git is not installed on this machine')
-			})
-			git.on('close', (code) => {
-				if (code !== 0) {
-					reject(
-						new Error(
-							`git --version command failed with code ${code}`,
-						),
-					)
-				}
+		const clearTimeout = () => {
+			timeoutCleared = true
+		}
 
-				const gitDiff = spawn(
-					'git',
-					[
-						'diff',
-						'--name-status',
-						'--oneline',
-						'--no-renames',
-						'--relative',
-						gitRef,
-						'--',
-						'*-party/*',
-					],
-					{ cwd: dir },
-				)
-				let data = ''
-				gitDiff.stdout?.setEncoding('utf8')
-				gitDiff.stderr?.on('data', (data: string) => {
-					if (data !== '')
-						reject(
-							new Error(
-								`git diff command failed with error: ${data}`,
-							),
-						)
-				})
-				gitDiff.stdout?.on('data', (chunk: string) => {
-					data += chunk
-				})
-				gitDiff.stdout?.on('close', (code: number | null) => {
-					if (code !== 0 && code !== null) {
-						reject(
-							new Error(
-								`git diff command failed with code ${code}`,
-							),
+		// Race between operation and timeout
+		Promise.race([
+			new Promise<GitFileInfo[]>((innerResolve, innerReject) => {
+				try {
+					if (!existsSync(dir)) {
+						throw new Error(`The directory "${dir}" does not exist`)
+					}
+					if (!existsSync(path.join(dir, '.git'))) {
+						throw new Error(
+							`The directory "${dir}" is not a git repository`,
 						)
 					}
-					const gitData = data.toString().split(os.EOL)
-					const files = gitData.reduce(
-						(acc: GitFileInfo[], gitRow) => {
-							if (gitRow.lastIndexOf('\t') > 0) {
-								const file = gitRow.split('\t')
-								if (file.slice(-1)[0] !== '') {
-									const statusType = status[file[0]]
-									acc.push({
-										type:
-											statusType !== undefined
-												? statusType.type
-												: 'A',
-										path: file.slice(-1)[0],
-										action: statusType
-											? statusType.action
-											: 'add',
-									})
-								}
+
+					const git = spawn('git', ['--version'])
+					git.on('error', () => {
+						throw new Error('Git is not installed on this machine')
+					})
+					git.on('close', (code) => {
+						if (code !== 0) {
+							innerReject(
+								new Error(
+									`git --version command failed with code ${code}`,
+								),
+							)
+							return
+						}
+
+						const gitDiff = spawn(
+							'git',
+							[
+								'diff',
+								'--name-status',
+								'--oneline',
+								'--no-renames',
+								'--relative',
+								gitRef,
+								'--',
+								'*-party/*',
+							],
+							{ cwd: dir },
+						)
+						let data = ''
+						gitDiff.stdout?.setEncoding('utf8')
+						gitDiff.stderr?.on('data', (data: string) => {
+							if (data !== '') {
+								gitDiff.kill() // Kill process on error
+								innerReject(
+									new Error(
+										`git diff command failed with error: ${data}`,
+									),
+								)
 							}
-							return acc
-						},
-						[],
-					)
-					resolve(files)
-				})
+						})
+						gitDiff.stdout?.on('data', (chunk: string) => {
+							data += chunk
+						})
+						gitDiff.stdout?.on('close', (code: number | null) => {
+							if (code !== 0 && code !== null) {
+								innerReject(
+									new Error(
+										`git diff command failed with code ${code}`,
+									),
+								)
+								return
+							}
+							const gitData = data.toString().split(os.EOL)
+							const files = gitData.reduce(
+								(acc: GitFileInfo[], gitRow) => {
+									if (gitRow.lastIndexOf('\t') > 0) {
+										const file = gitRow.split('\t')
+										if (file.slice(-1)[0] !== '') {
+											const statusType = status[file[0]]
+											acc.push({
+												type:
+													statusType !== undefined
+														? statusType.type
+														: 'A',
+												path: file.slice(-1)[0],
+												action: statusType
+													? statusType.action
+													: 'add',
+											})
+										}
+									}
+									return acc
+								},
+								[],
+							)
+							clearTimeout()
+							innerResolve(files)
+						})
+						gitDiff.on('error', (error) => {
+							clearTimeout()
+							innerReject(error)
+						})
+					})
+					git.on('error', (error) => {
+						clearTimeout()
+						innerReject(error)
+					})
+				} catch (error) {
+					clearTimeout()
+					innerReject(error)
+				}
+			}),
+			timeoutPromise,
+		])
+			.then((result) => {
+				if (!timeoutCleared) {
+					clearTimeout()
+				}
+				resolve(result)
 			})
-		} catch (error) {
-			reject(error)
-		}
+			.catch((error) => {
+				if (!timeoutCleared) {
+					clearTimeout()
+				}
+				reject(error)
+			})
+	})
+}
+
+// SEC-004: Async wrapper for git log with timeout support
+async function execGitWithTimeout(
+	command: string[],
+	cwd: string,
+	timeoutMs: number,
+): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const gitProcess = nodeSpawn('git', command, { cwd })
+		let stdout = ''
+		let stderr = ''
+
+		// SEC-004: Set up timeout
+		const timeout = setTimeout(() => {
+			gitProcess.kill()
+			reject(
+				new Error(
+					`Git operation timed out after ${timeoutMs / 1000} seconds`,
+				),
+			)
+		}, timeoutMs)
+
+		gitProcess.stdout?.on('data', (data: Buffer) => {
+			stdout += data.toString('utf-8')
+		})
+
+		gitProcess.stderr?.on('data', (data: Buffer) => {
+			stderr += data.toString('utf-8')
+		})
+
+		gitProcess.on('close', (code) => {
+			clearTimeout(timeout)
+			if (code === 0) {
+				resolve(stdout.trim())
+			} else {
+				reject(
+					new Error(
+						`Git command failed with code ${code}: ${stderr || stdout}`,
+					),
+				)
+			}
+		})
+
+		gitProcess.on('error', (error) => {
+			clearTimeout(timeout)
+			if (error.message.indexOf('ENOENT') > -1) {
+				reject(new Error('git not installed or no entry found in path'))
+			} else {
+				reject(error)
+			}
+		})
 	})
 }
 
@@ -203,13 +332,17 @@ export function log(
 		// Security: Validate git reference before use
 		const validatedRef = validateGitRef(gitRef)
 
-		// Security: Use execFileSync with array arguments to prevent command injection
+		// SEC-004: Use execFileSync for backward compatibility, but log timeout warning
+		// Note: execFileSync doesn't support timeout, but this function is synchronous
+		// For timeout support, consider using async version or spawn
 		const gitLog = execFileSyncStub(
 			'git',
 			['log', '--format=format:%H', validatedRef],
 			{
 				cwd: dir,
 				encoding: 'utf-8',
+				// Note: timeout option not available in execFileSync
+				// For timeout support, use async version with spawn
 			},
 		)
 		const commits = gitLog.split(os.EOL).filter((commit) => commit)
@@ -220,6 +353,23 @@ export function log(
 		}
 		throw error
 	}
+}
+
+// SEC-004: Async version of log with timeout support
+export async function logAsync(dir: string, gitRef: string): Promise<string[]> {
+	// Security: Validate git reference before use
+	const validatedRef = validateGitRef(gitRef)
+
+	// SEC-004: Get timeout from environment or use default
+	const timeoutMs = getGitTimeout()
+
+	const gitLog = await execGitWithTimeout(
+		['log', '--format=format:%H', validatedRef],
+		dir,
+		timeoutMs,
+	)
+	const commits = gitLog.split(os.EOL).filter((commit) => commit)
+	return commits
 }
 
 interface LastCommitOptions {
@@ -239,7 +389,7 @@ export async function lastCommit({
 	dir,
 	fileName = 'index.yaml',
 	existsSync,
-	execFileSync: execFileSyncStub = execFileSync,
+	execFileSync: _execFileSyncStub = execFileSync, // Kept for backward compatibility but not used (SEC-004: using async with timeout)
 	fileUtils,
 }: LastCommitOptions): Promise<LastCommitResult> {
 	try {
@@ -250,18 +400,20 @@ export async function lastCommit({
 		// Ensure the folder exists
 		await fileUtils.createDirectory(folder)
 
+		// SEC-004: Get timeout from environment or use default (used for all git operations)
+		const timeoutMs = getGitTimeout()
+
 		if (existsSync(filePath)) {
 			const data = (await fileUtils.readFile(filePath)) as GitDefinition
 
 			// Determine the current branch name
-			// Security: Use execFileSync with array arguments
-			const currentBranch = execFileSyncStub(
-				'git',
-				['rev-parse', '--abbrev-ref', 'HEAD'],
-				{
-					cwd: dir,
-					encoding: 'utf-8',
-				},
+			// SEC-004: Use async version with timeout for git operations
+			const currentBranch = (
+				await execGitWithTimeout(
+					['rev-parse', '--abbrev-ref', 'HEAD'],
+					dir,
+					timeoutMs,
+				)
 			).trim()
 
 			// Check if branch-specific last commit exists
@@ -276,14 +428,11 @@ export async function lastCommit({
 			}
 		}
 
-		// Security: Use execFileSync with array arguments
-		const latestCommit = execFileSyncStub(
-			'git',
+		// SEC-004: Use async version with timeout for git operations
+		const latestCommit = await execGitWithTimeout(
 			['log', '--format=format:%H', '-1'],
-			{
-				cwd: dir,
-				encoding: 'utf-8',
-			},
+			dir,
+			timeoutMs,
 		)
 
 		return {
@@ -327,14 +476,14 @@ export async function updateLastCommit({
 		}
 
 		// Determine the current branch name
-		// Security: Use execFileSync with array arguments
-		const currentBranch = execFileSync(
-			'git',
-			['rev-parse', '--abbrev-ref', 'HEAD'],
-			{
-				cwd: dir,
-				encoding: 'utf-8',
-			},
+		// SEC-004: Use async version with timeout for git operations
+		const timeoutMs = getGitTimeout()
+		const currentBranch = (
+			await execGitWithTimeout(
+				['rev-parse', '--abbrev-ref', 'HEAD'],
+				dir,
+				timeoutMs,
+			)
 		).trim()
 
 		// Initialize branches object if not exist

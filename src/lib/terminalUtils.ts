@@ -1,9 +1,40 @@
 /**
+ * SEC-005: Validate environment variable value
+ * @param value - Environment variable value
+ * @param maxLength - Maximum allowed length (default: 256)
+ * @returns Sanitized value or undefined if invalid
+ */
+function validateEnvVar(
+	value: string | undefined,
+	maxLength = 256,
+): string | undefined {
+	if (!value || typeof value !== 'string') {
+		return undefined
+	}
+
+	// Remove null bytes and control characters
+	const sanitized = value.replace(/[\0\n\r]/g, '').trim()
+
+	// Basic validation
+	if (
+		sanitized.length === 0 ||
+		sanitized.length > maxLength ||
+		/[<>"|\\]/.test(sanitized) // Dangerous characters
+	) {
+		return undefined
+	}
+
+	return sanitized
+}
+
+/**
  * Suppress terminal capability errors from stderr
  * Used to filter out noisy terminal capability warnings from blessed library
  */
 export function suppressTerminalErrors(): void {
-	if (process.stdout.isTTY && process.env.TERM !== 'dumb') {
+	// SEC-005: Validate TERM environment variable
+	const term = validateEnvVar(process.env.TERM, 64)
+	if (process.stdout.isTTY && term !== 'dumb') {
 		const originalStderrWrite = process.stderr.write.bind(process.stderr)
 
 		process.stderr.write = function (

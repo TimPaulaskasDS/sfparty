@@ -1,0 +1,235 @@
+[
+  {
+    "file": "src/lib/packageUtil.ts",
+    "statements": 97.73,
+    "branches": 0,
+    "functions": 100,
+    "uncoveredLines": [
+      204,
+      205,
+      206
+    ]
+  },
+  {
+    "file": "src/lib/pathUtils.ts",
+    "statements": 80,
+    "branches": 0,
+    "functions": 100,
+    "uncoveredLines": [
+      13,
+      28
+    ]
+  },
+  {
+    "file": "src/lib/performanceLogger.ts",
+    "statements": 99.25,
+    "branches": 0,
+    "functions": 100,
+    "uncoveredLines": [
+      328
+    ]
+  },
+  {
+    "file": "src/lib/terminalUtils.ts",
+    "statements": 100,
+    "branches": 0,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/meta/yargs.ts",
+    "statements": 100,
+    "branches": 0,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/party/split.ts",
+    "statements": 88.82,
+    "branches": 0,
+    "functions": 100,
+    "uncoveredLines": [
+      169,
+      199,
+      215,
+      243,
+      244,
+      245,
+      246,
+      248,
+      252,
+      256,
+      257,
+      290,
+      291,
+      292,
+      293,
+      295,
+      299,
+      302,
+      303,
+      308,
+      318,
+      407,
+      428,
+      479,
+      570,
+      582,
+      639,
+      652,
+      665,
+      685,
+      746,
+      783,
+      844,
+      893,
+      897,
+      898,
+      900,
+      903
+    ]
+  },
+  {
+    "file": "src/party/combine.ts",
+    "statements": 88.64,
+    "branches": 0.71,
+    "functions": 95.12,
+    "uncoveredLines": [
+      295,
+      305,
+      309,
+      317,
+      325,
+      397,
+      398,
+      399,
+      400,
+      403,
+      407,
+      424,
+      495,
+      499,
+      510,
+      527,
+      571,
+      653,
+      675,
+      676,
+      677,
+      678,
+      728,
+      730,
+      738,
+      770,
+      817,
+      818,
+      824,
+      828,
+      869,
+      876,
+      893,
+      913,
+      1028
+    ]
+  },
+  {
+    "file": "src/lib/checkVersion.ts",
+    "statements": 100,
+    "branches": 10,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/lib/errorUtils.ts",
+    "statements": 100,
+    "branches": 12.5,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/lib/writeBatcher.ts",
+    "statements": 92.96,
+    "branches": 13.33,
+    "functions": 73.68,
+    "uncoveredLines": [
+      107,
+      108,
+      109,
+      154
+    ]
+  },
+  {
+    "file": "src/lib/gitUtils.ts",
+    "statements": 100,
+    "branches": 14.29,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/lib/fileUtils.ts",
+    "statements": 90.29,
+    "branches": 25.81,
+    "functions": 80,
+    "uncoveredLines": [
+      16,
+      23,
+      30,
+      41,
+      48,
+      49,
+      92,
+      99,
+      199,
+      284,
+      306,
+      327,
+      372,
+      422,
+      437,
+      483,
+      548
+    ]
+  },
+  {
+    "file": "src/lib/pkgObj.ts",
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/meta/CustomLabels.ts",
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/meta/Package.ts",
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/meta/PermissionSets.ts",
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/meta/Profiles.ts",
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "uncoveredLines": []
+  },
+  {
+    "file": "src/meta/Workflows.ts",
+    "statements": 100,
+    "branches": 100,
+    "functions": 100,
+    "uncoveredLines": []
+  }
+]
