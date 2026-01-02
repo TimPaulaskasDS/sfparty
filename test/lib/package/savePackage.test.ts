@@ -2,15 +2,16 @@ import * as fs from 'fs'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Package } from '../../../src/lib/packageUtil.js'
+import { createTestContext } from '../../helpers/context.js'
 
 interface FileUtilsInterface {
 	fileExists: (options: {
 		filePath: string
 		fs: typeof fs
 	}) => Promise<boolean>
-	readFile: (filePath: string) => Promise<unknown>
+	readFile: (ctx: unknown, filePath: string) => Promise<unknown>
 	createDirectory: (dirPath: string) => Promise<void>
-	writeFile: (fileName: string, data: string) => Promise<void>
+	writeFile: (ctx: unknown, fileName: string, data: string) => Promise<void>
 }
 
 const fileUtils = {
@@ -20,6 +21,9 @@ const fileUtils = {
 
 // Mock XMLBuilder as a class constructor
 class MockXMLBuilder {
+	constructor(options?: unknown) {
+		// Constructor for XMLBuilder
+	}
 	build(data: unknown): string {
 		// Simple XML serialization for testing
 		const packageData = data as { Package: Record<string, unknown> }
@@ -59,8 +63,10 @@ const xml2js = {
 }
 
 describe('savePackage', () => {
+	let ctx = createTestContext()
 	let pkg: Package
 	beforeEach(() => {
+		ctx = createTestContext()
 		pkg = new Package('path/to/file.xml')
 		pkg.packageJSON = {
 			Package: {
@@ -76,6 +82,7 @@ describe('savePackage', () => {
 
 	it('should replace http with https in xmlns property', async () => {
 		await pkg.savePackage(
+			ctx,
 			xml2js,
 			fileUtils as unknown as FileUtilsInterface,
 		)
@@ -90,6 +97,7 @@ describe('savePackage', () => {
 		if (pkg.packageJSON) {
 			const version = pkg.packageJSON.Package.version
 			await pkg.savePackage(
+				ctx,
 				xml2js,
 				fileUtils as unknown as FileUtilsInterface,
 			)
@@ -105,6 +113,7 @@ describe('savePackage', () => {
 		expect(pkg.packageJSON?.Package.types?.[0]?.name).toBe('type')
 		expect(pkg.packageJSON?.Package.types?.[0]?.members).toEqual(['member'])
 		await pkg.savePackage(
+			ctx,
 			xml2js,
 			fileUtils as unknown as FileUtilsInterface,
 		)
@@ -112,22 +121,27 @@ describe('savePackage', () => {
 			path.dirname('path/to/file.xml'),
 		)
 		expect(fileUtils.writeFile).toHaveBeenCalledWith(
+			ctx,
 			'path/to/file.xml',
 			expect.stringContaining('<?xml version="1.0" encoding="UTF-8"?>'),
 		)
 		expect(fileUtils.writeFile).toHaveBeenCalledWith(
+			ctx,
 			'path/to/file.xml',
 			expect.stringContaining('xmlns="https://www.example.com"'),
 		)
 		expect(fileUtils.writeFile).toHaveBeenCalledWith(
+			ctx,
 			'path/to/file.xml',
 			expect.stringContaining('<members>member</members>'),
 		)
 		expect(fileUtils.writeFile).toHaveBeenCalledWith(
+			ctx,
 			'path/to/file.xml',
 			expect.stringContaining('<name>type</name>'),
 		)
 		expect(fileUtils.writeFile).toHaveBeenCalledWith(
+			ctx,
 			'path/to/file.xml',
 			expect.stringContaining('<version>1.0</version>'),
 		)
@@ -138,14 +152,22 @@ describe('savePackage', () => {
 			new Error('createDirectory error'),
 		)
 		await expect(
-			pkg.savePackage(xml2js, fileUtils as unknown as FileUtilsInterface),
+			pkg.savePackage(
+				ctx,
+				xml2js,
+				fileUtils as unknown as FileUtilsInterface,
+			),
 		).rejects.toThrow('createDirectory error')
 	})
 
 	it('should throw an error if packageJSON is undefined', async () => {
 		pkg.packageJSON = undefined
 		await expect(
-			pkg.savePackage(xml2js, fileUtils as unknown as FileUtilsInterface),
+			pkg.savePackage(
+				ctx,
+				xml2js,
+				fileUtils as unknown as FileUtilsInterface,
+			),
 		).rejects.toThrow('Package JSON is undefined')
 	})
 })

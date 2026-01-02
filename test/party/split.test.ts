@@ -7,6 +7,8 @@ import * as permsetDefinition from '../../src/meta/PermissionSets.js'
 import * as profileDefinition from '../../src/meta/Profiles.js'
 import * as workflowDefinition from '../../src/meta/Workflows.js'
 import { Split } from '../../src/party/split.js'
+import type { AppContext } from '../../src/types/context.js'
+import { createTestContext } from '../helpers/context.js'
 
 interface GlobalContext {
 	format?: string
@@ -170,9 +172,27 @@ describe('Split class', () => {
 		}
 	})
 
+	// Helper to create ctx from global state for tests
+	function createCtxFromGlobal(
+		overrides: Partial<AppContext> = {},
+	): AppContext {
+		return createTestContext({
+			basedir: global.__basedir || '/workspace',
+			logger: global.logger as AppContext['logger'],
+			displayError: vi.fn(),
+			format: global.format || 'yaml',
+			metaTypes: {},
+			icons: global.icons || {},
+			consoleTransport: { silent: false },
+			...overrides,
+		})
+	}
+
 	describe('Constructor', () => {
 		it('should initialize with required config', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -191,7 +211,9 @@ describe('Split class', () => {
 		})
 
 		it('should set type and root from metadata definition', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -209,7 +231,9 @@ describe('Split class', () => {
 
 	describe('metaFilePath setter', () => {
 		it('should throw error for empty path', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -226,7 +250,9 @@ describe('Split class', () => {
 		})
 
 		it('should throw error for whitespace-only path', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -245,7 +271,9 @@ describe('Split class', () => {
 
 	describe('Metadata Type Support', () => {
 		it('should support CustomLabels metadata type', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -261,7 +289,9 @@ describe('Split class', () => {
 		})
 
 		it('should support Profile metadata type', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -279,7 +309,9 @@ describe('Split class', () => {
 
 	describe('Instance Properties', () => {
 		it('should have sequence and total properties', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -295,7 +327,9 @@ describe('Split class', () => {
 		})
 
 		it('should have sourceDir and targetDir properties', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/path/to/source',
 				targetDir: '/path/to/target',
@@ -313,7 +347,9 @@ describe('Split class', () => {
 
 	describe('split() method', () => {
 		it('should resolve false when fileName is invalid', async () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -344,7 +380,9 @@ describe('Split class', () => {
 				fs.promises.stat as ReturnType<typeof vi.fn>
 			).mockRejectedValueOnce(new Error('ENOENT'))
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -361,7 +399,9 @@ describe('Split class', () => {
 		})
 
 		it('should successfully split a valid profile file', async () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -387,7 +427,9 @@ describe('Split class', () => {
 </PermissionSet>`,
 			)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: permsetDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -412,7 +454,9 @@ describe('Split class', () => {
     <content>data</content>
 </InvalidRoot>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -446,7 +490,9 @@ describe('Split class', () => {
     <fullName>TestProfile</fullName>
 </Profile>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -465,7 +511,9 @@ describe('Split class', () => {
 		})
 
 		it('should delete existing target directory', async () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -483,7 +531,9 @@ describe('Split class', () => {
 		})
 
 		it('should create target directory', async () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -503,7 +553,9 @@ describe('Split class', () => {
 
 	describe('Sequence and Progress', () => {
 		it('should track sequence number for progress display', () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -544,7 +596,9 @@ describe('Split class', () => {
     </fieldPermissions>
 </Profile>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -587,7 +641,9 @@ describe('Split class', () => {
     </labels>
 </CustomLabels>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -633,7 +689,9 @@ describe('Split class', () => {
     </objectPermissions>
 </PermissionSet>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: permsetDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -669,7 +727,9 @@ describe('Split class', () => {
     </recordTypeVisibilities>
 </Profile>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -699,7 +759,9 @@ describe('Split class', () => {
     </fieldPermissions>
 </Profile>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -725,7 +787,9 @@ describe('Split class', () => {
     <userLicense>Salesforce</userLicense>
 </Profile>`)
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -754,7 +818,9 @@ describe('Split class', () => {
 				stats: undefined,
 			})
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -783,7 +849,9 @@ describe('Split class', () => {
 				stats: undefined,
 			})
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -803,7 +871,9 @@ describe('Split class', () => {
 	describe('Format handling', () => {
 		it('should respect yaml format', async () => {
 			global.format = 'yaml'
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -820,15 +890,17 @@ describe('Split class', () => {
 			).toHaveBeenCalled()
 			const calls = (fileUtils.saveFile as ReturnType<typeof vi.fn>).mock
 				.calls
-			// Check that format is passed correctly
-			expect(calls.some((call: unknown[]) => call[2] === 'yaml')).toBe(
+			// Check that format is passed correctly (ctx is first arg, so format is at index 3)
+			expect(calls.some((call: unknown[]) => call[3] === 'yaml')).toBe(
 				true,
 			)
 		})
 
 		it('should respect json format', async () => {
 			global.format = 'json'
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -877,7 +949,9 @@ describe('Split class', () => {
 		})
 
 		it('should handle invalid information passed to split', async () => {
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '',
 				targetDir: '/target',
@@ -900,7 +974,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.stat as ReturnType<typeof vi.fn>
 			).mockRejectedValueOnce(new Error('ENOENT'))
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -924,7 +1000,9 @@ describe('Split class', () => {
 				main: ['fullName', 'custom'],
 			}
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithMain,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -944,7 +1022,9 @@ describe('Split class', () => {
 
 		it('should handle empty targetDir in constructor', () => {
 			expect(() => {
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -961,7 +1041,9 @@ describe('Split class', () => {
 				.mockResolvedValueOnce(true)
 				.mockResolvedValueOnce(true)
 				.mockResolvedValueOnce(true)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1001,7 +1083,9 @@ describe('Split class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(true)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1037,7 +1121,9 @@ describe('Split class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(true)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1073,7 +1159,9 @@ describe('Split class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(true)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1109,7 +1197,9 @@ describe('Split class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(true)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1138,7 +1228,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1180,7 +1272,9 @@ describe('Split class', () => {
 				return originalValueOf.call(this)
 			}
 
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1225,7 +1319,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithSplitObjects,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1259,7 +1355,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithSplitObjects,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1301,7 +1399,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithKeyOrder,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1340,7 +1440,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithSortKeys,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1377,7 +1479,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithNested,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1405,7 +1509,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1441,7 +1547,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithSplitObjects,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1471,7 +1579,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithoutSortKey,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1495,7 +1605,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1524,7 +1636,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDefWithMain,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1549,7 +1663,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1573,7 +1689,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1611,7 +1729,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1646,7 +1766,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1683,7 +1805,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1719,7 +1843,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1757,7 +1883,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1792,7 +1920,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1816,7 +1946,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1843,7 +1975,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1882,7 +2016,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1919,7 +2055,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1957,7 +2095,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -1995,7 +2135,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: metaDef,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -2021,7 +2163,9 @@ describe('Split class', () => {
 			;(
 				fs.promises.readFile as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(xmlData)
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -2058,7 +2202,9 @@ describe('Split class', () => {
 				}
 				return originalValueOf.call(this)
 			}
+			const ctx = createCtxFromGlobal()
 			const config = {
+				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
 				sourceDir: '/source',
 				targetDir: '/target',
@@ -2116,7 +2262,9 @@ describe('Split class', () => {
 					return parsed
 				}
 
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2152,7 +2300,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2207,7 +2357,9 @@ describe('Split class', () => {
 					return parsed
 				}
 
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2246,7 +2398,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2291,7 +2445,9 @@ describe('Split class', () => {
 					return parsed
 				}
 
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2357,7 +2513,9 @@ describe('Split class', () => {
 					return parsed
 				}
 
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2403,12 +2561,14 @@ describe('Split class', () => {
 				).mockResolvedValueOnce(xmlData)
 
 				// Mock fileUtils to return loginIpRanges-sandbox.yaml when reading from targetDir
-				fileUtils.readFile.mockImplementation((filePath: string) => {
-					if (filePath.includes('loginIpRanges-sandbox.yaml')) {
-						return yamlContent // Return the actual test data
-					}
-					return null
-				})
+				fileUtils.readFile.mockImplementation(
+					(ctx: unknown, filePath: string) => {
+						if (filePath.includes('loginIpRanges-sandbox.yaml')) {
+							return Promise.resolve(yamlContent) // Return the actual test data
+						}
+						return Promise.resolve(null)
+					},
+				)
 				fileUtils.fileExists.mockImplementation(
 					(options: { filePath: string; fs: unknown }) => {
 						// The metaFilePath must exist for split to succeed
@@ -2442,7 +2602,9 @@ describe('Split class', () => {
 						typeof fileUtils.fileInfo
 					>['stats'],
 				})
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2456,6 +2618,7 @@ describe('Split class', () => {
 				expect(result).toBe(true)
 				// Line 231: if (sandboxLoginIpRange) should be true and saveFile should be called
 				expect(fileUtils.saveFile).toHaveBeenCalledWith(
+					ctx,
 					yamlContent,
 					expect.stringContaining('loginIpRanges-sandbox.yaml'),
 					'yaml',
@@ -2484,7 +2647,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: workflowDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2515,7 +2680,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: workflowDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2549,7 +2716,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2580,7 +2749,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2611,7 +2782,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2641,7 +2814,9 @@ describe('Split class', () => {
 
 				// Create invalid data that will cause keySort to throw
 				// by using a metadata definition that will trigger the error path
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2671,7 +2846,9 @@ describe('Split class', () => {
 				;(
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
+				const ctx = createCtxFromGlobal()
 				const config = {
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2744,7 +2921,9 @@ describe('Split class', () => {
 			it('should cover line 84-88: metadataDefinition setter', async () => {
 				// Lines 84-88: set metadataDefinition(definition: MetadataDefinition)
 				// This sets the private #type and #root fields
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2805,7 +2984,9 @@ describe('Split class', () => {
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2846,7 +3027,9 @@ describe('Split class', () => {
 					singleFiles: ['fieldPermissions'],
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: metaDefWithSingleFiles,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2886,7 +3069,9 @@ describe('Split class', () => {
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2927,7 +3112,9 @@ describe('Split class', () => {
 					},
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: metaDefWithDirs,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -2968,7 +3155,9 @@ describe('Split class', () => {
 					},
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: metaDefWithSplitObjects,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3003,7 +3192,9 @@ describe('Split class', () => {
 					},
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: metaDefWithSortKey,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3051,7 +3242,9 @@ describe('Split class', () => {
 					return throwingObject
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3128,7 +3321,9 @@ describe('Split class', () => {
 					},
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: metaDefWithKeyOrder,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3227,7 +3422,9 @@ describe('Split class', () => {
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3256,7 +3453,9 @@ describe('Split class', () => {
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: labelDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3291,7 +3490,9 @@ describe('Split class', () => {
 					fs.promises.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValueOnce(xmlData)
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -3331,7 +3532,9 @@ describe('Split class', () => {
 					},
 				}
 
+				const ctx = createCtxFromGlobal()
 				const split = new Split({
+					ctx,
 					metadataDefinition: metaDefWithDirs,
 					sourceDir: '/source',
 					targetDir: '/target',

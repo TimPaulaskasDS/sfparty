@@ -5,6 +5,7 @@ import { sanitizeErrorPath } from '../lib/errorUtils.js'
 import * as fileUtils from '../lib/fileUtils.js'
 import { getPerformanceLogger } from '../lib/performanceLogger.js'
 import { getGlobalProgressTracker } from '../lib/tuiProgressTracker.js'
+import type { AppContext } from '../types/context.js'
 import type { MetadataDefinition } from '../types/metadata.js'
 
 const processed = {
@@ -20,6 +21,7 @@ interface FileNameInfo {
 }
 
 interface SplitConfig {
+	ctx: AppContext
 	metadataDefinition: MetadataDefinition
 	sourceDir: string
 	targetDir: string
@@ -61,6 +63,7 @@ export class Split {
 	#keepFalseValues: boolean = false
 	#xmlParser: XMLParser | undefined = undefined
 
+	public ctx: AppContext
 	private _metadataDefinition!: MetadataDefinition
 	sourceDir!: string
 	targetDir!: string
@@ -69,6 +72,7 @@ export class Split {
 	total!: number
 
 	constructor(config: SplitConfig) {
+		this.ctx = config.ctx
 		this.metadataDefinition = config.metadataDefinition
 		this.sourceDir = config.sourceDir
 		this.targetDir = config.targetDir
@@ -173,10 +177,10 @@ export class Split {
 				progressTracker.logError(message)
 			} else {
 				if (
-					!global.consoleTransport ||
-					!global.consoleTransport.silent
+					!that.ctx.consoleTransport ||
+					!that.ctx.consoleTransport.silent
 				) {
-					global.logger?.error(message)
+					that.ctx.logger.error(message)
 				}
 			}
 			return false
@@ -202,8 +206,8 @@ export class Split {
 					path.dirname(that.metaFilePath),
 					targetPath,
 				)
-				if (global.__basedir) {
-					const resolvedRoot = path.resolve(global.__basedir)
+				if (that.ctx.basedir) {
+					const resolvedRoot = path.resolve(that.ctx.basedir)
 					if (!resolvedTarget.startsWith(resolvedRoot)) {
 						throw new Error(
 							`Symlink points outside workspace: ${that.metaFilePath} -> ${targetPath}`,
@@ -232,10 +236,10 @@ export class Split {
 				progressTracker.logError(message)
 			} else {
 				if (
-					!global.consoleTransport ||
-					!global.consoleTransport.silent
+					!that.ctx.consoleTransport ||
+					!that.ctx.consoleTransport.silent
 				) {
-					global.logger?.error(message)
+					that.ctx.logger.error(message)
 				}
 			}
 			const perfLogger = getPerformanceLogger()
@@ -293,10 +297,10 @@ export class Split {
 				progressTracker.logError(message)
 			} else {
 				if (
-					!global.consoleTransport ||
-					!global.consoleTransport.silent
+					!that.ctx.consoleTransport ||
+					!that.ctx.consoleTransport.silent
 				) {
-					global.logger?.error(message)
+					that.ctx.logger.error(message)
 				}
 			}
 			const errorMessage =
@@ -340,10 +344,10 @@ export class Split {
 				progressTracker.logError(message)
 			} else {
 				if (
-					!global.consoleTransport ||
-					!global.consoleTransport.silent
+					!that.ctx.consoleTransport ||
+					!that.ctx.consoleTransport.silent
 				) {
-					global.logger?.error(message)
+					that.ctx.logger.error(message)
 				}
 			}
 			const perfLogger = getPerformanceLogger()
@@ -365,16 +369,16 @@ export class Split {
 				progressTracker.logError(message)
 			} else {
 				if (
-					!global.consoleTransport ||
-					!global.consoleTransport.silent
+					!that.ctx.consoleTransport ||
+					!that.ctx.consoleTransport.silent
 				) {
-					global.logger?.error(message)
+					that.ctx.logger.error(message)
 				}
 			}
 			throw error
 		}
 
-		await handleSandboxLoginIpRanges(that.targetDir, fileUtils)
+		await handleSandboxLoginIpRanges(that.ctx, that.targetDir, fileUtils)
 
 		// Track write operations time
 		const writeStart = process.hrtime.bigint()
@@ -400,7 +404,7 @@ export class Split {
 				error instanceof Error ? error.message : String(error),
 			)
 			console.log(that.#fileName.shortName)
-			global.logger?.error(error as string)
+			that.ctx.logger.error(error as string)
 			throw error
 		}
 
@@ -476,10 +480,10 @@ export class Split {
 					} else {
 						// Only log to console if console transport is not silenced (TUI not active)
 						if (
-							!global.consoleTransport ||
-							!global.consoleTransport.silent
+							!that.ctx.consoleTransport ||
+							!that.ctx.consoleTransport.silent
 						) {
-							global.logger?.warn(message)
+							that.ctx.logger.warn(message)
 						}
 					}
 				}
@@ -491,7 +495,10 @@ export class Split {
 		}
 
 		async function Main(that: Split): Promise<void> {
-			const fileName = path.join(that.targetDir, `main.${global.format}`)
+			const fileName = path.join(
+				that.targetDir,
+				`main.${that.ctx.format}`,
+			)
 			const mainInfo: { main: Record<string, unknown> } = {
 				main: {},
 			}
@@ -516,14 +523,19 @@ export class Split {
 				}
 			}
 
-			await fileUtils.saveFile(mainInfo, fileName, global.format)
+			await fileUtils.saveFile(
+				that.ctx,
+				mainInfo,
+				fileName,
+				that.ctx.format,
+			)
 		}
 
 		function completeFile(that: Split): void {
 			// Progress is handled by ProgressTracker
-			// Errors are logged via global.logger
+			// Errors are logged via ctx.logger
 			if (that.#errorMessage !== '') {
-				global.logger?.error(
+				that.ctx.logger.error(
 					`Error processing ${that.#fileName.shortName}: ${that.#errorMessage}`,
 				)
 			}
@@ -718,7 +730,7 @@ async function processFile(
 	let fileName: string
 	if (fileNameOverride !== undefined) {
 		// For files split by object (e.g., fieldPermissions/Account.yaml)
-		fileName = path.join(baseDir, `${fileNameOverride}.${global.format}`)
+		fileName = path.join(baseDir, `${fileNameOverride}.${that.ctx.format}`)
 		// cleanedJson is already the object structure (e.g., {object: 'Account', fieldPermissions: [...]})
 		newJSON = cleanedJson
 
@@ -734,14 +746,14 @@ async function processFile(
 		}
 	} else {
 		// For singleFiles (e.g., classAccesses.yaml)
-		fileName = path.join(baseDir, `${key}.${global.format}`)
+		fileName = path.join(baseDir, `${key}.${that.ctx.format}`)
 
 		// Use cleanedArray if cleanup was applied, otherwise use cleanedJson
 		newJSON = {}
 		newJSON[key] = cleanedArray !== null ? cleanedArray : cleanedJson
 	}
 
-	await fileUtils.saveFile(newJSON, fileName, global.format)
+	await fileUtils.saveFile(that.ctx, newJSON, fileName, that.ctx.format)
 }
 
 /**
@@ -1001,10 +1013,12 @@ function xml2json(currentValue: unknown): unknown {
  * @param fileUtils File utilities interface
  */
 export async function handleSandboxLoginIpRanges(
+	ctx: AppContext,
 	targetDir: string,
 	fileUtils: typeof import('../lib/fileUtils.js'),
 ): Promise<void> {
 	const sandboxLoginIpRange = await fileUtils.readFile(
+		ctx,
 		path.join(targetDir, 'loginIpRanges-sandbox.yaml'),
 	)
 
@@ -1013,6 +1027,7 @@ export async function handleSandboxLoginIpRanges(
 
 	if (sandboxLoginIpRange) {
 		await fileUtils.saveFile(
+			ctx,
 			sandboxLoginIpRange,
 			path.join(targetDir, 'loginIpRanges-sandbox.yaml'),
 			'yaml',

@@ -2,6 +2,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as fs from 'fs'
 import yaml from 'js-yaml'
 import * as path from 'path'
+import type { AppContext } from '../types/context.js'
 import * as auditLogger from './auditLogger.js'
 import { handleFileError } from './errorUtils.js'
 import { replaceSpecialChars } from './pathUtils.js'
@@ -528,6 +529,7 @@ export async function fileInfo(
 }
 
 export async function saveFile(
+	ctx: AppContext,
 	json: unknown,
 	fileName: string,
 	format: string = path.extname(fileName).replace('.', ''),
@@ -558,7 +560,7 @@ export async function saveFile(
 		return true
 	} catch (error) {
 		errorMessage = error instanceof Error ? error.message : String(error)
-		global.logger?.error(error)
+		ctx.logger.error(error)
 
 		// SEC-007: Log failed file write operation (non-blocking, git mode only)
 		auditLogger.logFileWrite(fileName, false, errorMessage).catch(() => {
@@ -582,6 +584,7 @@ export async function saveFile(
  * keys like __proto__ and constructor. See SECURITY.md for details.
  */
 export async function readFile(
+	ctx: AppContext,
 	filePath: string,
 	convert = true,
 	fsTmp: typeof fs = fs,
@@ -589,8 +592,8 @@ export async function readFile(
 	try {
 		// Security: Validate path before processing
 		let validatedPath: string
-		if (global.__basedir) {
-			validatedPath = validatePath(filePath, global.__basedir)
+		if (ctx.basedir) {
+			validatedPath = validatePath(filePath, ctx.basedir)
 		} else {
 			validatedPath = validatePath(filePath)
 		}
@@ -604,7 +607,7 @@ export async function readFile(
 				// Validate symlink is safe and get resolved path
 				finalPath = await validateSymlink(
 					sanitizedPath,
-					global.__basedir,
+					ctx.basedir,
 					fsTmp,
 				)
 			}
@@ -719,7 +722,7 @@ export async function readFile(
 			return data
 		}
 	} catch (error) {
-		handleFileError(error, global.logger)
+		handleFileError(error, ctx.logger)
 	}
 }
 
@@ -784,6 +787,7 @@ async function convertXML(data: string): Promise<unknown> {
 }
 
 export async function writeFile(
+	ctx: AppContext,
 	fileName: string,
 	data: string,
 	atime: Date = new Date(),
@@ -794,8 +798,8 @@ export async function writeFile(
 	try {
 		// Security: Validate path before writing
 		let validatedFileName: string
-		if (global.__basedir) {
-			validatedFileName = validatePath(fileName, global.__basedir)
+		if (ctx.basedir) {
+			validatedFileName = validatePath(fileName, ctx.basedir)
 		} else {
 			validatedFileName = validatePath(fileName)
 		}
@@ -816,7 +820,7 @@ export async function writeFile(
 		})
 	} catch (error) {
 		errorMessage = error instanceof Error ? error.message : String(error)
-		handleFileError(error, global.logger)
+		handleFileError(error, ctx.logger)
 
 		// SEC-007: Log failed file write operation (non-blocking, git mode only)
 		auditLogger.logFileWrite(fileName, false, errorMessage).catch(() => {

@@ -6,6 +6,7 @@ import {
 } from 'child_process'
 import type * as fs from 'fs'
 import path from 'path'
+import type { AppContext } from '../types/context.js'
 import { sanitizeErrorPath } from './errorUtils.js'
 import type * as fileUtils from './fileUtils.js'
 
@@ -391,12 +392,13 @@ interface LastCommitResult {
 }
 
 export async function lastCommit({
+	ctx,
 	dir,
 	fileName = 'index.yaml',
 	existsSync,
 	execFileSync: _execFileSyncStub = execFileSync, // Kept for backward compatibility but not used (SEC-004: using async with timeout)
 	fileUtils,
-}: LastCommitOptions): Promise<LastCommitResult> {
+}: LastCommitOptions & { ctx: AppContext }): Promise<LastCommitResult> {
 	try {
 		const folder = path.resolve(dir, '.sfdx', 'sfparty')
 		const filePath = path.resolve(folder, fileName)
@@ -409,7 +411,10 @@ export async function lastCommit({
 		const timeoutMs = getGitTimeout()
 
 		if (existsSync(filePath)) {
-			const data = (await fileUtils.readFile(filePath)) as GitDefinition
+			const data = (await fileUtils.readFile(
+				ctx,
+				filePath,
+			)) as GitDefinition
 
 			// Determine the current branch name
 			// SEC-004: Use async version with timeout for git operations
@@ -450,6 +455,7 @@ export async function lastCommit({
 }
 
 interface UpdateLastCommitOptions {
+	ctx: AppContext
 	dir: string
 	latest: string | undefined
 	fileUtils: typeof fileUtils
@@ -457,6 +463,7 @@ interface UpdateLastCommitOptions {
 }
 
 export async function updateLastCommit({
+	ctx,
 	dir,
 	latest,
 	fileUtils,
@@ -473,7 +480,7 @@ export async function updateLastCommit({
 		let data: GitDefinition | undefined = undefined
 
 		if (await fileUtils.fileExists({ filePath: fileName, fs })) {
-			data = (await fileUtils.readFile(fileName)) as GitDefinition
+			data = (await fileUtils.readFile(ctx, fileName)) as GitDefinition
 		}
 
 		if (data === undefined) {
@@ -499,6 +506,6 @@ export async function updateLastCommit({
 		// Update the last commit for the current branch
 		data.git.branches[currentBranch] = latest
 
-		fileUtils.saveFile(data, fileName)
+		await fileUtils.saveFile(ctx, data, fileName)
 	}
 }

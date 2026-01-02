@@ -6,6 +6,7 @@ import * as packageDefinition from '../../../src/meta/Package.js'
 import * as permsetDefinition from '../../../src/meta/PermissionSets.js'
 import * as profileDefinition from '../../../src/meta/Profiles.js'
 import * as workflowDefinition from '../../../src/meta/Workflows.js'
+import { createTestContext } from '../../helpers/context.js'
 
 interface GlobalContext {
 	__basedir?: string
@@ -57,9 +58,9 @@ global.metaTypes = {
 
 interface FileUtilsInterface {
 	fileExists: (options: { filePath: string; fs: typeof fs }) => boolean
-	readFile: (filePath: string) => unknown
+	readFile: (ctx: unknown, filePath: string) => unknown
 	createDirectory: (dirPath: string) => void
-	writeFile: (fileName: string, data: string) => void
+	writeFile: (ctx: unknown, fileName: string, data: string) => void
 }
 
 let pkg: Package
@@ -86,7 +87,8 @@ it('should default the package if the json is empty', async () => {
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockResolvedValue({})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(fileUtils.fileExists).toHaveBeenCalled()
 	expect(fileUtils.readFile).toHaveBeenCalled()
@@ -101,7 +103,8 @@ it('should read an existing file and call processJSON', async () => {
 		packageDefinition.metadataDefinition.emptyPackage,
 	)
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(fileUtils.fileExists).toHaveBeenCalled()
 	expect(fileUtils.readFile).toHaveBeenCalled()
@@ -114,7 +117,8 @@ it('should create an empty pkg JSON and call processJSON', async () => {
 	)
 	finalJSON.Package.version =
 		packageDefinition.metadataDefinition.fallbackVersion
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext()
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('not found')
 	expect(fileUtils.fileExists).toHaveBeenCalled()
 	expect(pkg.packageJSON).toEqual(finalJSON)
@@ -126,7 +130,8 @@ it('should throw an error if xmlPath is undefined', async () => {
 		writable: true,
 		configurable: true,
 	})
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError(
+	const ctx = createTestContext()
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrowError(
 		'Package not initialized',
 	)
 })
@@ -135,15 +140,19 @@ it('should throw an error if error occurs during processing', async () => {
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockRejectedValue(new Error('Error'))
 	global.git = { append: true }
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError('Error')
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrowError(
+		'Error',
+	)
 })
 
 it('should catch errors and reject the promise', async () => {
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockRejectedValue(new Error('Test Error'))
 	global.git = { append: true }
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
 	try {
-		await pkg.getPackageXML(fileUtils)
+		await pkg.getPackageXML(ctx, fileUtils)
 	} catch (error) {
 		expect(error).toBeInstanceOf(Error)
 		expect((error as Error).message).toEqual('Test Error')
@@ -154,7 +163,8 @@ it('should default to an empty package if the read file is empty', async () => {
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockResolvedValue('')
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(pkg.packageJSON).toEqual(
 		packageDefinition.metadataDefinition.emptyPackage,
@@ -167,7 +177,8 @@ it('should throw an error if fileUtils.readFile() returns a rejected promise', a
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockRejectedValue(new Error('Test Error'))
 	global.git = { append: true }
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrowError(
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrowError(
 		'Test Error',
 	)
 	expect(fileUtils.fileExists).toHaveBeenCalled()
@@ -203,7 +214,8 @@ it('should correctly process the json object returned from the XML file', async 
 		return Promise.resolve({ sourceApiVersion: '56.0' } as unknown)
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(fileUtils.fileExists).toHaveBeenCalled()
 	expect(fileUtils.readFile).toHaveBeenCalled()
@@ -235,7 +247,8 @@ it('should handle git.append = false', async () => {
 		writable: true,
 		configurable: true,
 	})
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext()
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('not found')
 	expect(pkg.packageJSON).toBeDefined()
 })
@@ -259,7 +272,8 @@ it('should handle transformJSON error when JSON.parse throws', async () => {
 	JSON.parse = vi.fn(() => {
 		throw new Error('JSON parse error')
 	})
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrow()
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrow()
 	JSON.parse = originalParse
 })
 
@@ -287,7 +301,8 @@ it('should handle xml2json error when toString throws', async () => {
 		},
 	})
 	global.git = { append: true }
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrow()
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrow()
 })
 
 it('should handle undefined types in Package', async () => {
@@ -298,7 +313,8 @@ it('should handle undefined types in Package', async () => {
 		},
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	if (pkg.packageJSON) {
 		expect(pkg.packageJSON.Package.types).toBeUndefined()
@@ -309,7 +325,8 @@ it('should handle empty json object keys', async () => {
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockResolvedValue(undefined)
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(pkg.packageJSON).toEqual(
 		packageDefinition.metadataDefinition.emptyPackage,
@@ -330,7 +347,8 @@ it('should handle array members with single string value', async () => {
 		},
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	if (pkg.packageJSON?.Package.types) {
 		expect(pkg.packageJSON.Package.types[0].name).toBe('CustomLabels')
@@ -346,7 +364,8 @@ it('should handle readFile returning non-Promise value', async () => {
 		},
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(fileUtils.readFile).toHaveBeenCalled()
 })
@@ -355,7 +374,8 @@ it('should handle readFile returning non-Promise empty object', async () => {
 	mockFileExists.mockReturnValue(true)
 	mockReadFile.mockReturnValue({})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(pkg.packageJSON).toEqual(
 		packageDefinition.metadataDefinition.emptyPackage,
@@ -364,7 +384,7 @@ it('should handle readFile returning non-Promise empty object', async () => {
 
 it('should handle processJSON with fileUtils when readFile throws', async () => {
 	mockFileExists.mockReturnValue(true)
-	mockReadFile.mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((ctx: unknown, filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			throw new Error('File not found')
 		}
@@ -376,7 +396,8 @@ it('should handle processJSON with fileUtils when readFile throws', async () => 
 		})
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	if (pkg.packageJSON) {
 		expect(pkg.packageJSON.Package.version).toBe(
@@ -387,7 +408,7 @@ it('should handle processJSON with fileUtils when readFile throws', async () => 
 
 it('should handle processJSON with fileUtils when readFile returns non-Promise and throws', async () => {
 	mockFileExists.mockReturnValue(true)
-	mockReadFile.mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((ctx: unknown, filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			throw new Error('File not found')
 		}
@@ -399,7 +420,8 @@ it('should handle processJSON with fileUtils when readFile returns non-Promise a
 		}
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	if (pkg.packageJSON) {
 		expect(pkg.packageJSON.Package.version).toBe(
@@ -414,12 +436,16 @@ it('should handle processJSON error when readFile throws in non-Promise path', a
 		throw new Error('Read error')
 	})
 	global.git = { append: true }
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrow('Read error')
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrow(
+		'Read error',
+	)
 })
 
 it('should handle cleanPackage when types is undefined', async () => {
 	mockFileExists.mockReturnValue(false)
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext()
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('not found')
 	if (pkg.packageJSON) {
 		expect(pkg.packageJSON.Package.types).toBeUndefined()
@@ -433,7 +459,10 @@ it('should reject when readFile promise rejects in catch block', async () => {
 		return Promise.reject(new Error('Read failed'))
 	})
 	global.git = { append: true }
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrow('Read failed')
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrow(
+		'Read failed',
+	)
 })
 
 it('should reject when readFile returns non-Promise and error occurs in catch block', async () => {
@@ -463,7 +492,8 @@ it('should reject when readFile returns non-Promise and error occurs in catch bl
 	JSON.stringify = vi.fn(() => {
 		throw new Error('Stringify error')
 	})
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrow(
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrow(
 		'Stringify error',
 	)
 	JSON.stringify = originalStringify
@@ -477,7 +507,10 @@ it('should reject when creating new package fails', async () => {
 	JSON.parse = vi.fn(() => {
 		throw new Error('Parse error')
 	})
-	await expect(pkg.getPackageXML(fileUtils)).rejects.toThrow('Parse error')
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	await expect(pkg.getPackageXML(ctx, fileUtils)).rejects.toThrow(
+		'Parse error',
+	)
 	JSON.parse = originalParse
 })
 
@@ -485,6 +518,7 @@ it('should throw error when packageJSON is undefined in cleanPackage', async () 
 	// Test line 162: throw when packageJSON is undefined
 	// Since cleanPackage runs synchronously, we need to intercept the property access
 	// We'll use Object.defineProperty to make packageJSON return undefined when cleanPackage checks it
+	const ctx = createTestContext()
 	const newPkg = new Package('test.xml')
 	mockFileExists.mockReturnValue(false)
 
@@ -508,7 +542,7 @@ it('should throw error when packageJSON is undefined in cleanPackage', async () 
 		enumerable: true,
 	})
 
-	await expect(newPkg.getPackageXML(fileUtils)).rejects.toThrow(
+	await expect(newPkg.getPackageXML(ctx, fileUtils)).rejects.toThrow(
 		'getPackageXML must be called before adding members',
 	)
 })
@@ -516,6 +550,7 @@ it('should throw error when packageJSON is undefined in cleanPackage', async () 
 it('should throw error when Package is undefined in cleanPackage', async () => {
 	// Test line 166: throw when Package is undefined
 	// We need to make Package undefined when cleanPackage accesses it
+	const ctx = createTestContext()
 	const newPkg = new Package('test.xml')
 	mockFileExists.mockReturnValue(false)
 
@@ -550,7 +585,7 @@ it('should throw error when Package is undefined in cleanPackage', async () => {
 		enumerable: true,
 	})
 
-	await expect(newPkg.getPackageXML(fileUtils)).rejects.toThrow(
+	await expect(newPkg.getPackageXML(ctx, fileUtils)).rejects.toThrow(
 		'Package initialization failed',
 	)
 })
@@ -559,10 +594,10 @@ it('should read sfdx-project.json when fileUtils is provided', async () => {
 	// Test line 145: path.join(global.__basedir || '', 'sfdx-project.json')
 	mockFileExists.mockReturnValue(true)
 	// First call is for the package XML file (returns Promise), second call is for sfdx-project.json (synchronous)
-	mockReadFile.mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((ctx: unknown, filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			// This is called synchronously in processJSON, so return value directly
-			return { sourceApiVersion: '58.0' } as unknown
+			return Promise.resolve({ sourceApiVersion: '58.0' })
 		}
 		// This is called asynchronously, so return Promise
 		return Promise.resolve({
@@ -574,10 +609,15 @@ it('should read sfdx-project.json when fileUtils is provided', async () => {
 	})
 	global.git = { append: true }
 	global.__basedir = '/project'
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		basedir: '/project',
+	})
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	// Verify that readFile was called with sfdx-project.json path
 	expect(fileUtils.readFile).toHaveBeenCalledWith(
+		ctx,
 		expect.stringContaining('sfdx-project.json'),
 	)
 	// The version should be set from sfdx-project.json
@@ -621,7 +661,12 @@ it('should filter members in cleanPackage when global.metaTypes exists', async (
 			},
 		}
 	}
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		format: 'yaml',
+		metaTypes: global.metaTypes,
+	})
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	if (pkg.packageJSON?.Package.types) {
 		// Profile members should have .yaml filtered out
@@ -654,7 +699,8 @@ it('should handle xml2json with array length === 1', async () => {
 		},
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 })
 
@@ -674,7 +720,8 @@ it('should handle xml2json boolean conversion for true', async () => {
 		},
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 })
 
@@ -701,7 +748,7 @@ it('should cover line 145 reading sfdx-project.json from test data', async () =>
 	})
 
 	// Mock reading sfdx-project.json - need to check if it's the package file or sfdx-project.json
-	mockReadFile.mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((ctx: unknown, filePath: string) => {
 		if (
 			typeof filePath === 'string' &&
 			filePath.includes('sfdx-project.json')
@@ -725,7 +772,11 @@ it('should cover line 145 reading sfdx-project.json from test data', async () =>
 	global.git = { append: true }
 	global.__basedir = process.cwd()
 
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		basedir: process.cwd(),
+	})
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	// The sourceApiVersion from sfdx-project.json should be used
 })
@@ -751,7 +802,7 @@ it('should cover lines 266-267 sorting package types from test data', async () =
 
 	mockFileExists.mockReturnValue(true)
 	// Mock readFile to return parsed XML for package.xml, and handle sfdx-project.json call
-	mockReadFile.mockImplementation((filePath: string) => {
+	mockReadFile.mockImplementation((ctx: unknown, filePath: string) => {
 		if (filePath.includes('sfdx-project.json')) {
 			// Return a proper sourceApiVersion for sfdx-project.json
 			return Promise.resolve({ sourceApiVersion: '58.0' })
@@ -760,8 +811,8 @@ it('should cover lines 266-267 sorting package types from test data', async () =
 		return Promise.resolve(parsed)
 	})
 	global.git = { append: true }
-
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 
 	// Verify types are sorted alphabetically
@@ -792,6 +843,7 @@ it('should handle xml2json boolean conversion for false', async () => {
 		},
 	})
 	global.git = { append: true }
-	const result = await pkg.getPackageXML(fileUtils)
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 })

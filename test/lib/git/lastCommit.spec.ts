@@ -2,13 +2,14 @@ import * as fs from 'fs'
 import { beforeEach, expect, it, test, vi } from 'vitest'
 import * as fileUtilsType from '../../../src/lib/fileUtils.js'
 import { lastCommit } from '../../../src/lib/gitUtils.js'
+import { createTestContext } from '../../helpers/context.js'
 
 const dir = '/test'
 const fileName = 'index.yaml'
 
 const fileUtils = {
 	createDirectory: vi.fn(),
-	readFile: vi.fn((filePath) => {
+	readFile: vi.fn((ctx: unknown, filePath: string) => {
 		if (filePath.indexOf('project') !== -1) {
 			return { git: { lastCommit: 'lastCommit' } }
 		}
@@ -84,9 +85,11 @@ beforeEach(() => {
 })
 
 test('should return lastCommit and latestCommit if file exists', async () => {
+	const ctx = createTestContext()
 	;(fs.existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true)
 	mockLatestCommit = 'testCommit'
 	const result = await lastCommit({
+		ctx,
 		dir: 'project',
 		existsSync: fs.existsSync,
 		fileUtils: fileUtils as unknown as typeof fileUtilsType,
@@ -102,6 +105,7 @@ test('should return only latestCommit if file does not exist', async () => {
 	// Reset fileUtils.fileExists to return false for this test
 	fileUtils.fileExists = vi.fn().mockResolvedValue(false)
 	mockLatestCommit = 'testCommit'
+	const ctx = createTestContext()
 	const result = await lastCommit({
 		dir: __dirname,
 		existsSync: fs.existsSync,
@@ -117,6 +121,7 @@ it('should handle missing file gracefully', async () => {
 	;(fs.existsSync as ReturnType<typeof vi.fn>).mockImplementation(() => false)
 	mockLatestCommit = 'testCommit'
 
+	const ctx = createTestContext()
 	const result = await lastCommit({
 		dir,
 		fileName,
@@ -132,12 +137,17 @@ it('should handle missing file gracefully', async () => {
 
 it('should return only latest commit if lastCommit is undefined', async () => {
 	vi.spyOn(fs, 'existsSync').mockImplementation(() => true)
-	vi.spyOn(fileUtils, 'readFile').mockImplementation(() => ({
-		git: {},
-	}))
+	vi.spyOn(fileUtils, 'readFile').mockImplementation(
+		(ctx: unknown, filePath: string) =>
+			Promise.resolve({
+				git: {},
+			}),
+	)
 	mockLatestCommit = 'latestCommit'
 
+	const ctx = createTestContext()
 	const result = await lastCommit({
+		ctx,
 		dir: '/test',
 		fileUtils: fileUtils as unknown as typeof fileUtilsType,
 		existsSync: fs.existsSync,
@@ -149,6 +159,7 @@ it('should return only latest commit if lastCommit is undefined', async () => {
 	})
 	expect(fs.existsSync).toHaveBeenCalledWith('/test/.sfdx/sfparty/index.yaml')
 	expect(fileUtils.readFile).toHaveBeenCalledWith(
+		ctx,
 		'/test/.sfdx/sfparty/index.yaml',
 	)
 })
@@ -174,8 +185,10 @@ test('should throw an error when spawn returns an error', async () => {
 		return mockProcess as any
 	})
 
+	const ctx = createTestContext()
 	await expect(
 		lastCommit({
+			ctx,
 			dir: '/test',
 			fileUtils: fileUtils as unknown as typeof fileUtilsType,
 			existsSync: fs.existsSync,

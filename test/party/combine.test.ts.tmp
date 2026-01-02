@@ -9,8 +9,8 @@ import * as permsetDefinition from '../../src/meta/PermissionSets.js'
 import * as profileDefinition from '../../src/meta/Profiles.js'
 import * as workflowDefinition from '../../src/meta/Workflows.js'
 import { Combine } from '../../src/party/combine.js'
-import type { AppContext } from '../../src/types/context.js'
 import { createTestContext } from '../helpers/context.js'
+import type { AppContext } from '../../src/types/context.js'
 
 interface GlobalContext {
 	format?: string
@@ -205,9 +205,7 @@ describe('Combine class', () => {
 	})
 
 	// Helper to create ctx from global state for tests
-	function createCtxFromGlobal(
-		overrides: Partial<AppContext> = {},
-	): AppContext {
+	function createCtxFromGlobal(overrides: Partial<AppContext> = {}): AppContext {
 		return createTestContext({
 			basedir: global.__basedir || '/workspace',
 			logger: global.logger as AppContext['logger'],
@@ -236,7 +234,6 @@ describe('Combine class', () => {
 
 	describe('Constructor', () => {
 		it('should initialize with required config', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -259,7 +256,6 @@ describe('Combine class', () => {
 		})
 
 		it('should set type and root from metadata definition', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -281,7 +277,6 @@ describe('Combine class', () => {
 
 	describe('Metadata Type Support', () => {
 		it('should support CustomLabels metadata type', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -301,7 +296,6 @@ describe('Combine class', () => {
 		})
 
 		it('should support Profile metadata type', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -323,9 +317,8 @@ describe('Combine class', () => {
 
 	describe('Instance Properties', () => {
 		it('should have sequence and total properties', () => {
-			const ctx = createCtxFromGlobal({
-				process: { current: 0, total: 0, errors: 0 },
-			})
+			const ctx = createCtxFromGlobal({ process: { current: 0, total: 0, errors: 0 } })
+			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -345,7 +338,6 @@ describe('Combine class', () => {
 		})
 
 		it('should have sourceDir and targetDir properties', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -368,7 +360,6 @@ describe('Combine class', () => {
 			const mockAddPkg = { addMember: vi.fn() } as unknown as Package
 			const mockDesPkg = { addMember: vi.fn() } as unknown as Package
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -392,7 +383,6 @@ describe('Combine class', () => {
 		it('should respect git enabled flag', () => {
 			global.git = { ...global.git, enabled: true }
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -413,7 +403,6 @@ describe('Combine class', () => {
 		it('should respect git disabled flag', () => {
 			global.git = { ...global.git, enabled: false }
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -434,7 +423,6 @@ describe('Combine class', () => {
 
 	describe('metaDir setter', () => {
 		it('should set fileName properties from metaDir', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -453,7 +441,6 @@ describe('Combine class', () => {
 		})
 
 		it('should handle nested path in metaDir', () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -479,7 +466,6 @@ describe('Combine class', () => {
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValueOnce(false)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -501,7 +487,6 @@ describe('Combine class', () => {
 		})
 
 		it('should successfully combine a valid profile', async () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -521,7 +506,6 @@ describe('Combine class', () => {
 		})
 
 		it('should successfully combine permission set metadata', async () => {
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: permsetDefinition.metadataDefinition,
@@ -552,7 +536,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -589,7 +572,6 @@ describe('Combine class', () => {
 				addMember: vi.fn(),
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -621,7 +603,6 @@ describe('Combine class', () => {
 				addMember: vi.fn(),
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -643,7 +624,6 @@ describe('Combine class', () => {
 		it('should write XML file with proper timestamps', async () => {
 			// fileUtils is already imported at the top of the file
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -673,7 +653,6 @@ describe('Combine class', () => {
 				['item1.yaml', 'item2.yaml'],
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -697,7 +676,6 @@ describe('Combine class', () => {
 		it('should return current sequence when global process is higher', () => {
 			global.process = { ...global.process, current: 5 }
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -718,7 +696,6 @@ describe('Combine class', () => {
 		it('should return configured sequence when higher than global', () => {
 			global.process = { ...global.process, current: 2 }
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -754,7 +731,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -806,7 +782,6 @@ describe('Combine class', () => {
 				return Promise.resolve({ fullName: 'Test' })
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -869,7 +844,6 @@ describe('Combine class', () => {
 				return Promise.resolve({ labels: [] })
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -948,7 +922,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: permsetDefinition.metadataDefinition,
@@ -985,7 +958,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1032,7 +1004,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1076,7 +1047,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1131,7 +1101,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1164,7 +1133,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1207,7 +1175,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1234,7 +1201,6 @@ describe('Combine class', () => {
 				packageTypeIsDirectory: true,
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: customDefinition,
@@ -1271,7 +1237,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1303,7 +1268,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1328,7 +1292,6 @@ describe('Combine class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(false)
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1373,7 +1336,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1428,7 +1390,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1464,7 +1425,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithXmlFirst,
@@ -1495,7 +1455,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1518,7 +1477,6 @@ describe('Combine class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(false)
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1558,7 +1516,6 @@ describe('Combine class', () => {
 					custom: false,
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1598,7 +1555,6 @@ describe('Combine class', () => {
 					custom: true,
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1633,7 +1589,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithMain,
@@ -1667,7 +1622,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefIsDirectory,
@@ -1699,7 +1653,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1721,7 +1674,6 @@ describe('Combine class', () => {
 		it('should handle error when processing file throws', async () => {
 			fileUtils.readFile.mockRejectedValue(new Error('Read error'))
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1754,7 +1706,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1806,7 +1757,6 @@ describe('Combine class', () => {
 				addMember: vi.fn(),
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1838,7 +1788,6 @@ describe('Combine class', () => {
 				.mockResolvedValueOnce({ fullName: 'Label2', value: 'Value 2' })
 				.mockResolvedValueOnce({ fullName: 'Label1', value: 'Value 1' })
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithSort,
@@ -1872,7 +1821,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithSplitObjects,
@@ -1903,7 +1851,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -1932,7 +1879,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -1966,7 +1912,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithCustomKey,
@@ -1990,7 +1935,6 @@ describe('Combine class', () => {
 				[],
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2022,7 +1966,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2062,7 +2005,6 @@ describe('Combine class', () => {
 				addMember: vi.fn(),
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefNotDirectory,
@@ -2113,7 +2055,6 @@ describe('Combine class', () => {
 
 			const mockPkg = { addMember: vi.fn() }
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithPackage,
@@ -2150,7 +2091,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithKeyOrder,
@@ -2195,7 +2135,6 @@ describe('Combine class', () => {
 					}),
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -2242,7 +2181,6 @@ describe('Combine class', () => {
 					custom: false,
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2272,7 +2210,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2320,7 +2257,6 @@ describe('Combine class', () => {
 
 			const mockPkg = { addMember: vi.fn() } as unknown as Package
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2356,7 +2292,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithRootKey,
@@ -2392,7 +2327,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2441,7 +2375,6 @@ describe('Combine class', () => {
 					custom: false,
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2477,7 +2410,6 @@ describe('Combine class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(true)
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2536,7 +2468,6 @@ describe('Combine class', () => {
 				[],
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2581,7 +2512,6 @@ describe('Combine class', () => {
 			;(
 				fileUtils.directoryExists as ReturnType<typeof vi.fn>
 			).mockResolvedValue(true)
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: labelDefinition.metadataDefinition,
@@ -2636,7 +2566,6 @@ describe('Combine class', () => {
 				return Promise.resolve({})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2692,7 +2621,6 @@ describe('Combine class', () => {
 				if (filePath.includes('main')) return true
 				return false
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2754,7 +2682,6 @@ describe('Combine class', () => {
 				{},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2804,7 +2731,6 @@ describe('Combine class', () => {
 			;(
 				fileUtils.getDirectories as ReturnType<typeof vi.fn>
 			).mockResolvedValue([])
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2850,7 +2776,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -2908,7 +2833,6 @@ describe('Combine class', () => {
 					})
 				return Promise.resolve({ singleFile: { key: 'value' } })
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: localWorkflowDefinition,
@@ -2954,7 +2878,6 @@ describe('Combine class', () => {
 					},
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3001,7 +2924,6 @@ describe('Combine class', () => {
 				if (filePath.includes('loginIpRanges')) return true
 				return false
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3050,7 +2972,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3099,7 +3020,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3186,7 +3106,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: objectDefinition,
@@ -3239,7 +3158,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3291,7 +3209,6 @@ describe('Combine class', () => {
 					userPermissions: [{ name: 'ApiEnabled', enabled: true }],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3350,7 +3267,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3419,7 +3335,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3458,7 +3373,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3509,7 +3423,6 @@ describe('Combine class', () => {
 					},
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefWithSplit,
@@ -3550,7 +3463,6 @@ describe('Combine class', () => {
 				// Throw error when reading file
 				throw new Error('Read error')
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3602,7 +3514,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefWithXmlFirst,
@@ -3645,7 +3556,6 @@ describe('Combine class', () => {
 					userPermissions: [{ name: 'ApiEnabled', enabled: true }],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3699,7 +3609,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3787,7 +3696,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: workflowDefWithPackage,
@@ -3834,7 +3742,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3881,7 +3788,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3928,7 +3834,6 @@ describe('Combine class', () => {
 				throw error
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -3980,7 +3885,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4039,7 +3943,6 @@ describe('Combine class', () => {
 					],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4086,7 +3989,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4137,7 +4039,6 @@ describe('Combine class', () => {
 					layoutAssignments: [{ layout: 'Test', recordType: 'Test' }],
 				})
 			})
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4207,7 +4108,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: workflowDefWithPackage,
@@ -4268,7 +4168,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4308,7 +4207,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4360,7 +4258,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4403,7 +4300,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4462,7 +4358,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4503,7 +4398,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithXmlOrder,
@@ -4543,7 +4437,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithXmlOrder,
@@ -4583,7 +4476,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithXmlOrder,
@@ -4623,7 +4515,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithXmlOrder,
@@ -4668,7 +4559,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4733,7 +4623,6 @@ describe('Combine class', () => {
 				return Promise.resolve({ main: { fullName: 'Admin' } })
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -4784,7 +4673,6 @@ describe('Combine class', () => {
 				return Promise.resolve({ main: { fullName: 'Admin' } })
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -4839,7 +4727,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -4883,7 +4770,6 @@ describe('Combine class', () => {
 				{ main: { fullName: 'Admin' } },
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -4940,7 +4826,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -5011,7 +4896,6 @@ describe('Combine class', () => {
 				return Promise.resolve({ main: { fullName: 'Admin' } })
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithLoginIpRanges,
@@ -5062,7 +4946,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithPackage,
@@ -5107,7 +4990,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithPackageDir,
@@ -5145,7 +5027,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5188,7 +5069,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5229,7 +5109,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5264,7 +5143,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5311,7 +5189,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithSplitObjects,
@@ -5336,7 +5213,6 @@ describe('Combine class', () => {
 			).mockResolvedValue(true)
 			global.displayError = vi.fn()
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5375,7 +5251,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDefWithXmlFirst,
@@ -5424,7 +5299,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5482,7 +5356,6 @@ describe('Combine class', () => {
 					>['stats'],
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5540,7 +5413,6 @@ describe('Combine class', () => {
 					>['stats'],
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -5581,7 +5453,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5622,7 +5493,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5663,7 +5533,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5704,7 +5573,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5746,7 +5614,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5788,7 +5655,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5830,7 +5696,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5872,7 +5737,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5914,7 +5778,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -5963,7 +5826,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6011,7 +5873,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6052,7 +5913,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6113,7 +5973,6 @@ describe('Combine class', () => {
 					>['stats'],
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6172,7 +6031,6 @@ describe('Combine class', () => {
 					>['stats'],
 				})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6234,7 +6092,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6296,7 +6153,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6334,7 +6190,6 @@ describe('Combine class', () => {
 					fieldPermissions: 'field',
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6374,7 +6229,6 @@ describe('Combine class', () => {
 					fieldPermissions: 'field',
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6410,7 +6264,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6446,7 +6299,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6486,7 +6338,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6524,7 +6375,6 @@ describe('Combine class', () => {
 					Profile: ['custom', 'fieldPermissions'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6602,7 +6452,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6640,7 +6489,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6677,7 +6525,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -6714,7 +6561,6 @@ describe('Combine class', () => {
 					fieldPermissions: 'field',
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6745,7 +6591,6 @@ describe('Combine class', () => {
 				...profileDefinition.metadataDefinition,
 				// Explicitly do not include xmlOrder
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6779,7 +6624,6 @@ describe('Combine class', () => {
 					otherKey: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6816,7 +6660,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6853,7 +6696,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6886,7 +6728,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6919,7 +6760,6 @@ describe('Combine class', () => {
 					fieldPermissions: ['field', 'editable'],
 				},
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6947,7 +6787,6 @@ describe('Combine class', () => {
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -6975,7 +6814,6 @@ describe('Combine class', () => {
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7004,7 +6842,6 @@ describe('Combine class', () => {
 			const metaDef = {
 				...profileDefinition.metadataDefinition,
 			}
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7089,7 +6926,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7136,7 +6972,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7182,7 +7017,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7222,7 +7056,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7260,7 +7093,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7299,7 +7131,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7346,7 +7177,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -7392,7 +7222,6 @@ describe('Combine class', () => {
 				})
 			})
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -7430,7 +7259,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7468,7 +7296,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7506,7 +7333,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7544,7 +7370,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7617,7 +7442,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7680,7 +7504,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7746,7 +7569,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7815,7 +7637,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metaDef,
@@ -7902,8 +7723,8 @@ describe('Combine class', () => {
 				}
 
 				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -7987,9 +7808,8 @@ describe('Combine class', () => {
 					directories: ['userPermissions'], // Process as directory to build array
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8046,9 +7866,8 @@ describe('Combine class', () => {
 					>['stats'],
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: workflowDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8109,9 +7928,8 @@ describe('Combine class', () => {
 					xmlOrder: undefined, // No xmlOrder, will use fallback
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8174,9 +7992,8 @@ describe('Combine class', () => {
 					})
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: workflowDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8245,9 +8062,8 @@ describe('Combine class', () => {
 					>['stats'],
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: labelDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8309,9 +8125,8 @@ describe('Combine class', () => {
 					})
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8350,7 +8165,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -8386,7 +8200,6 @@ describe('Combine class', () => {
 				},
 			)
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: profileDefinition.metadataDefinition,
@@ -8426,7 +8239,6 @@ describe('Combine class', () => {
 				},
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metadataDefWithPackage,
@@ -8471,7 +8283,6 @@ describe('Combine class', () => {
 				directories: ['classAccesses'],
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metadataDefWithPackage,
@@ -8518,7 +8329,6 @@ describe('Combine class', () => {
 				directories: ['fieldPermissions'],
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metadataDefWithKeyOrder,
@@ -8556,7 +8366,6 @@ describe('Combine class', () => {
 				directories: ['testKey'],
 			}
 
-			const ctx = createCtxFromGlobal()
 			const config = {
 				ctx,
 				metadataDefinition: metadataDefWithDirectories,
@@ -8610,9 +8419,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'], // This creates array in that.#json[key]
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8664,9 +8472,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'], // This creates array in that.#json[key]
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8728,9 +8535,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'], // Process as directory
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8802,9 +8608,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8847,9 +8652,8 @@ describe('Combine class', () => {
 					root: 'Profile', // This sets that.#root
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8900,9 +8704,8 @@ describe('Combine class', () => {
 					root: 'Profile', // Root key that doesn't exist in JSON
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8936,9 +8739,8 @@ describe('Combine class', () => {
 					root: undefined, // No root defined
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -8977,9 +8779,8 @@ describe('Combine class', () => {
 					fileUtils.writeFile as ReturnType<typeof vi.fn>
 				).mockResolvedValue(undefined)
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9016,9 +8817,8 @@ describe('Combine class', () => {
 					fileUtils.readFile as ReturnType<typeof vi.fn>
 				).mockResolvedValue([{ field: 'Field1' }, { field: 'Field2' }])
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9075,9 +8875,8 @@ describe('Combine class', () => {
 					packageTypeIsDirectory: false, // Required for line 275
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9128,9 +8927,8 @@ describe('Combine class', () => {
 					fileUtils.getFiles as ReturnType<typeof vi.fn>
 				).mockResolvedValue([]) // No files - triggers error path
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9181,9 +8979,8 @@ describe('Combine class', () => {
 					fileUtils.getFiles as ReturnType<typeof vi.fn>
 				).mockResolvedValue([]) // No files - triggers error path
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9261,9 +9058,8 @@ describe('Combine class', () => {
 					directories: ['classAccesses'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9351,9 +9147,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9418,9 +9213,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9460,9 +9254,8 @@ describe('Combine class', () => {
 					fileUtils.readFile as ReturnType<typeof vi.fn>
 				).mockRejectedValue(new Error('Read failed')) // This will trigger catch block
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9522,9 +9315,8 @@ describe('Combine class', () => {
 					directories: ['fieldPermissions'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9566,9 +9358,8 @@ describe('Combine class', () => {
 					main: { fullName: 'Admin' },
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9620,9 +9411,8 @@ describe('Combine class', () => {
 					singleKey: { onlyKey: 'value' },
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9663,9 +9453,8 @@ describe('Combine class', () => {
 					arrayKey: [{ field: 'Field1' }, null, { field: 'Field2' }],
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9704,9 +9493,8 @@ describe('Combine class', () => {
 					main: { fullName: 'Admin' },
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9753,9 +9541,8 @@ describe('Combine class', () => {
 					main: ['main', 'custom', 'description'], // These will be sorted
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9798,9 +9585,8 @@ describe('Combine class', () => {
 					nullKey: null,
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9864,9 +9650,8 @@ describe('Combine class', () => {
 					main: ['loginIpRanges'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9928,9 +9713,8 @@ describe('Combine class', () => {
 					main: ['loginIpRanges'],
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -9985,9 +9769,8 @@ describe('Combine class', () => {
 					main: { fullName: 'Admin' },
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -10042,9 +9825,8 @@ describe('Combine class', () => {
 					main: { fullName: 'Admin' },
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -10086,9 +9868,8 @@ describe('Combine class', () => {
 					main: { fullName: 'Admin' },
 				})
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: profileDefinition.metadataDefinition,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -10133,9 +9914,8 @@ describe('Combine class', () => {
 					keyOrder: ['field', 'editable'], // Does NOT include 'order'
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',
@@ -10185,9 +9965,8 @@ describe('Combine class', () => {
 					packageTypeIsDirectory: false, // Required for line 309
 				}
 
-				const ctx = createCtxFromGlobal()
-				const config = {
-					ctx,
+			const config = {
+				ctx,
 					metadataDefinition: metaDef,
 					sourceDir: '/source',
 					targetDir: '/target',

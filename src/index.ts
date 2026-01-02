@@ -39,6 +39,8 @@ import * as workflowDefinition from './meta/Workflows.js'
 import * as yargOptions from './meta/yargs.js'
 import { Combine } from './party/combine.js'
 import { Split } from './party/split.js'
+import type { AppContext } from './types/context.js'
+import { createContext } from './types/context.js'
 import type { MetadataDefinition } from './types/metadata.js'
 
 // Suppress terminal capability errors at the very start, before any imports that might trigger them
@@ -49,16 +51,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // Marked setup moved to help command handler for lazy loading
-
-interface Logger {
-	error: (message: string) => void
-	warn: (message: string) => void
-	info: (message: string) => void
-	http: (message: string) => void
-	verbose: (message: string) => void
-	debug: (message: string) => void
-	silly: (message: string) => void
-}
 
 interface Icons {
 	warn: string
@@ -98,7 +90,7 @@ interface ProcessedStats {
 
 interface GlobalContext {
 	__basedir?: string
-	logger?: Logger
+	logger?: winston.Logger
 	consoleTransport?: {
 		silent?: boolean
 	}
@@ -158,7 +150,7 @@ global.logger = winston.createLogger({
 			level: 'warn', // Only log warnings and errors to file (not info)
 		}),
 	],
-}) as Logger
+})
 
 // Store console transport reference for toggling
 global.consoleTransport = consoleTransport
@@ -736,7 +728,22 @@ yargs(hideBin(process.argv))
 					global.git!.append = argvTyped.append || global.git!.append
 					global.git!.delta = argvTyped.delta || global.git!.delta
 					if (argvTyped.git === '') {
+						// SEC-013: Create temporary context for lastCommit call
+						const tempCtx = createContext({
+							basedir: global.__basedir || '',
+							logger: global.logger!,
+							displayError: global.displayError!,
+							format: 'yaml',
+							metaTypes: global.metaTypes!,
+							git: global.git,
+							signConfig: false,
+							verifyConfig: false,
+							icons: global.icons!,
+							consoleTransport: global.consoleTransport!,
+							runType: global.runType ?? null,
+						})
 						const commit = git.lastCommit({
+							ctx: tempCtx,
 							dir: global.__basedir!,
 							existsSync: fs.existsSync,
 							execFileSync,
@@ -809,8 +816,25 @@ yargs(hideBin(process.argv))
 
 					addPkg = new packageUtil.Package(addManifest)
 					desPkg = new packageUtil.Package(desManifest)
-					const prom1 = addPkg.getPackageXML(fileUtils)
-					const prom2 = desPkg.getPackageXML(fileUtils)
+					// SEC-013: Create temporary context for getPackageXML calls
+					// Note: This is a temporary workaround until full migration
+					const tempCtx = createContext({
+						basedir: global.__basedir || '',
+						logger: global.logger!,
+						displayError: global.displayError!,
+						format:
+							(argv as unknown as SplitCombineArgv).format ||
+							'yaml',
+						metaTypes: global.metaTypes!,
+						git: global.git,
+						signConfig: false,
+						verifyConfig: false,
+						icons: global.icons!,
+						consoleTransport: global.consoleTransport!,
+						runType: global.runType ?? null,
+					})
+					const prom1 = addPkg.getPackageXML(tempCtx, fileUtils)
+					const prom2 = desPkg.getPackageXML(tempCtx, fileUtils)
 
 					Promise.allSettled([prom1, prom2]).then((results) => {
 						const rejected = results.filter(
@@ -1052,7 +1076,20 @@ process.on('SIGINT', function () {
 })
 
 function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
-	const split = processSplit(types[0], argv)
+	// SEC-013: Create context from global state and argv
+	const ctx = createContext({
+		basedir: global.__basedir || '',
+		logger: global.logger!,
+		displayError: global.displayError!,
+		format: argv.format,
+		metaTypes: global.metaTypes!,
+		signConfig: argv.signConfig ?? false,
+		verifyConfig: argv.verifyConfig ?? false,
+		icons: global.icons!,
+		consoleTransport: global.consoleTransport!,
+		runType: global.runType ?? null,
+	})
+	const split = processSplit(ctx, types[0], argv)
 	split.then(() => {
 		types.shift()
 		if (types.length > 0) {
@@ -1074,6 +1111,7 @@ function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
 }
 
 async function processSplit(
+	ctx: AppContext,
 	typeItem: string,
 	argv: SplitCombineArgv,
 ): Promise<boolean> {
@@ -1084,6 +1122,10 @@ async function processSplit(
 		}
 		packageDir = await packageDirPromise
 		packageDirInitialized = true
+	}
+	// Update ctx.basedir if it was just initialized
+	if (packageDir && global.__basedir && ctx.basedir !== global.__basedir) {
+		ctx.basedir = global.__basedir
 	}
 
 	return new Promise(async (resolve, _reject) => {
@@ -1257,6 +1299,7 @@ async function processSplit(
 
 				try {
 					const metadataItem = new Split({
+						ctx,
 						metadataDefinition: typeObj.definition,
 						sourceDir: sourceDir,
 						targetDir: targetDir,
@@ -1392,7 +1435,21 @@ async function processSplit(
 }
 
 function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
-	const combine = processCombine(types[0], argv)
+	// SEC-013: Create context from global state and argv
+	const ctx = createContext({
+		basedir: global.__basedir || '',
+		logger: global.logger!,
+		displayError: global.displayError!,
+		format: argv.format,
+		metaTypes: global.metaTypes!,
+		git: global.git,
+		signConfig: argv.signConfig ?? false,
+		verifyConfig: argv.verifyConfig ?? false,
+		icons: global.icons!,
+		consoleTransport: global.consoleTransport!,
+		runType: global.runType ?? null,
+	})
+	const combine = processCombine(ctx, types[0], argv)
 	combine.then(async (resolveVal) => {
 		if (resolveVal === false) {
 			global.logger?.error(
@@ -1407,6 +1464,7 @@ function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 		} else {
 			if (global.git!.latestCommit !== undefined) {
 				await git.updateLastCommit({
+					ctx,
 					dir: global.__basedir!,
 					latest: global.git!.latestCommit,
 					fileUtils,
@@ -1414,8 +1472,8 @@ function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 				})
 			}
 			if (global.git!.enabled) {
-				await addPkg.savePackage({ XMLBuilder }, fileUtils)
-				await desPkg.savePackage({ XMLBuilder }, fileUtils)
+				await addPkg.savePackage(ctx, { XMLBuilder }, fileUtils)
+				await desPkg.savePackage(ctx, { XMLBuilder }, fileUtils)
 			}
 			if (argv.type === undefined || argv.type.split(',').length > 1) {
 				const message = `Combine completed in `
@@ -1435,6 +1493,7 @@ function combineHandler(argv: SplitCombineArgv, startTime: bigint): void {
 }
 
 async function processCombine(
+	ctx: AppContext,
 	typeItem: string,
 	argv: SplitCombineArgv,
 ): Promise<boolean> {
@@ -1456,12 +1515,12 @@ async function processCombine(
 		const startTime = process.hrtime.bigint()
 
 		if (!typeArray.includes(typeItem as MetadataType)) {
-			global.logger?.error('Metadata type not supported: ' + typeItem)
+			ctx.logger.error('Metadata type not supported: ' + typeItem)
 			process.exit(1)
 		}
 
 		let processList: string[] = []
-		const typeObj = global.metaTypes![typeItem]
+		const typeObj = ctx.metaTypes[typeItem]
 		const type = typeObj.type
 
 		let sourceDir = argv.source || ''
@@ -1471,7 +1530,7 @@ async function processCombine(
 			argv.type === undefined || name === undefined ? true : argv.all
 
 		sourceDir = path.join(
-			global.__basedir!,
+			ctx.basedir,
 			packageDir + '-party',
 			'main',
 			'default',
@@ -1479,7 +1538,7 @@ async function processCombine(
 		)
 		if (targetDir === '') {
 			targetDir = path.join(
-				global.__basedir!,
+				ctx.basedir,
 				packageDir,
 				'main',
 				'default',
@@ -1494,15 +1553,15 @@ async function processCombine(
 			)
 		}
 
-		if (type === global.metaTypes!.label.type) {
+		if (type === ctx.metaTypes.label.type) {
 			if (
-				!global.git!.enabled ||
+				!ctx.git?.enabled ||
 				[
 					...new Set([
-						...global.metaTypes![typeItem].add.directories,
-						...global.metaTypes![typeItem].remove.directories,
+						...ctx.metaTypes[typeItem].add.directories,
+						...ctx.metaTypes[typeItem].remove.directories,
 					]),
-				].includes(global.metaTypes![typeItem].definition.root)
+				].includes(ctx.metaTypes[typeItem].definition.root)
 			) {
 				processList.push(global.metaTypes!.label.definition.root)
 			}
@@ -1579,6 +1638,7 @@ async function processCombine(
 
 				try {
 					const metadataItem = new Combine({
+						ctx,
 						metadataDefinition: typeObj.definition,
 						sourceDir,
 						targetDir,

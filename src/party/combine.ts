@@ -7,6 +7,7 @@ import { sanitizeErrorPath } from '../lib/errorUtils.js'
 import * as fileUtils from '../lib/fileUtils.js'
 import type { Package } from '../lib/packageUtil.js'
 import { getGlobalProgressTracker } from '../lib/tuiProgressTracker.js'
+import type { AppContext } from '../types/context.js'
 import type { MetadataDefinition } from '../types/metadata.js'
 
 const processed = {
@@ -62,6 +63,7 @@ interface FileObj {
 }
 
 interface CombineConfig {
+	ctx: AppContext
 	metadataDefinition: MetadataDefinition
 	sourceDir: string
 	targetDir: string
@@ -130,6 +132,7 @@ export class Combine {
 	#deletedFiles: string[] = []
 	#mainDeleted = false
 
+	public ctx: AppContext
 	private _metadataDefinition!: MetadataDefinition
 	sourceDir!: string
 	targetDir!: string
@@ -140,6 +143,7 @@ export class Combine {
 	desPkg!: Package
 
 	constructor(config: CombineConfig) {
+		this.ctx = config.ctx
 		this.metadataDefinition = config.metadataDefinition
 		this.sourceDir = config.sourceDir
 		this.targetDir = config.targetDir
@@ -190,8 +194,8 @@ export class Combine {
 	}
 
 	get sequence(): number {
-		if (global.process && global.process.current > this._sequence) {
-			return global.process.current
+		if (this.ctx.process && this.ctx.process.current > this._sequence) {
+			return this.ctx.process.current
 		} else {
 			return this._sequence
 		}
@@ -246,14 +250,14 @@ export class Combine {
 			// set delta based on metadata definition if git delta enabled
 			that.#delta =
 				that.metadataDefinition.delta === true &&
-				global.git?.delta === true
+				that.ctx.git?.delta === true
 
 			if (that.#delta) {
 				const pathMatch = `/${that.metadataDefinition.directory}/${that.#fileName.shortName}/`
 
 				// get a list of all the added files
 				that.#addedFiles = (
-					global.metaTypes?.[that.metadataDefinition.alias]?.add
+					that.ctx.metaTypes[that.metadataDefinition.alias]?.add
 						.files || []
 				).filter((i) =>
 					i.toLowerCase().includes(pathMatch.toLowerCase()),
@@ -261,7 +265,7 @@ export class Combine {
 
 				// get a list of all the removed files
 				that.#deletedFiles = (
-					global.metaTypes?.[that.metadataDefinition.alias]?.remove
+					that.ctx.metaTypes[that.metadataDefinition.alias]?.remove
 						.files || []
 				).filter((i) =>
 					i.toLowerCase().includes(pathMatch.toLowerCase()),
@@ -269,12 +273,12 @@ export class Combine {
 
 				// check if main part file deleted
 				that.#mainDeleted = (
-					global.metaTypes?.[that.metadataDefinition.alias]?.remove
+					that.ctx.metaTypes[that.metadataDefinition.alias]?.remove
 						.files || []
 				).some(
 					(i) =>
 						i.includes(pathMatch) &&
-						i.toLowerCase().includes(`/main.${global.format}`),
+						i.toLowerCase().includes(`/main.${that.ctx.format}`),
 				)
 			}
 
@@ -284,7 +288,7 @@ export class Combine {
 			if (success === true) {
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
-					global.git?.enabled
+					that.ctx.git?.enabled
 				) {
 					if (!that.#delta || that.#addedFiles.length > 0) {
 						that.addPkg.addMember(
@@ -318,7 +322,7 @@ export class Combine {
 					that.#delta &&
 					that.#mainDeleted &&
 					!that.metadataDefinition.packageTypeIsDirectory &&
-					global.git?.enabled
+					that.ctx.git?.enabled
 				) {
 					// Delta mode with mainDeleted: add to desPkg and return true
 					that.desPkg.addMember(
@@ -330,7 +334,7 @@ export class Combine {
 
 				if (
 					that.metadataDefinition.packageTypeIsDirectory &&
-					global.git?.enabled
+					that.ctx.git?.enabled
 				) {
 					// packageTypeIsDirectory with git enabled: return true even if files don't exist
 					return true
@@ -345,15 +349,15 @@ export class Combine {
 				} else {
 					// Only log to console if console transport is not silenced (TUI not active)
 					if (
-						!global.consoleTransport ||
-						!global.consoleTransport.silent
+						!that.ctx.consoleTransport ||
+						!that.ctx.consoleTransport.silent
 					) {
-						global.logger?.warn(message)
+						that.ctx.logger.warn(message)
 					}
 				}
 				if (
 					!that.metadataDefinition.packageTypeIsDirectory &&
-					global.git?.enabled
+					that.ctx.git?.enabled
 				) {
 					that.desPkg.addMember(
 						that.metadataDefinition.type,
@@ -386,7 +390,7 @@ export class Combine {
 							fullName: path.join(
 								that.sourceDir,
 								that.metaDir,
-								`main.${global.format}`,
+								`main.${that.ctx.format}`,
 							),
 						}
 						const success = await processFile(
@@ -420,10 +424,10 @@ export class Combine {
 						} else {
 							// Only log to console if console transport is not silenced (TUI not active)
 							if (
-								!global.consoleTransport ||
-								!global.consoleTransport.silent
+								!that.ctx.consoleTransport ||
+								!that.ctx.consoleTransport.silent
 							) {
-								global.logger?.warn(message)
+								that.ctx.logger.warn(message)
 							}
 						}
 					}
@@ -456,7 +460,7 @@ export class Combine {
 				fullName: path.join(
 					that.sourceDir,
 					that.metaDir,
-					key + `.${global.format}`,
+					key + `.${that.ctx.format}`,
 				),
 			}
 			await processFile(that, key, fileObj)
@@ -476,7 +480,7 @@ export class Combine {
 			if (dirExists) {
 				const fileList = await fileUtils.getFiles(
 					currentDir,
-					global.format,
+					that.ctx.format,
 				)
 				fileList.sort() // process files alphabetically
 				that.#json[key] = []
@@ -503,7 +507,7 @@ export class Combine {
 			}
 
 			const filteredArray = (
-				global.metaTypes?.[that.metadataDefinition.alias]?.remove
+				that.ctx.metaTypes[that.metadataDefinition.alias]?.remove
 					.files || []
 			).filter((filePath) =>
 				filePath.startsWith(
@@ -543,9 +547,9 @@ export class Combine {
 				fileObj.shortName === undefined ||
 				fileObj.fullName === undefined
 			) {
-				global.displayError?.(
+				that.ctx.displayError(
 					`${
-						global.icons?.warn || ''
+						that.ctx.icons.warn || ''
 					} Invalid file information passed ${clc.redBright(
 						JSON.stringify(fileObj),
 					)}`,
@@ -560,7 +564,7 @@ export class Combine {
 						.includes(fileObj.fullName) &&
 					!fileObj.fullName
 						.toLowerCase()
-						.includes(`/main.${global.format}`)
+						.includes(`/main.${that.ctx.format}`)
 				)
 					return true
 			}
@@ -577,8 +581,8 @@ export class Combine {
 			// SEC-011: Validate symlinks before stat()
 			if (loginIpRanges) {
 				loginIpRangesSandboxFile = fileObj.fullName.replace(
-					`.${global.format}`,
-					`-sandbox.${global.format}`,
+					`.${that.ctx.format}`,
+					`-sandbox.${that.ctx.format}`,
 				)
 				try {
 					if (loginIpRangesSandboxFile) {
@@ -589,7 +593,7 @@ export class Combine {
 						if (linkStats.isSymbolicLink()) {
 							await fileUtils.validateSymlink(
 								loginIpRangesSandboxFile,
-								global.__basedir,
+								that.ctx.basedir,
 							)
 						}
 						loginIpRangesStats = await fs.promises.stat(
@@ -608,7 +612,7 @@ export class Combine {
 				if (linkStats.isSymbolicLink()) {
 					await fileUtils.validateSymlink(
 						fileObj.fullName,
-						global.__basedir,
+						that.ctx.basedir,
 					)
 				}
 				fileStats = await fs.promises.stat(fileObj.fullName)
@@ -629,7 +633,7 @@ export class Combine {
 					path.join(
 						that.sourceDir,
 						that.metaDir,
-						`main.${global.format}`,
+						`main.${that.ctx.format}`,
 					)
 				) {
 					return false
@@ -637,7 +641,7 @@ export class Combine {
 
 				if (
 					// git enabled and (package directory OR package mapping)
-					global.git?.enabled &&
+					that.ctx.git?.enabled &&
 					(that.metadataDefinition.packageTypeIsDirectory ||
 						(that.metadataDefinition.package !== undefined &&
 							path.dirname(fileObj.fullName).split('/').pop()! in
@@ -656,7 +660,7 @@ export class Combine {
 							that.#fileName.shortName +
 								'.' +
 								fileObj.shortName.replace(
-									`.${global.format}`,
+									`.${that.ctx.format}`,
 									'',
 								),
 						)
@@ -666,7 +670,10 @@ export class Combine {
 					) {
 						that.desPkg.addMember(
 							that.metadataDefinition.type,
-							fileObj.shortName.replace(`.${global.format}`, ''),
+							fileObj.shortName.replace(
+								`.${that.ctx.format}`,
+								'',
+							),
 						)
 					}
 				}
@@ -677,7 +684,7 @@ export class Combine {
 			if (
 				that.#delta &&
 				!(
-					global.metaTypes?.[that.metadataDefinition.alias]?.add
+					that.ctx.metaTypes[that.metadataDefinition.alias]?.add
 						.files || []
 				).includes(fileObj.fullName) &&
 				!loginIpRangesSandbox &&
@@ -685,7 +692,7 @@ export class Combine {
 					path.join(
 						that.sourceDir,
 						that.metaDir,
-						`main.${global.format}`,
+						`main.${that.ctx.format}`,
 					)
 			) {
 				return true
@@ -697,10 +704,12 @@ export class Combine {
 					let loginIpRangesSandboxResult: unknown
 					if (fileExists)
 						loginIpRangesResult = await fileUtils.readFile(
+							that.ctx,
 							fileObj.fullName,
 						)
 					if (loginIpRangesSandbox && loginIpRangesSandboxFile)
 						loginIpRangesSandboxResult = await fileUtils.readFile(
+							that.ctx,
 							loginIpRangesSandboxFile,
 						)
 					if (fileExists && loginIpRangesSandbox) {
@@ -716,13 +725,16 @@ export class Combine {
 						result = loginIpRangesSandboxResult
 					}
 				} else {
-					result = await fileUtils.readFile(fileObj.fullName)
+					result = await fileUtils.readFile(
+						that.ctx,
+						fileObj.fullName,
+					)
 				}
 			} catch (error) {
-				// Suppress verbose output - errors are logged via global.logger
+				// Suppress verbose output - errors are logged via ctx.logger
 				const errorMessage =
 					error instanceof Error ? error.message : String(error)
-				global.logger?.error(
+				that.ctx.logger.error(
 					`Error reading file: ${sanitizeErrorPath(fileObj.fullName)}: ${errorMessage}`,
 				)
 				throw error
@@ -733,7 +745,7 @@ export class Combine {
 					path.join(
 						that.sourceDir,
 						that.metaDir,
-						`main.${global.format}`,
+						`main.${that.ctx.format}`,
 					) &&
 				that.#type === 'profile' &&
 				resultTyped.main &&
@@ -783,12 +795,12 @@ export class Combine {
 			}
 
 			if (
-				global.git?.enabled &&
+				that.ctx.git?.enabled &&
 				fileObj.fullName !==
 					path.join(
 						that.sourceDir,
 						that.metaDir,
-						`main.${global.format}`,
+						`main.${that.ctx.format}`,
 					)
 			) {
 				if (
@@ -802,12 +814,15 @@ export class Combine {
 						],
 						that.#fileName.shortName +
 							'.' +
-							fileObj.shortName.replace(`.${global.format}`, ''),
+							fileObj.shortName.replace(
+								`.${that.ctx.format}`,
+								'',
+							),
 					)
 				} else if (that.metadataDefinition.packageTypeIsDirectory) {
 					that.addPkg.addMember(
 						that.metadataDefinition.type,
-						fileObj.shortName.replace(`.${global.format}`, ''),
+						fileObj.shortName.replace(`.${that.ctx.format}`, ''),
 					)
 				}
 			}
@@ -914,10 +929,10 @@ export class Combine {
 						progressTracker.logWarning(warning)
 					} else {
 						if (
-							!global.consoleTransport ||
-							!global.consoleTransport.silent
+							!that.ctx.consoleTransport ||
+							!that.ctx.consoleTransport.silent
 						) {
-							global.logger?.warn(warning)
+							that.ctx.logger.warn(warning)
 						}
 					}
 					// Create root wrapper with all JSON data (excluding root key if it exists as undefined)
@@ -934,6 +949,7 @@ export class Combine {
 			const xml = `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build(jsonToBuild)}`
 
 			await fileUtils.writeFile(
+				that.ctx,
 				that.#fileName.fullName || '',
 				xml,
 				that.#fileStats.atime,
@@ -946,9 +962,9 @@ export class Combine {
 
 		function finishMessage(that: Combine): void {
 			// Progress is handled by ProgressTracker
-			// Errors are logged via global.logger
+			// Errors are logged via ctx.logger
 			if (that.#errorMessage !== '') {
-				global.logger?.error(
+				that.ctx.logger.error(
 					`Error processing ${that.#fileName.shortName || 'unknown'}: ${that.#errorMessage}`,
 				)
 			}

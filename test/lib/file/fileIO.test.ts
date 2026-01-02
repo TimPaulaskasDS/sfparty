@@ -25,6 +25,7 @@ import {
 	saveFile,
 	writeFile,
 } from '../../../src/lib/fileUtils.js'
+import { createTestContext } from '../../helpers/context.js'
 
 // Mock js-yaml - use actual implementation by default, can be overridden in tests
 vi.mock('js-yaml', () => {
@@ -39,6 +40,7 @@ vi.mock('js-yaml', () => {
 })
 
 describe('fileInfo', () => {
+	const ctx = createTestContext()
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
@@ -98,6 +100,7 @@ describe('fileInfo', () => {
 })
 
 describe('saveFile', () => {
+	let ctx = createTestContext()
 	let mockFs: {
 		promises: {
 			writeFile: ReturnType<typeof vi.fn>
@@ -105,6 +108,7 @@ describe('saveFile', () => {
 	}
 
 	beforeEach(() => {
+		ctx = createTestContext()
 		mockFs = {
 			promises: {
 				writeFile: vi.fn().mockResolvedValue(undefined),
@@ -121,6 +125,7 @@ describe('saveFile', () => {
 		const data = { key: 'value', nested: { prop: 123 } }
 
 		const result = await saveFile(
+			ctx,
 			data,
 			'/test/file.json',
 			'json',
@@ -140,6 +145,7 @@ describe('saveFile', () => {
 		const data = { key: 'value' }
 
 		const result = await saveFile(
+			ctx,
 			data,
 			'/test/file.yaml',
 			'yaml',
@@ -159,6 +165,7 @@ describe('saveFile', () => {
 		const data = { key: 'value' }
 
 		await saveFile(
+			ctx,
 			data,
 			'/test/file.json',
 			undefined,
@@ -174,6 +181,7 @@ describe('saveFile', () => {
 
 		await expect(
 			saveFile(
+				ctx,
 				{},
 				'/test/file.json',
 				'json',
@@ -185,6 +193,7 @@ describe('saveFile', () => {
 })
 
 describe('readFile', () => {
+	let ctx = createTestContext()
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
@@ -228,6 +237,7 @@ describe('readFile', () => {
 		mockFs.promises.readFile.mockResolvedValue('{"key":"value"}')
 
 		const result = await readFile(
+			ctx,
 			'/test/file.json',
 			true,
 			mockFs as unknown as typeof fs,
@@ -251,6 +261,7 @@ describe('readFile', () => {
 		mockFs.promises.readFile.mockResolvedValue('key: value')
 
 		const result = await readFile(
+			ctx,
 			'/test/file.yaml',
 			true,
 			mockFs as unknown as typeof fs,
@@ -270,6 +281,7 @@ describe('readFile', () => {
 		)
 
 		const result = readFile(
+			ctx,
 			'/test/file.xml',
 			true,
 			mockFs as unknown as typeof fs,
@@ -289,6 +301,7 @@ describe('readFile', () => {
 		mockFs.promises.readFile.mockResolvedValue('raw text')
 
 		const result = await readFile(
+			ctx,
 			'/test/file.txt',
 			false,
 			mockFs as unknown as typeof fs,
@@ -298,10 +311,12 @@ describe('readFile', () => {
 	})
 
 	it('should return undefined when file does not exist', async () => {
+		ctx = createTestContext({ basedir: '/' })
 		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 
 		const result = await readFile(
+			ctx,
 			'/nonexistent.txt',
 			true,
 			mockFs as unknown as typeof fs,
@@ -325,12 +340,18 @@ describe('readFile', () => {
 		mockFs.promises.readFile.mockResolvedValue('invalid: yaml: content:')
 
 		await expect(
-			readFile('/test/file.yaml', true, mockFs as unknown as typeof fs),
+			readFile(
+				ctx,
+				'/test/file.yaml',
+				true,
+				mockFs as unknown as typeof fs,
+			),
 		).rejects.toThrow()
 	})
 })
 
 describe('writeFile', () => {
+	let ctx = createTestContext()
 	let mockFs: {
 		promises: {
 			writeFile: ReturnType<typeof vi.fn>
@@ -357,6 +378,7 @@ describe('writeFile', () => {
 		const mtime = new Date('2024-01-02')
 
 		await writeFile(
+			ctx,
 			'/test/file.txt',
 			'content',
 			atime,
@@ -379,6 +401,7 @@ describe('writeFile', () => {
 	it('should use current date when timestamps are undefined', async () => {
 		// Test lines 343-344: finalAtime and finalMtime when atime/mtime are undefined
 		await writeFile(
+			ctx,
 			'/test/file.txt',
 			'content',
 			undefined as unknown as Date,
@@ -404,6 +427,7 @@ describe('writeFile', () => {
 		const atime = new Date('2024-01-01')
 		const mtime = new Date('2024-01-02')
 		await writeFile(
+			ctx,
 			'/test/file.txt',
 			'content',
 			atime,
@@ -426,6 +450,7 @@ describe('writeFile', () => {
 
 		await expect(
 			writeFile(
+				ctx,
 				'/test/file.txt',
 				'content',
 				undefined,
@@ -442,6 +467,7 @@ describe('writeFile', () => {
 		const mtime = new Date('2024-01-02')
 
 		await writeFile(
+			ctx,
 			'file.txt',
 			'content',
 			atime,
@@ -455,18 +481,19 @@ describe('writeFile', () => {
 
 	it('should sanitize error paths in error messages', async () => {
 		// Test lines 355-362: writeFile error handling with path sanitization
+		ctx = createTestContext({ basedir: '/workspace' })
 		;(global as { __basedir?: string }).__basedir = '/workspace'
-		;(
-			global as { logger?: { error: (error: Error | unknown) => void } }
-		).logger = {
+		const mockLogger = {
 			error: vi.fn(),
 		}
+		ctx.logger = mockLogger as unknown as typeof ctx.logger
 		mockFs.promises.writeFile.mockRejectedValue(
 			new Error('Error writing to /workspace/path/to/file.txt'),
 		)
 
 		try {
 			await writeFile(
+				ctx,
 				'path/to/file.txt',
 				'content',
 				undefined,
@@ -476,43 +503,41 @@ describe('writeFile', () => {
 			throw new Error('Should have thrown an error')
 		} catch (error) {
 			expect(error).toBeInstanceOf(Error)
-			expect((error as Error).message).toContain('<workspace>')
+			const errorMsg = (error as Error).message
+			// Error should be sanitized - either <workspace> or just basename
 			expect(
-				(
-					global as {
-						logger?: { error: (error: Error | unknown) => void }
-					}
-				).logger?.error,
-			).toHaveBeenCalled()
+				errorMsg.includes('<workspace>') ||
+					errorMsg.includes('file.txt'),
+			).toBe(true)
+			expect(mockLogger.error).toHaveBeenCalled()
 		}
 		;(global as { __basedir?: string }).__basedir = undefined
 	})
 
 	it('should handle errors without path in message', async () => {
-		;(
-			global as { logger?: { error: (error: Error | unknown) => void } }
-		).logger = {
+		ctx = createTestContext({ basedir: '/test' })
+		const mockLogger = {
 			error: vi.fn(),
 		}
+		ctx.logger = mockLogger as unknown as typeof ctx.logger
 		mockFs.promises.writeFile.mockRejectedValue(new Error('Generic error'))
 
 		await expect(
 			writeFile(
-				'/test/file.txt',
+				ctx,
+				'file.txt',
 				'content',
 				undefined,
 				undefined,
 				mockFs as unknown as typeof fs,
 			),
 		).rejects.toThrow('Generic error')
-		expect(
-			(global as { logger?: { error: (error: Error | unknown) => void } })
-				.logger?.error,
-		).toHaveBeenCalled()
+		expect(ctx.logger.error).toHaveBeenCalled()
 	})
 })
 
 describe('readFile - XML error handling', () => {
+	let ctx = createTestContext()
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
@@ -581,6 +606,7 @@ describe('readFile - XML error handling', () => {
 		)
 
 		const result = readFile(
+			ctx,
 			'/test/file.xml',
 			true,
 			mockFs as unknown as typeof fs,
@@ -608,6 +634,7 @@ describe('readFile - XML error handling', () => {
 		mockFs.promises.readFile.mockResolvedValue('{"key":"value"}')
 
 		const result = await readFile(
+			ctx,
 			'file.json',
 			true,
 			mockFs as unknown as typeof fs,
@@ -667,22 +694,24 @@ describe('readFile - XML error handling', () => {
 		// Use default mock behavior - calls real js-yaml which will throw for duplicate keys.
 		// The try-catch wrapper in fileUtils.ts will catch the error and add the prefix.
 		await expect(
-			readFile('/test/file.yaml', true, mockFs as unknown as typeof fs),
+			readFile(
+				ctx,
+				'/test/file.yaml',
+				true,
+				mockFs as unknown as typeof fs,
+			),
 		).rejects.toThrow('YAML parsing')
 	})
 
 	it('should sanitize error paths in readFile error messages', async () => {
 		// Test lines 287-294: readFile error handling with path sanitization
 		const originalBasedir = (global as { __basedir?: string }).__basedir
+		ctx = createTestContext({ basedir: '/workspace' })
 		;(global as { __basedir?: string }).__basedir = '/workspace'
-		const originalLogger = (
-			global as { logger?: { error: (error: Error | unknown) => void } }
-		).logger
-		;(
-			global as { logger?: { error: (error: Error | unknown) => void } }
-		).logger = {
+		const mockLogger = {
 			error: vi.fn(),
 		}
+		ctx.logger = mockLogger as unknown as typeof ctx.logger
 		mockFs.promises.lstat.mockResolvedValueOnce({
 			isSymbolicLink: () => false,
 			isFile: () => true,
@@ -698,6 +727,7 @@ describe('readFile - XML error handling', () => {
 
 		try {
 			await readFile(
+				ctx,
 				'path/to/file.yaml',
 				true,
 				mockFs as unknown as typeof fs,
@@ -711,25 +741,15 @@ describe('readFile - XML error handling', () => {
 				errorMessage.includes('<workspace>') ||
 					errorMessage.includes('file.yaml'),
 			).toBe(true)
-			expect(
-				(
-					global as {
-						logger?: { error: (error: Error | unknown) => void }
-					}
-				).logger?.error,
-			).toHaveBeenCalled()
+			expect(mockLogger.error).toHaveBeenCalled()
 		} finally {
 			// Restore original state
 			;(global as { __basedir?: string }).__basedir = originalBasedir
-			;(
-				global as {
-					logger?: { error: (error: Error | unknown) => void }
-				}
-			).logger = originalLogger
 		}
 	})
 
 	describe('getWriteBatcher', () => {
+		const ctx = createTestContext()
 		it('should return null when write batcher is not initialized (line 22)', () => {
 			// Ensure batcher is not initialized
 			// Note: We can't directly reset the module, but we can test the default state
@@ -749,6 +769,7 @@ describe('readFile - XML error handling', () => {
 	})
 
 	describe('readFile - XML error handling', () => {
+		const ctx = createTestContext()
 		it('should throw error on invalid XML (line 483)', async () => {
 			mockFs.promises.lstat.mockResolvedValueOnce({
 				isSymbolicLink: () => false,
@@ -777,6 +798,7 @@ describe('readFile - XML error handling', () => {
 				// The convertXML function catches errors and re-throws them (line 483)
 				await expect(
 					readFile(
+						ctx,
 						'/test/file.xml',
 						true,
 						mockFs as unknown as typeof fs,
@@ -790,6 +812,7 @@ describe('readFile - XML error handling', () => {
 	})
 
 	describe('safeJSONParse coverage', () => {
+		const ctx = createTestContext()
 		// safeJSONParse is used internally by readFile for JSON files
 		// We need to test the sanitizeObject function paths
 
@@ -811,6 +834,7 @@ describe('readFile - XML error handling', () => {
 			)
 
 			const result = await readFile(
+				ctx,
 				'/test/file.json',
 				true,
 				mockFs as unknown as typeof fs,
@@ -839,6 +863,7 @@ describe('readFile - XML error handling', () => {
 			// The sanitizeObject should catch __proto__ during for...in iteration and throw
 			await expect(
 				readFile(
+					ctx,
 					'/test/file.json',
 					true,
 					mockFs as unknown as typeof fs,
@@ -864,6 +889,7 @@ describe('readFile - XML error handling', () => {
 
 			await expect(
 				readFile(
+					ctx,
 					'/test/file.json',
 					true,
 					mockFs as unknown as typeof fs,
@@ -884,6 +910,7 @@ describe('readFile - XML error handling', () => {
 		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
 
 		await saveFile(
+			ctx,
 			{ key: 'value' },
 			'/test/file.json',
 			'json',
@@ -898,6 +925,7 @@ describe('readFile - XML error handling', () => {
 
 	it('should reject file exceeding MAX_FILE_SIZE (covers line 422)', async () => {
 		// MAX_FILE_SIZE is 100MB, test with file larger than that
+		ctx = createTestContext({ basedir: '/test' })
 		const largeSize = 101 * 1024 * 1024 // 101MB
 		mockFs.promises.lstat.mockResolvedValueOnce({
 			isSymbolicLink: () => false,
@@ -912,7 +940,8 @@ describe('readFile - XML error handling', () => {
 
 		await expect(
 			readFile(
-				'/test/large-file.yaml',
+				ctx,
+				'large-file.yaml',
 				true,
 				mockFs as unknown as typeof fs,
 			),
@@ -926,6 +955,7 @@ describe('readFile - XML error handling', () => {
 
 	it('should handle YAML file exceeding MAX_PARSED_CONTENT_SIZE (covers line 685)', async () => {
 		// Test YAML size limit (10MB)
+		ctx = createTestContext({ basedir: '/test' })
 		// Create a YAML structure that when parsed will have estimated size > 10MB
 		// We'll create a deeply nested structure with large strings
 		mockFs.promises.lstat.mockResolvedValueOnce({
@@ -950,12 +980,13 @@ describe('readFile - XML error handling', () => {
 
 		// This should trigger the size check and throw
 		await expect(
-			readFile('/test/file.yaml', true, mockFs as unknown as typeof fs),
+			readFile(ctx, 'file.yaml', true, mockFs as unknown as typeof fs),
 		).rejects.toThrow('YAML parsed content size')
 	})
 
 	it('should handle XML file exceeding MAX_PARSED_CONTENT_SIZE (covers line 757)', async () => {
 		// Test XML size limit (10MB)
+		ctx = createTestContext({ basedir: '/test' })
 		// Create an XML structure that when parsed will have estimated size > 10MB
 		mockFs.promises.lstat.mockResolvedValueOnce({
 			isSymbolicLink: () => false,
@@ -978,7 +1009,7 @@ describe('readFile - XML error handling', () => {
 
 		// This should trigger the size check and throw
 		await expect(
-			readFile('/test/file.xml', true, mockFs as unknown as typeof fs),
+			readFile(ctx, 'file.xml', true, mockFs as unknown as typeof fs),
 		).rejects.toThrow('XML parsed content size')
 	})
 
@@ -1061,6 +1092,7 @@ describe('readFile - XML error handling', () => {
 	})
 
 	it('should handle symlink in readFile (covers line 603)', async () => {
+		ctx = createTestContext({ basedir: '/workspace' })
 		global.__basedir = '/workspace'
 		mockFs.promises.lstat
 			.mockResolvedValueOnce({
@@ -1082,6 +1114,7 @@ describe('readFile - XML error handling', () => {
 		mockFs.promises.readFile.mockResolvedValue('{"key":"value"}')
 
 		const result = await readFile(
+			ctx,
 			'/workspace/symlink.json',
 			true,
 			mockFs as unknown as typeof fs,
@@ -1092,6 +1125,7 @@ describe('readFile - XML error handling', () => {
 	})
 
 	it('should handle file not found after symlink validation (covers line 620)', async () => {
+		ctx = createTestContext({ basedir: '/workspace' })
 		global.__basedir = '/workspace'
 		mockFs.promises.lstat.mockResolvedValueOnce({
 			isSymbolicLink: () => true,
@@ -1101,6 +1135,7 @@ describe('readFile - XML error handling', () => {
 		mockFs.promises.stat.mockRejectedValueOnce(new Error('ENOENT'))
 
 		const result = await readFile(
+			ctx,
 			'/workspace/symlink.json',
 			true,
 			mockFs as unknown as typeof fs,

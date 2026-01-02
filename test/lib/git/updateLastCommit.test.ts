@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import * as fileUtilsModule from '../../../src/lib/fileUtils.js'
 import { updateLastCommit } from '../../../src/lib/gitUtils.js'
+import { createTestContext } from '../../helpers/context.js'
 
 let dir: string, latest: string | undefined
 
@@ -12,8 +13,15 @@ beforeEach(() => {
 
 it('should throw an error if latest is not a string', async () => {
 	latest = {} as unknown as string
+	const ctx = createTestContext()
 	await expect(
-		updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs }),
+		updateLastCommit({
+			ctx,
+			dir,
+			latest,
+			fileUtils: fileUtilsModule,
+			fs,
+		}),
 	).rejects.toThrow('updateLastCommit received a object instead of string')
 })
 
@@ -30,7 +38,14 @@ it('should not update lastCommit property if latest is undefined', async () => {
 	const saveFileSpy = vi
 		.spyOn(fileUtilsModule, 'saveFile')
 		.mockResolvedValue(true)
-	await updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
+	const ctx = createTestContext()
+	await updateLastCommit({
+		ctx,
+		dir,
+		latest,
+		fileUtils: fileUtilsModule,
+		fs,
+	})
 	expect(fileExistsSpy).not.toHaveBeenCalled()
 	expect(readFileSpy).not.toHaveBeenCalled()
 	expect(saveFileSpy).not.toHaveBeenCalled()
@@ -79,9 +94,17 @@ it('should update lastCommit property in index.yaml for the current branch', asy
 		.spyOn(fileUtilsModule, 'saveFile')
 		.mockResolvedValue(true)
 
-	await updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
+	const ctx = createTestContext()
+	await updateLastCommit({
+		ctx,
+		dir,
+		latest,
+		fileUtils: fileUtilsModule,
+		fs,
+	})
 
 	expect(saveFileSpy).toHaveBeenCalledWith(
+		ctx,
 		{ git: { branches: { 'mock-branch': latest } } },
 		'/test/directory/.sfdx/sfparty/index.yaml',
 	)
@@ -102,9 +125,17 @@ it('should save the default definition with branches object if file does not exi
 		},
 	}
 
-	await updateLastCommit({ dir, latest, fileUtils: fileUtilsModule, fs })
+	const ctx = createTestContext()
+	await updateLastCommit({
+		ctx,
+		dir,
+		latest,
+		fileUtils: fileUtilsModule,
+		fs,
+	})
 
 	expect(saveFileSpy).toHaveBeenCalledWith(
+		ctx,
 		defaultDefinitionWithBranches,
 		'/test/directory/.sfdx/sfparty/index.yaml',
 	)

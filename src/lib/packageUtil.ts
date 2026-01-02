@@ -2,15 +2,36 @@ import type { XMLBuilder } from 'fast-xml-parser'
 import fs from 'fs'
 import path from 'path'
 import * as packageDefinition from '../meta/Package.js'
+import type { AppContext } from '../types/context.js'
 
 interface FileUtilsInterface {
 	fileExists: (options: {
 		filePath: string
 		fs: typeof fs
 	}) => Promise<boolean>
-	readFile: (filePath: string) => Promise<unknown>
+	readFile: (
+		ctx: AppContext,
+		filePath: string,
+		convert?: boolean,
+		fsTmp?: typeof fs,
+	) => Promise<unknown>
 	createDirectory: (dirPath: string) => Promise<void>
-	writeFile: (fileName: string, data: string) => Promise<void>
+	writeFile: (
+		ctx: AppContext,
+		fileName: string,
+		data: string,
+		atime?: Date,
+		mtime?: Date,
+		fsTmp?: typeof fs,
+	) => Promise<void>
+	saveFile: (
+		ctx: AppContext,
+		json: unknown,
+		fileName: string,
+		format?: string,
+		fsTmp?: typeof fs,
+		useBatching?: boolean,
+	) => Promise<boolean>
 }
 
 interface XMLBuilderInterface {
@@ -66,7 +87,10 @@ export class Package {
 		this.packageJSON = undefined
 	}
 
-	async getPackageXML(fileUtils: FileUtilsInterface): Promise<string> {
+	async getPackageXML(
+		ctx: AppContext,
+		fileUtils: FileUtilsInterface,
+	): Promise<string> {
 		const that = this
 		try {
 			if (that.xmlPath === undefined)
@@ -78,8 +102,8 @@ export class Package {
 				fs,
 			})
 
-			if (exists && global.git?.append) {
-				const json = await fileUtils.readFile(fileName)
+			if (exists && ctx.git?.append) {
+				const json = await fileUtils.readFile(ctx, fileName)
 				try {
 					let packageJson = json as PackageJSON | undefined
 					if (
@@ -93,7 +117,7 @@ export class Package {
 							),
 						) as PackageJSON
 					}
-					await processJSON(that, packageJson, fileUtils)
+					await processJSON(that, packageJson, ctx, fileUtils)
 					return 'existing'
 				} catch (error) {
 					throw error
@@ -105,7 +129,7 @@ export class Package {
 							packageDefinition.metadataDefinition.emptyPackage,
 						),
 					)
-					await processJSON(that, json)
+					await processJSON(that, json, ctx, fileUtils)
 					return 'not found'
 				} catch (error) {
 					throw error
@@ -118,12 +142,14 @@ export class Package {
 		async function processJSON(
 			that: Package,
 			json: PackageJSON,
+			ctx: AppContext,
 			fileUtils?: FileUtilsInterface,
 		): Promise<void> {
 			try {
 				if (fileUtils) {
 					const data = await fileUtils.readFile(
-						path.join(global.__basedir || '', 'sfdx-project.json'),
+						ctx,
+						path.join(ctx.basedir || '', 'sfdx-project.json'),
 					)
 					// SEC-012: Validate runtime type
 					const { validateData, SfdxProjectSchema } = await import(
@@ -259,6 +285,7 @@ export class Package {
 	}
 
 	async savePackage(
+		ctx: AppContext,
 		xmlBuilderModule: XMLBuilderInterface,
 		fileUtils: FileUtilsInterface,
 	): Promise<void> {
@@ -288,7 +315,7 @@ export class Package {
 			// Add XML declaration manually since fast-xml-parser doesn't have xmlDeclaration option
 			const xml = `<?xml version="1.0" encoding="UTF-8"?>\n${builder.build(jsonToBuild)}`
 
-			await fileUtils.writeFile(fileName, xml)
+			await fileUtils.writeFile(ctx, fileName, xml)
 		} catch (error) {
 			throw error
 		}

@@ -16,6 +16,7 @@ import {
 	validatePath,
 	validateSymlink,
 } from '../../src/lib/fileUtils.js'
+import { createTestContext } from '../helpers/context.js'
 
 // Mock child_process for git operation tests
 vi.mock('child_process', async () => {
@@ -84,8 +85,9 @@ describe('Security Test Suite', () => {
 			fs.writeFileSync(tempFile, xxeXml)
 
 			try {
+				const ctx = createTestContext({ basedir: os.tmpdir() })
 				// fast-xml-parser should reject external entities
-				await expect(readFile(tempFile, true)).rejects.toThrow()
+				await expect(readFile(ctx, tempFile, true)).rejects.toThrow()
 			} finally {
 				if (fs.existsSync(tempFile)) {
 					fs.unlinkSync(tempFile)
@@ -113,7 +115,8 @@ describe('Security Test Suite', () => {
 			fs.writeFileSync(tempFile, deepXml)
 
 			try {
-				await expect(readFile(tempFile, true)).rejects.toThrow(
+				const ctx = createTestContext({ basedir: os.tmpdir() })
+				await expect(readFile(ctx, tempFile, true)).rejects.toThrow(
 					'exceeds maximum allowed depth',
 				)
 			} finally {
@@ -146,7 +149,8 @@ describe('Security Test Suite', () => {
 			fs.writeFileSync(tempFile, deepYaml)
 
 			try {
-				await expect(readFile(tempFile, true)).rejects.toThrow(
+				const ctx = createTestContext({ basedir: os.tmpdir() })
+				await expect(readFile(ctx, tempFile, true)).rejects.toThrow(
 					'exceeds maximum allowed depth',
 				)
 			} finally {
@@ -226,8 +230,14 @@ describe('Security Test Suite', () => {
 					},
 				}
 
+				const ctx = createTestContext({ basedir: os.tmpdir() })
 				await expect(
-					readFile(tempFile, true, mockFs as unknown as typeof fs),
+					readFile(
+						ctx,
+						tempFile,
+						true,
+						mockFs as unknown as typeof fs,
+					),
 				).rejects.toThrow('exceeds maximum limit')
 			} finally {
 				if (fs.existsSync(tempFile)) {
