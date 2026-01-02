@@ -152,6 +152,7 @@ export class Combine {
 		// Test helper to set error message for coverage testing (line 913)
 		// This is only used in tests to cover the unreachable code path
 		if (process.env.NODE_ENV === 'test') {
+			// biome-ignore lint/suspicious/noExplicitAny: Test helper - TypeScript doesn't allow adding properties to 'this' without type assertion
 			;(this as any).__testSetErrorMessage = (msg: string) => {
 				this.#errorMessage = msg
 			}

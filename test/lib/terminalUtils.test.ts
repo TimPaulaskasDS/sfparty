@@ -24,6 +24,7 @@ describe('terminalUtils', () => {
 			cb?: (err?: Error | null) => void,
 		): boolean {
 			stderrWriteCalls.push({ chunk, encodingOrCb, cb })
+			// biome-ignore lint/suspicious/noExplicitAny: Test mock - Type assertion needed for test mock compatibility with Node.js process.stderr.write types
 			return originalStderrWrite(chunk, encodingOrCb as any, cb)
 		} as typeof process.stderr.write
 	})

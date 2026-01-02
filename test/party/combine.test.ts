@@ -8417,6 +8417,7 @@ describe('Combine class', () => {
 				vi.spyOn(
 					await import('../../src/lib/tuiProgressTracker.js'),
 					'getGlobalProgressTracker',
+					// biome-ignore lint/suspicious/noExplicitAny: Test mock - Type assertion needed for Vitest mock compatibility with getGlobalProgressTracker return type
 				).mockReturnValue(mockTracker as any)
 
 				;(
@@ -8521,6 +8522,7 @@ describe('Combine class', () => {
 				const combine = new Combine(config)
 
 				// Use test helper to set error message (only available in test environment)
+				// biome-ignore lint/suspicious/noExplicitAny: Test helper - Accessing test helper method added via type assertion in combine.ts:155
 				const testHelper = (combine as any).__testSetErrorMessage
 				if (testHelper) {
 					testHelper('Test error message')

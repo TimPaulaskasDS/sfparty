@@ -394,6 +394,7 @@ describe('WriteBatcher', () => {
 			const file1 = path.join(tempDir, 'error1.txt')
 			const file2 = path.join(tempDir, 'error2.txt')
 			const file3 = path.join(tempDir, 'error3.txt')
+			// biome-ignore lint/suspicious/noExplicitAny: Test helper - Accessing private writeQueue property for testing internal queue state
 			;(batcher as any).writeQueue.push(
 				{ fileName: file1, data: 'content1' },
 				{ fileName: file2, data: 'content2' },
@@ -512,6 +513,7 @@ describe('serializeData', () => {
 				const filePath = path.join(testTempDir, `timer${i}.txt`)
 				files.push(filePath)
 				// Access private queue to add writes without triggering auto-flush
+				// biome-ignore lint/suspicious/noExplicitAny: Test helper - Accessing private writeQueue property for testing internal queue state
 				;(batcher as any).writeQueue.push({
 					fileName: filePath,
 					data: `content${i}`,
@@ -536,6 +538,7 @@ describe('serializeData', () => {
 			// CRITICAL: Manually call scheduleNextFlush() to cover lines 108-109
 			// This simulates what the setTimeout callback does
 			// In production, this is called by the setTimeout callback
+			// biome-ignore lint/suspicious/noExplicitAny: Test helper - Accessing private scheduleNextFlush() method for testing internal flush scheduling
 			;(batcher as any).scheduleNextFlush()
 
 			// Wait for the scheduled flush to complete
@@ -583,6 +586,7 @@ describe('serializeData', () => {
 			const file2 = path.join(testTempDir, 'concurrent2.txt')
 
 			// Add writes directly to queue to avoid auto-flush
+			// biome-ignore lint/suspicious/noExplicitAny: Test helper - Accessing private writeQueue property for testing internal queue state
 			;(batcher as any).writeQueue.push(
 				{ fileName: file1, data: 'content1' },
 				{ fileName: file2, data: 'content2' },
