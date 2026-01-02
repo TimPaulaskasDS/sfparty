@@ -72,6 +72,24 @@ function getOptions(type: string): YargsOptions {
 				'maximum number of files to process concurrently (min: 1, max: 100, default: auto-calculated based on system resources)',
 			type: 'number',
 		}
+
+		optionObj.signConfig = {
+			alias: 'S',
+			demand: false,
+			description:
+				'sign configuration files (sfdx-project.json) to prevent tampering (SEC-015)',
+			type: 'boolean',
+			default: false,
+		}
+
+		optionObj.verifyConfig = {
+			alias: 'V',
+			demand: false,
+			description:
+				'verify configuration file signatures (fails if signature invalid or missing)',
+			type: 'boolean',
+			default: false,
+		}
 	}
 
 	if (type === 'combine') {
@@ -122,6 +140,24 @@ function getOptions(type: string): YargsOptions {
 			description:
 				'maximum number of files to process concurrently (min: 1, max: 100, default: auto-calculated based on system resources)',
 			type: 'number',
+		}
+
+		optionObj.signConfig = {
+			alias: 'S',
+			demand: false,
+			description:
+				'sign configuration files (sfdx-project.json) to prevent tampering (SEC-015)',
+			type: 'boolean',
+			default: false,
+		}
+
+		optionObj.verifyConfig = {
+			alias: 'V',
+			demand: false,
+			description:
+				'verify configuration file signatures (fails if signature invalid or missing)',
+			type: 'boolean',
+			default: false,
 		}
 	}
 

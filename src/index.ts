@@ -109,6 +109,8 @@ interface GlobalContext {
 	runType?: string | null
 	format?: string
 	process?: ProcessedStats
+	signConfig?: boolean
+	verifyConfig?: boolean
 }
 
 declare const global: GlobalContext & typeof globalThis
@@ -624,6 +626,8 @@ interface SplitCombineArgv {
 	all?: boolean
 	keepFalseValues?: boolean
 	maxConcurrency?: number
+	signConfig?: boolean
+	verifyConfig?: boolean
 }
 
 yargs(hideBin(process.argv))
@@ -692,8 +696,11 @@ yargs(hideBin(process.argv))
 			return yargs
 		},
 		handler: (argv) => {
-			global.format = (argv as unknown as SplitCombineArgv).format
-			splitHandler(argv as unknown as SplitCombineArgv, processStartTime)
+			const argvTyped = argv as unknown as SplitCombineArgv
+			global.format = argvTyped.format
+			global.signConfig = argvTyped.signConfig ?? false
+			global.verifyConfig = argvTyped.verifyConfig ?? false
+			splitHandler(argvTyped, processStartTime)
 		},
 	})
 	.command({
@@ -1808,6 +1815,25 @@ async function getRootPath(packageDir?: string): Promise<string> {
 				'./lib/validation.js'
 			)
 			projectJSON = validateData(parsed, SfdxProjectSchema)
+
+			// SEC-015: Verify configuration file signature if verification is enabled
+			if (global.verifyConfig) {
+				const { verifyFile } = await import('./lib/fileSigning.js')
+				try {
+					const hasSig = verifyFile(rootPath)
+					if (!hasSig) {
+						global.logger?.warn(
+							`Configuration file ${rootPath} has no signature. Use --sign-config to sign it.`,
+						)
+					}
+				} catch (error) {
+					global.displayError?.(
+						`Configuration file signature verification failed: ${error instanceof Error ? error.message : String(error)}`,
+						true,
+					)
+					process.exit(1)
+				}
+			}
 		} catch (error) {
 			if (
 				error instanceof Error &&
