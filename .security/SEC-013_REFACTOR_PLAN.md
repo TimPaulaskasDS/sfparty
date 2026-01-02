@@ -715,6 +715,557 @@ const metadataItem = new Split({
 
 ---
 
+## Common Pitfalls and How to Avoid Them
+
+### Pitfall 1: Forgetting to Pass Context Through Call Chains
+
+**Problem**: Function A calls function B, but context isn't passed, causing runtime errors.
+
+**Example**:
+```typescript
+// ❌ WRONG - Missing context
+function processFiles(files: string[]) {
+  files.forEach(file => {
+    readFile(file)  // Missing ctx parameter!
+  })
+}
+
+// ✅ CORRECT - Context passed explicitly
+function processFiles(ctx: AppContext, files: string[]) {
+  files.forEach(file => {
+    readFile(ctx, file)  // Context passed
+  })
+}
+```
+
+**Prevention**: 
+- TypeScript will catch missing parameters at compile time
+- Run `bun run build` after each change to catch errors early
+- Use grep to find all call sites: `grep -r "readFile(" src/`
+
+### Pitfall 2: Accessing Global State After Migration
+
+**Problem**: Some code still uses `global.` after migration, causing inconsistent behavior.
+
+**Example**:
+```typescript
+// ❌ WRONG - Still using global
+function helper() {
+  global.logger?.error('Error')  // Should use ctx.logger
+}
+
+// ✅ CORRECT - Using context
+function helper(ctx: AppContext) {
+  ctx.logger.error('Error')
+}
+```
+
+**Prevention**:
+- Use grep to find remaining global references: `grep -r "global\." src/`
+- Add linting rule to prevent new global usage
+- Code review checklist item
+
+### Pitfall 3: Context Not Available in Async Callbacks
+
+**Problem**: Async callbacks lose access to context if not passed explicitly.
+
+**Example**:
+```typescript
+// ❌ WRONG - Context captured in closure (works but fragile)
+function processWithCallback(ctx: AppContext) {
+  setTimeout(() => {
+    ctx.logger.error('Error')  // Works, but context might be stale
+  }, 1000)
+}
+
+// ✅ CORRECT - Context passed explicitly to callback
+function processWithCallback(ctx: AppContext) {
+  setTimeout(() => {
+    logError(ctx, 'Error')  // Explicit context passing
+  }, 1000)
+}
+```
+
+**Prevention**:
+- Always pass context as explicit parameter to callbacks
+- Avoid capturing context in closures unless necessary
+- Document when closure capture is intentional
+
+### Pitfall 4: Test Context Not Matching Production Context
+
+**Problem**: Test context missing required properties, causing test failures.
+
+**Example**:
+```typescript
+// ❌ WRONG - Missing required properties
+const ctx = createTestContext({
+  logger: mockLogger
+  // Missing basedir, format, etc.
+})
+
+// ✅ CORRECT - All required properties provided
+const ctx = createTestContext({
+  logger: mockLogger,
+  basedir: '/test',
+  format: 'yaml',
+  // ... all required properties
+})
+```
+
+**Prevention**:
+- Use `createTestContext()` helper that provides all defaults
+- TypeScript will catch missing required properties
+- Add runtime validation in development mode
+
+### Pitfall 5: Mutating Context Across Operations
+
+**Problem**: Context mutations from one operation affecting another.
+
+**Example**:
+```typescript
+// ❌ WRONG - Mutating shared context
+function operation1(ctx: AppContext) {
+  ctx.process = { total: 100 }  // Mutates shared context
+}
+
+function operation2(ctx: AppContext) {
+  // ctx.process might have unexpected values from operation1
+}
+
+// ✅ CORRECT - Create new context per operation or use local state
+function operation1(ctx: AppContext) {
+  const localProcess = { total: 100 }  // Local state
+  // Use localProcess, not ctx.process
+}
+```
+
+**Prevention**:
+- Document which context properties are mutable
+- Create new context instances for parallel operations
+- Use local variables for operation-specific state
+
+### Pitfall 6: Circular Dependencies with Context
+
+**Problem**: Module A needs context from module B, but B also needs A.
+
+**Example**:
+```typescript
+// ❌ WRONG - Circular dependency
+// fileUtils.ts
+import { createContext } from './context.js'
+export function readFile(ctx: AppContext, ...) { }
+
+// context.ts
+import { readFile } from './fileUtils.js'  // Circular!
+export function createContext() {
+  // Uses readFile somehow
+}
+```
+
+**Prevention**:
+- Keep context creation in separate module with no business logic
+- Context should only contain data, not call business functions
+- Use dependency injection, not imports
+
+---
+
+## Edge Cases and Special Scenarios
+
+### Edge Case 1: Functions That Only Need Logger
+
+**Scenario**: Some utility functions only need `logger`, not full context.
+
+**Solution**: Create minimal context type or make logger optional:
+
+```typescript
+// Option 1: Minimal context
+interface LogContext {
+  logger: Logger
+}
+
+function utilityFunction(ctx: LogContext, data: string) {
+  ctx.logger.info(data)
+}
+
+// Option 2: Optional logger in full context
+function utilityFunction(ctx: Partial<AppContext>, data: string) {
+  ctx.logger?.info(data)  // Optional chaining
+}
+```
+
+**Recommendation**: Use Option 1 for functions that only need logger. Keep full `AppContext` for functions that need multiple properties.
+
+### Edge Case 2: Error Handlers That Need Context
+
+**Scenario**: Error handlers need context for logging, but are called from catch blocks.
+
+**Solution**: Pass context to error handlers:
+
+```typescript
+// Before
+try {
+  processFile(file)
+} catch (error) {
+  handleFileError(error, global.logger)  // Global logger
+}
+
+// After
+try {
+  processFile(ctx, file)
+} catch (error) {
+  handleFileError(error, ctx.logger)  // Context logger
+}
+```
+
+**Note**: Update all `handleFileError` call sites to pass context.
+
+### Edge Case 3: Functions Called from Multiple Places
+
+**Scenario**: Function is called from both migrated and non-migrated code.
+
+**Solution**: Create wrapper function during transition:
+
+```typescript
+// During migration - support both patterns
+export async function readFile(
+  ctxOrPath: AppContext | string,
+  pathOrConvert?: string | boolean,
+  convertOrFs?: boolean | typeof fs,
+  fsTmp?: typeof fs,
+): Promise<unknown> {
+  // Detect if first param is context or path
+  if (typeof ctxOrPath === 'string') {
+    // Old signature - use global state
+    const path = ctxOrPath
+    const convert = pathOrConvert as boolean ?? true
+    const fs = convertOrFs as typeof fs ?? fsDefault
+    // ... old implementation with global
+  } else {
+    // New signature - use context
+    const ctx = ctxOrPath
+    const path = pathOrConvert as string
+    const convert = convertOrFs as boolean ?? true
+    const fs = fsTmp ?? fsDefault
+    // ... new implementation with context
+  }
+}
+```
+
+**Recommendation**: Avoid this if possible. Migrate all callers at once. Only use during transition period.
+
+### Edge Case 4: Static/Class Methods That Need Context
+
+**Scenario**: Static methods or class methods that don't have instance context.
+
+**Solution**: Pass context as parameter:
+
+```typescript
+// Before
+class Utils {
+  static process(data: string) {
+    global.logger?.info(data)
+  }
+}
+
+// After
+class Utils {
+  static process(ctx: AppContext, data: string) {
+    ctx.logger.info(data)
+  }
+}
+```
+
+### Edge Case 5: Callbacks in Third-Party Libraries
+
+**Scenario**: Third-party library callbacks that can't be modified to accept context.
+
+**Solution**: Capture context in closure (acceptable for this case):
+
+```typescript
+function processWithLibrary(ctx: AppContext, data: string) {
+  // Third-party library callback - can't modify signature
+  library.process(data, (result) => {
+    // Context captured in closure - acceptable for third-party callbacks
+    ctx.logger.info(`Result: ${result}`)
+  })
+}
+```
+
+**Note**: Document when closure capture is intentional and why.
+
+### Edge Case 6: Recursive Functions
+
+**Scenario**: Recursive functions need to pass context through all recursive calls.
+
+**Solution**: Always pass context as first parameter:
+
+```typescript
+// Before
+function processTree(node: Node) {
+  if (global.__basedir) {
+    // process node
+  }
+  node.children.forEach(child => {
+    processTree(child)  // Recursive call
+  })
+}
+
+// After
+function processTree(ctx: AppContext, node: Node) {
+  if (ctx.basedir) {
+    // process node
+  }
+  node.children.forEach(child => {
+    processTree(ctx, child)  // Context passed recursively
+  })
+}
+```
+
+---
+
+## Troubleshooting Guide
+
+### Issue: TypeScript Errors After Migration
+
+**Symptoms**: `TS2554: Expected X arguments, but got Y`
+
+**Cause**: Function signature changed but caller not updated
+
+**Solution**:
+1. Check function signature in definition
+2. Find all call sites: `grep -r "functionName(" src/`
+3. Update all call sites to pass context
+4. Run `bun run build` to verify
+
+### Issue: Tests Failing After Migration
+
+**Symptoms**: Tests fail with "Cannot read property 'logger' of undefined"
+
+**Cause**: Test not providing context
+
+**Solution**:
+1. Check test setup - ensure `createTestContext()` is called
+2. Verify all required context properties are provided
+3. Check if test helper needs updating
+4. Run single test file to isolate: `bun test test/lib/fileUtils.test.ts`
+
+### Issue: Runtime Errors in Production
+
+**Symptoms**: "ctx is undefined" errors at runtime
+
+**Cause**: Context not passed through call chain
+
+**Solution**:
+1. Add runtime validation in development mode
+2. Check call stack to find where context was lost
+3. Verify all functions in call chain accept and pass context
+4. Add logging to trace context propagation
+
+### Issue: Performance Degradation
+
+**Symptoms**: Operations slower after migration
+
+**Cause**: Unlikely, but possible if context creation is expensive
+
+**Solution**:
+1. Profile before/after with performance logger
+2. Ensure context objects are lightweight (just references)
+3. Avoid deep cloning context
+4. Reuse context instances when safe
+
+### Issue: Global State Still Being Used
+
+**Symptoms**: Some code still uses `global.` after migration
+
+**Cause**: Missed some references during migration
+
+**Solution**:
+1. Run: `grep -r "global\." src/` to find all references
+2. Check if reference is in context creation (acceptable) or business logic (needs fix)
+3. Update remaining references
+4. Add linting rule to prevent new global usage
+
+---
+
+## Migration Verification Checklist
+
+After each phase, verify:
+
+### Phase 1 Verification
+- [ ] `AppContext` interface defined and exported
+- [ ] `createContext()` function works correctly
+- [ ] `createTestContext()` helper works in tests
+- [ ] Context creation tests pass
+- [ ] No TypeScript errors
+
+### Phase 2 Verification
+- [ ] All `fileUtils` functions accept context
+- [ ] All `fileUtils` callers updated
+- [ ] All `fileUtils` tests pass
+- [ ] No `global.` references in `fileUtils.ts` (except if needed for bridge)
+- [ ] Full test suite passes (868 tests)
+
+### Phase 3 Verification
+- [ ] `Split` class uses context from config
+- [ ] `Combine` class uses context from config
+- [ ] `processSplit` and `processCombine` pass context
+- [ ] All split/combine tests pass
+- [ ] No `global.` references in `split.ts` or `combine.ts`
+- [ ] Full test suite passes (868 tests)
+
+### Phase 4 Verification
+- [ ] All remaining modules migrated
+- [ ] All tests pass
+- [ ] No `global.` references in business logic
+- [ ] Full test suite passes (868 tests)
+
+### Phase 5 Verification
+- [ ] `GlobalContext` interface removed
+- [ ] Global state declarations removed
+- [ ] Linting rule added to prevent `global.` usage
+- [ ] Documentation updated
+- [ ] All 868 tests pass
+- [ ] Code review completed
+- [ ] `SECURITY_TRIAGE.md` updated
+
+---
+
+## Performance Considerations
+
+### Context Object Size
+
+Context objects are lightweight - they contain references, not data:
+- Logger: Reference to winston instance (~few KB)
+- Basedir: String (~100 bytes)
+- Format: String (~10 bytes)
+- MetaTypes: Reference to object (~few KB)
+- Total: ~10-20 KB per context instance
+
+**Impact**: Negligible - context passing adds no measurable overhead.
+
+### Context Creation Overhead
+
+Creating context is O(1) operation:
+- Object literal creation: ~microseconds
+- No deep cloning needed
+- No async operations
+
+**Impact**: Negligible - context creation is instant.
+
+### Memory Usage
+
+Context instances are small and short-lived:
+- Created per operation
+- Garbage collected after operation completes
+- No memory leaks expected
+
+**Impact**: Minimal - no memory concerns.
+
+### Benchmarking
+
+If performance is a concern, benchmark before/after:
+
+```typescript
+// Before migration
+const start = performance.now()
+await processSplit(type, argv)
+const duration = performance.now() - start
+
+// After migration
+const start = performance.now()
+const ctx = createContext({...})
+await processSplit(ctx, type, argv)
+const duration = performance.now() - start
+```
+
+**Expected**: No significant difference (< 1ms overhead).
+
+---
+
+## Validation and Testing Strategy
+
+### Pre-Migration Validation
+
+Before starting migration:
+1. Run full test suite: `bun run test` (should pass)
+2. Run coverage: `bun run test:coverage` (note baseline)
+3. Run build: `bun run build` (should succeed)
+4. Document current performance (if concerned)
+
+### During Migration Validation
+
+After each module:
+1. Run build: `bun run build` (catch TypeScript errors)
+2. Run lint: `bun run lint:fix` (catch style issues)
+3. Run tests: `bun run test` (catch functional regressions)
+4. Run coverage: `bun run test:coverage` (ensure no drop)
+
+### Post-Migration Validation
+
+After all phases:
+1. Full test suite: `bun run test` (all 868 tests pass)
+2. Coverage check: `bun run test:coverage` (maintain 80%+)
+3. Build check: `bun run build` (no errors)
+4. Lint check: `bun run lint` (no errors)
+5. Global check: `grep -r "global\." src/` (only in context creation)
+6. Manual testing: Run actual split/combine operations
+7. Performance check: Compare before/after (if concerned)
+
+---
+
+## Rollback Procedures
+
+### Immediate Rollback (Git)
+
+If critical issues arise:
+```bash
+git log --oneline  # Find last good commit
+git revert <commit-hash>  # Or
+git reset --hard <commit-hash>  # If not pushed
+```
+
+### Partial Rollback
+
+If only one module has issues:
+1. Revert that module's changes
+2. Keep completed modules migrated
+3. Fix issues in reverted module
+4. Re-migrate when fixed
+
+### Incremental Fix
+
+If issues are minor:
+1. Identify problematic code
+2. Fix in small commits
+3. Test after each fix
+4. Continue migration when stable
+
+---
+
+## Additional Resources
+
+### Code References
+
+- Current global state: `src/index.ts` lines 99-114
+- Split class: `src/party/split.ts`
+- Combine class: `src/party/combine.ts`
+- File utilities: `src/lib/fileUtils.ts`
+
+### Test References
+
+- Test helpers: `test/helpers/` (create if needed)
+- File utils tests: `test/lib/file/fileUtils.test.ts`
+- Split tests: `test/party/split.test.ts`
+- Combine tests: `test/party/combine.test.ts`
+
+### Documentation
+
+- Security triage: `.security/SECURITY_TRIAGE.md`
+- Codebase docs: `llm.md`
+- This plan: `.security/SEC-013_REFACTOR_PLAN.md`
+
+---
+
 ## References
 
 - Current global state usage: 209 references across 9 files
