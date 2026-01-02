@@ -209,8 +209,17 @@ function processFile(ctx: AppContext, file: string) {
 
 **Phase 3: Migrate Business Logic** (Day 6-8)
 1. Migrate `src/party/split.ts` (29 references)
+   - Add `ctx: AppContext` to `SplitConfig` interface
+   - Store context in class instance
+   - Replace global references with `this.ctx`
 2. Migrate `src/party/combine.ts` (47 references)
+   - Add `ctx: AppContext` to `CombineConfig` interface
+   - Store context in class instance
+   - Replace global references with `this.ctx`
 3. Update `src/index.ts` handlers to create and pass context
+   - Update `processSplit()` to accept and pass context
+   - Update `processCombine()` to accept and pass context
+   - Pass context in `Split` and `Combine` config objects
 4. Update tests
 
 **Phase 4: Migrate Remaining Modules** (Day 9-10)
