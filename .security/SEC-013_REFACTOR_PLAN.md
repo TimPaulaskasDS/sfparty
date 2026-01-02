@@ -147,6 +147,7 @@ global.format = argv.format
 - **Total Exported Functions**: 87 across 22 files
 - **Functions Needing Updates**: ~50-60 (those that use global state)
 - **Test Files**: 45 test files that may need updates
+- **Current Test Count**: 868 tests (must all continue passing)
 
 ---
 
@@ -288,10 +289,14 @@ function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
 // Entry point
 splitHandler(argv) 
   → processSplit(ctx, type, argv)
-    → new Split(ctx, ...)
+    → new Split({ ctx, metadataDefinition, ... })  // Context in config object
       → split.split()
         → fileUtils.readFile(ctx, filePath)
 ```
+
+**Important**: `Split` and `Combine` classes use config objects, so context must be added to their config interfaces:
+- `SplitConfig` needs `ctx: AppContext`
+- `CombineConfig` needs `ctx: AppContext`
 
 ### 4. Optional Context (Backward Compatibility)
 
@@ -571,7 +576,21 @@ export async function readFile(
 
 **Before** (`src/party/split.ts`):
 ```typescript
+interface SplitConfig {
+  metadataDefinition: MetadataDefinition
+  sourceDir: string
+  targetDir: string
+  metaFilePath: string
+  sequence: number
+  total: number
+  keepFalseValues?: boolean
+}
+
 export class Split {
+  constructor(config: SplitConfig) {
+    // Initialize from config
+  }
+  
   async split(): Promise<boolean> {
     const basedir = global.__basedir
     global.logger?.error('Error')
@@ -582,8 +601,24 @@ export class Split {
 
 **After**:
 ```typescript
+interface SplitConfig {
+  ctx: AppContext  // NEW: Add context to config
+  metadataDefinition: MetadataDefinition
+  sourceDir: string
+  targetDir: string
+  metaFilePath: string
+  sequence: number
+  total: number
+  keepFalseValues?: boolean
+}
+
 export class Split {
-  constructor(private ctx: AppContext) {}
+  private ctx: AppContext
+  
+  constructor(config: SplitConfig) {
+    this.ctx = config.ctx  // Store context from config
+    // ... other initialization
+  }
   
   async split(): Promise<boolean> {
     const basedir = this.ctx.basedir
@@ -620,8 +655,24 @@ function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
     runType: global.runType ?? null,
   })
   
-  const split = processSplit(ctx, types[0], argv)
+  processSplit(ctx, types[0], argv)
 }
+```
+
+**Note**: `processSplit` and `processCombine` will need to pass context to the `Split` and `Combine` constructors via their config objects:
+
+```typescript
+// In processSplit function
+const metadataItem = new Split({
+  ctx,  // NEW: Add context to config
+  metadataDefinition: typeObj.definition,
+  sourceDir: sourceDir,
+  targetDir: targetDir,
+  metaFilePath: filePath,
+  sequence: index + 1,
+  total: processed.total,
+  keepFalseValues: argv.keepFalseValues || false,
+})
 ```
 
 ---
@@ -641,10 +692,17 @@ function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
 ## Questions to Answer During Implementation
 
 1. Should context be required or optional for all functions?
+   - **Recommendation**: Required for functions that use global state, optional for pure utilities
 2. Should we have different context types (e.g., `ReadContext`, `WriteContext`)?
+   - **Recommendation**: Start with single `AppContext`, split later if needed
 3. How do we handle context in async callbacks?
+   - **Recommendation**: Pass context explicitly, avoid closures that capture global state
 4. Should context be immutable or allow mutations?
+   - **Recommendation**: Mostly immutable, but allow mutations for `process` stats (tracked per operation)
 5. How do we handle context in error handlers?
+   - **Recommendation**: Pass context to error handlers explicitly
+6. Should context be in config objects or constructor parameters?
+   - **Recommendation**: In config objects (matches current `Split`/`Combine` pattern)
 
 ---
 
