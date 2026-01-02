@@ -214,7 +214,11 @@ it('should correctly process the json object returned from the XML file', async 
 		return Promise.resolve({ sourceApiVersion: '56.0' } as unknown)
 	})
 	global.git = { append: true }
-	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		format: 'yaml',
+		metaTypes: global.metaTypes!,
+	})
 	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 	expect(fileUtils.fileExists).toHaveBeenCalled()

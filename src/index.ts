@@ -371,7 +371,7 @@ async function limitConcurrency<T>(
 	let running = 0
 	let index = 0
 	let currentConcurrency = concurrency
-	let completedCount = 0
+	let _completedCount = 0
 	let lastAdjustmentTime = Date.now()
 	const taskDurations: number[] = [] // Track recent task durations for performance analysis
 	const maxDurationHistory = 20 // Keep last 20 task durations
@@ -464,7 +464,7 @@ async function limitConcurrency<T>(
 						results[currentIndex] = error as T
 					})
 					.finally(() => {
-						completedCount++
+						_completedCount++
 						const taskDuration = Date.now() - taskStart
 						taskDurations.push(taskDuration)
 						// Keep only recent durations
@@ -769,7 +769,8 @@ yargs(hideBin(process.argv))
 										spawn,
 									})
 									diff.then(async (data) => {
-										await gitFiles(data)
+										// Use tempCtx that was created above for lastCommit
+										await gitFiles(tempCtx, data)
 										resolve(true)
 									}).catch((error) => {
 										global.logger?.error(error)
@@ -792,7 +793,19 @@ yargs(hideBin(process.argv))
 							spawn,
 						})
 						diff.then(async (data) => {
-							await gitFiles(data)
+							// Create a temporary ctx for gitFiles
+							const tempCtx = createContext({
+								basedir: global.__basedir || '',
+								logger: global.logger!,
+								displayError: global.displayError!,
+								format: global.format || 'yaml',
+								metaTypes: global.metaTypes!,
+								git: global.git,
+								icons: global.icons!,
+								consoleTransport: global.consoleTransport!,
+								runType: global.runType ?? null,
+							})
+							await gitFiles(tempCtx, data)
 							resolve(true)
 						}).catch((error) => {
 							global.logger?.error(error)
@@ -1118,7 +1131,7 @@ async function processSplit(
 	// Ensure packageDir is initialized
 	if (!packageDirInitialized) {
 		if (!packageDirPromise) {
-			packageDirPromise = getRootPath()
+			packageDirPromise = getRootPath(ctx)
 		}
 		packageDir = await packageDirPromise
 		packageDirInitialized = true
@@ -1187,6 +1200,7 @@ async function processSplit(
 				metaFilePath = path.join(metaDirPath, name)
 				if (
 					!(await fileUtils.fileExists({
+						workspaceRoot: ctx.basedir,
 						filePath: metaFilePath,
 						fs,
 					}))
@@ -1200,7 +1214,13 @@ async function processSplit(
 			}
 			fileList.push(name)
 		} else {
-			if (await fileUtils.directoryExists({ dirPath: sourceDir, fs })) {
+			if (
+				await fileUtils.directoryExists({
+					dirPath: sourceDir,
+					fs,
+					workspaceRoot: ctx.basedir,
+				})
+			) {
 				const files = await fileUtils.getFiles(sourceDir, metaExtension)
 				files.forEach((file) => {
 					fileList.push(file)
@@ -1500,7 +1520,7 @@ async function processCombine(
 	// Ensure packageDir is initialized
 	if (!packageDirInitialized) {
 		if (!packageDirPromise) {
-			packageDirPromise = getRootPath()
+			packageDirPromise = getRootPath(ctx)
 		}
 		packageDir = await packageDirPromise
 		packageDirInitialized = true
@@ -1568,6 +1588,7 @@ async function processCombine(
 		} else if (!all) {
 			const metaDirPath = path.join(sourceDir, name || '')
 			const dirExists = await fileUtils.directoryExists({
+				workspaceRoot: ctx.basedir,
 				dirPath: metaDirPath,
 				fs,
 			})
@@ -1730,11 +1751,11 @@ interface GitFileItem {
 	action: string
 }
 
-async function gitFiles(data: GitFileItem[]): Promise<void> {
+async function gitFiles(ctx: AppContext, data: GitFileItem[]): Promise<void> {
 	// Ensure packageDir is initialized
 	if (!packageDirInitialized) {
 		if (!packageDirPromise) {
-			packageDirPromise = getRootPath()
+			packageDirPromise = getRootPath(ctx)
 		}
 		packageDir = await packageDirPromise
 		packageDirInitialized = true
@@ -1852,11 +1873,18 @@ function displayHeader(): void {
 	console.log()
 }
 
-async function getRootPath(packageDir?: string): Promise<string> {
+async function getRootPath(
+	ctx: AppContext,
+	packageDir?: string,
+): Promise<string> {
 	const rootPath = await fileUtils.find('sfdx-project.json')
 	let defaultDir: string | undefined
 	if (rootPath) {
-		const fileInfoResult = await fileUtils.fileInfo(rootPath)
+		const fileInfoResult = await fileUtils.fileInfo(
+			rootPath,
+			fs,
+			ctx.basedir,
+		)
 		global.__basedir = fileInfoResult.dirname
 		let projectJSON:
 			| {

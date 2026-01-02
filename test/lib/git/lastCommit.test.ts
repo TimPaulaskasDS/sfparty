@@ -137,7 +137,7 @@ test('should throw an error when execFileSync returns an error', async () => {
 })
 
 // Mock child_process to support execFileSync and spawn
-let spawnCallCount = 0
+let _spawnCallCount = 0
 let mockBranchName = 'test-branch'
 let mockLatestCommit = 'latest-commit'
 
@@ -147,7 +147,7 @@ vi.mock('child_process', async (importOriginal) => {
 		...actual,
 		execFileSync: vi.fn(),
 		spawn: vi.fn().mockImplementation((command, args, options) => {
-			spawnCallCount++
+			_spawnCallCount++
 			// Determine which git command is being run based on args
 			const isBranchCommand =
 				args &&
@@ -191,7 +191,7 @@ vi.mock('child_process', async (importOriginal) => {
 
 test('should throw an error when spawn returns an error', async () => {
 	// Reset spawn call count
-	spawnCallCount = 0
+	_spawnCallCount = 0
 
 	// Mock spawn to trigger error
 	const { spawn } = await import('child_process')
@@ -227,7 +227,7 @@ test('should throw an error when spawn returns an error', async () => {
 
 test('should use branch-specific commit when branches object exists', async () => {
 	// Reset spawn call count and set expected values
-	spawnCallCount = 0
+	_spawnCallCount = 0
 	mockBranchName = 'test-branch'
 	mockLatestCommit = 'latest-commit'
 

@@ -40,7 +40,7 @@ vi.mock('js-yaml', () => {
 })
 
 describe('fileInfo', () => {
-	const ctx = createTestContext()
+	const _ctx = createTestContext()
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
@@ -749,7 +749,7 @@ describe('readFile - XML error handling', () => {
 	})
 
 	describe('getWriteBatcher', () => {
-		const ctx = createTestContext()
+		const _ctx = createTestContext()
 		it('should return null when write batcher is not initialized (line 22)', () => {
 			// Ensure batcher is not initialized
 			// Note: We can't directly reset the module, but we can test the default state
@@ -1047,6 +1047,7 @@ describe('readFile - XML error handling', () => {
 		const result = await fileInfoFn(
 			'/workspace/symlink.txt',
 			fileInfoMockFs as unknown as typeof fs,
+			'/workspace',
 		)
 
 		expect(result.exists).toBe(true)
@@ -1085,6 +1086,7 @@ describe('readFile - XML error handling', () => {
 		const result = await fileExists({
 			filePath: '/workspace/symlink.txt',
 			fs: fileExistsMockFs as unknown as typeof fs,
+			workspaceRoot: '/workspace',
 		})
 
 		expect(result).toBe(true)

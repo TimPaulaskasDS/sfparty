@@ -732,7 +732,7 @@ describe('serializeData', () => {
 					.mockRejectedValue('String error')
 
 				const filePath = path.join(testTempDir, 'test.txt')
-				const writePromise = testBatcher.addWrite(filePath, 'test')
+				const _writePromise = testBatcher.addWrite(filePath, 'test')
 
 				// Flush should throw error
 				await expect(testBatcher.flush()).rejects.toBe('String error')

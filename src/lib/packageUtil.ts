@@ -8,6 +8,7 @@ interface FileUtilsInterface {
 	fileExists: (options: {
 		filePath: string
 		fs: typeof fs
+		workspaceRoot?: string
 	}) => Promise<boolean>
 	readFile: (
 		ctx: AppContext,
@@ -100,6 +101,7 @@ export class Package {
 			const exists = await fileUtils.fileExists({
 				filePath: fileName,
 				fs,
+				workspaceRoot: ctx.basedir,
 			})
 
 			if (exists && ctx.git?.append) {
@@ -158,7 +160,7 @@ export class Package {
 					const validated = validateData(data, SfdxProjectSchema)
 					json.Package.version = validated.sourceApiVersion
 				}
-			} catch (error) {
+			} catch (_error) {
 				json.Package.version =
 					packageDefinition.metadataDefinition.fallbackVersion
 			}
@@ -166,10 +168,10 @@ export class Package {
 			if (json.Package.types !== undefined) {
 				transformJSON(json.Package.types)
 			}
-			cleanPackage(that)
+			cleanPackage(that, ctx)
 		}
 
-		function cleanPackage(that: Package): void | string {
+		function cleanPackage(that: Package, ctx: AppContext): void | string {
 			if (that.packageJSON === undefined)
 				throw new Error(
 					'getPackageXML must be called before adding members',
@@ -180,13 +182,13 @@ export class Package {
 			if (that.packageJSON.Package.types === undefined)
 				return 'No types found'
 
-			const typeArray = Object.values(global.metaTypes || {}).map(
+			const typeArray = Object.values(ctx.metaTypes || {}).map(
 				(metaType) => metaType.definition.root,
 			)
 			that.packageJSON.Package.types.forEach((typeItem) => {
 				if (typeArray.includes(typeItem.name || '')) {
 					typeItem.members = typeItem.members.filter(
-						(member) => !member.endsWith(`.${global.format}`),
+						(member) => !member.endsWith(`.${ctx.format}`),
 					)
 				}
 			})
@@ -199,7 +201,7 @@ export class Package {
 		}
 	}
 
-	addMember(type: string, member: string): void {
+	addMember(type: string, member: string, format?: string): void {
 		const that = this
 		if (that.packageJSON === undefined)
 			throw new Error(
@@ -213,7 +215,9 @@ export class Package {
 			throw new Error(
 				'An undefined member was received when attempting to add a member',
 			)
-		if (member.indexOf(`.${global.format}`) !== -1)
+		// Check against format parameter if provided, otherwise check against common formats
+		const checkFormat = format || 'yaml'
+		if (member.indexOf(`.${checkFormat}`) !== -1)
 			throw new Error('Part file received as member is not allowed')
 
 		const cleanType = type.replaceAll('\t', '')

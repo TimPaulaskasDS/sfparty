@@ -302,9 +302,11 @@ export async function validateSymlink(
 export async function directoryExists({
 	dirPath,
 	fs: fsTmp,
+	workspaceRoot,
 }: {
 	dirPath: string
 	fs: typeof fs
+	workspaceRoot?: string
 }): Promise<boolean> {
 	const sanitizedPath = replaceSpecialChars(dirPath)
 	try {
@@ -312,7 +314,7 @@ export async function directoryExists({
 		const linkStats = await fsTmp.promises.lstat(sanitizedPath)
 		if (linkStats.isSymbolicLink()) {
 			// Validate symlink is safe
-			await validateSymlink(sanitizedPath, global.__basedir, fsTmp)
+			await validateSymlink(sanitizedPath, workspaceRoot, fsTmp)
 		}
 		// Use stat() to check if it's a directory (follows symlinks after validation)
 		const stats = await fsTmp.promises.stat(sanitizedPath)
@@ -325,9 +327,11 @@ export async function directoryExists({
 export async function fileExists({
 	filePath,
 	fs: fsTmp,
+	workspaceRoot,
 }: {
 	filePath: string
 	fs: typeof fs
+	workspaceRoot?: string
 }): Promise<boolean> {
 	const sanitizedPath = replaceSpecialChars(filePath)
 	try {
@@ -335,7 +339,7 @@ export async function fileExists({
 		const linkStats = await fsTmp.promises.lstat(sanitizedPath)
 		if (linkStats.isSymbolicLink()) {
 			// Validate symlink is safe
-			await validateSymlink(sanitizedPath, global.__basedir, fsTmp)
+			await validateSymlink(sanitizedPath, workspaceRoot, fsTmp)
 		}
 		// Use stat() to check if it's a file (follows symlinks after validation)
 		const stats = await fsTmp.promises.stat(sanitizedPath)
@@ -499,6 +503,7 @@ export async function deleteFile(
 export async function fileInfo(
 	filePath: string,
 	fsTmp: typeof fs = fs,
+	workspaceRoot?: string,
 ): Promise<FileInfo> {
 	const sanitizedPath = replaceSpecialChars(filePath)
 	let exists = false
@@ -509,7 +514,7 @@ export async function fileInfo(
 		const linkStats = await fsTmp.promises.lstat(sanitizedPath)
 		if (linkStats.isSymbolicLink()) {
 			// Validate symlink is safe
-			await validateSymlink(sanitizedPath, global.__basedir, fsTmp)
+			await validateSymlink(sanitizedPath, workspaceRoot, fsTmp)
 		}
 		// Use stat() to get file info (follows symlinks after validation)
 		stats = await fsTmp.promises.stat(sanitizedPath)
@@ -868,7 +873,7 @@ export async function find(
 			if (stats.isFile()) return file
 			// stat existed, but isFile() returned false
 			return nextLevelUp()
-		} catch (e) {
+		} catch (_e) {
 			// stat did not exist
 			return nextLevelUp()
 		}

@@ -52,8 +52,7 @@ it('should throw an error if member is undefined', () => {
 })
 
 it('should throw an error if member is a part file', () => {
-	global.format = 'part'
-	expect(() => pkg.addMember('type', 'member.part')).toThrowError(
+	expect(() => pkg.addMember('type', 'member.part', 'part')).toThrowError(
 		'Part file received as member is not allowed',
 	)
 })

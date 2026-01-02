@@ -52,7 +52,7 @@ export function updateFileStats(
 		}
 
 		return updated
-	} catch (error) {
+	} catch (_error) {
 		return fileStats
 	}
 }
@@ -209,6 +209,7 @@ export class Combine {
 		const that = this
 
 		const exists = await fileUtils.directoryExists({
+			workspaceRoot: that.ctx.basedir,
 			dirPath: that.sourceDir,
 			fs,
 		})
@@ -366,7 +367,7 @@ export class Combine {
 				}
 				try {
 					await deleteFile(that, that.#fileName.fullName || '')
-				} catch (error) {}
+				} catch (_error) {}
 				return 'deleted'
 			}
 		}
@@ -818,6 +819,7 @@ export class Combine {
 								`.${that.ctx.format}`,
 								'',
 							),
+						that.ctx.format,
 					)
 				} else if (that.metadataDefinition.packageTypeIsDirectory) {
 					that.addPkg.addMember(
@@ -848,7 +850,11 @@ export class Combine {
 				return combined
 			}
 
-			const fileInfoResult = await fileUtils.fileInfo(fileObj.fullName)
+			const fileInfoResult = await fileUtils.fileInfo(
+				fileObj.fullName,
+				fs,
+				that.ctx.basedir,
+			)
 			updateFileStatsInternal(
 				that,
 				fileObj.fullName,

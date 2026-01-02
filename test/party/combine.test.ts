@@ -6573,11 +6573,11 @@ describe('Combine class', () => {
 				})
 
 			// Mock fileInfo to return different stats for each file call
-			let fileInfoCallCount = 0
+			let _fileInfoCallCount = 0
 			;(
 				fileUtils.fileInfo as ReturnType<typeof vi.fn>
 			).mockImplementation((path: string) => {
-				fileInfoCallCount++
+				_fileInfoCallCount++
 				const isMain = path.includes('main.yaml')
 				const isFile1 = path.includes('file1.yaml')
 				return Promise.resolve({
@@ -8154,11 +8154,11 @@ describe('Combine class', () => {
 						template: 'Test_Template', // index 99
 					})
 
-				let fileInfoCallCount = 0
+				let _fileInfoCallCount = 0
 				;(
 					fileUtils.fileInfo as ReturnType<typeof vi.fn>
 				).mockImplementation((path: string) => {
-					fileInfoCallCount++
+					_fileInfoCallCount++
 					return Promise.resolve({
 						dirname: '/source',
 						basename: 'Case',
@@ -8872,7 +8872,7 @@ describe('Combine class', () => {
 				const { getGlobalProgressTracker } = await import(
 					'../../src/lib/tuiProgressTracker.js'
 				)
-				const originalTracker = getGlobalProgressTracker()
+				const _originalTracker = getGlobalProgressTracker()
 
 				// Mock progress tracker
 				const mockTracker = {

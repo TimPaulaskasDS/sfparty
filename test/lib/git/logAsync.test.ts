@@ -18,7 +18,7 @@ describe('logAsync', () => {
 	it('should return array of commit hashes', async () => {
 		const { spawn } = await import('child_process')
 		const mockCommits = ['commit1\n', 'commit2\n', 'commit3\n']
-		const stdoutData = ''
+		const _stdoutData = ''
 		const mockProcess = {
 			stdout: {
 				on: vi.fn((event, callback) => {

@@ -96,7 +96,7 @@ describe('Configuration File Signing (SEC-015)', () => {
 		it('should reject invalid signature', () => {
 			const key = generateSigningKey(undefined, 'test-key')
 			const content = 'test content'
-			const signature = signContent(content, key)
+			const _signature = signContent(content, key)
 			const invalidSig = 'invalid-signature'
 
 			const isValid = verifySignature(content, invalidSig, key)

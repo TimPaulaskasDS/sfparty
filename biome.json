@@ -24,7 +24,10 @@
 		"rules": {
 			"recommended": false,
 			"style": { "useConst": "error" },
-			"suspicious": { "noExplicitAny": "warn" }
+			"suspicious": { "noExplicitAny": "warn" },
+			"correctness": {
+				"noUnusedVariables": "error"
+			}
 		}
 	},
 	"javascript": {

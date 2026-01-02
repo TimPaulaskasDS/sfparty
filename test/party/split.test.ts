@@ -2529,7 +2529,7 @@ describe('Split class', () => {
 				// This test verifies the code path exists
 				try {
 					await split.split()
-				} catch (error) {
+				} catch (_error) {
 					// Error may propagate
 				}
 				// Note: The error handling path exists in the code
@@ -2702,7 +2702,7 @@ describe('Split class', () => {
 			it('should use task.output when task is provided in processJSON', async () => {
 				// Note: task parameter is not currently used in Split implementation
 				// This test verifies the split operation completes successfully
-				const mockTask = {
+				const _mockTask = {
 					output: [] as string[],
 					title: '',
 				} as unknown as ListrTaskWrapper<unknown, unknown, unknown>
@@ -2737,7 +2737,7 @@ describe('Split class', () => {
 			it('should use task.output in Main function when task is provided', async () => {
 				// Note: task parameter is not currently used in Split implementation
 				// This test verifies the split operation completes successfully
-				const mockTask = {
+				const _mockTask = {
 					output: [] as string[],
 					title: '',
 				} as unknown as ListrTaskWrapper<unknown, unknown, unknown>
@@ -2770,7 +2770,7 @@ describe('Split class', () => {
 			it('should use task.title in completeFile when task is provided', async () => {
 				// Note: task parameter is not currently used in Split implementation
 				// This test verifies the split operation completes successfully
-				const mockTask = {
+				const _mockTask = {
 					output: [] as string[],
 					title: '',
 				} as unknown as ListrTaskWrapper<unknown, unknown, unknown>
@@ -3227,7 +3227,7 @@ describe('Split class', () => {
 				const { XMLParser } = await import('fast-xml-parser')
 				const originalParse = XMLParser.prototype.parse
 				XMLParser.prototype.parse = function (xml: string) {
-					const parsed = originalParse.call(this, xml)
+					const _parsed = originalParse.call(this, xml)
 					// Create an object that will throw when keySort tries to process it
 					const throwingObject = {
 						Profile: {
@@ -3283,7 +3283,7 @@ describe('Split class', () => {
 				let reducePhase = false
 				const baseItem = { name: 'ApiEnabled', enabled: true }
 				XMLParser.prototype.parse = function (xml: string) {
-					const parsed = originalParse.call(this, xml)
+					const _parsed = originalParse.call(this, xml)
 					// Create an object that will throw when a property is accessed during reduce
 					// We use a flag to track when we're in the reduce phase
 					const throwingItem = new Proxy(baseItem, {

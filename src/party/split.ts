@@ -139,7 +139,11 @@ export class Split {
 
 	async initializeFileName(): Promise<void> {
 		// Use actual file name if found so it matches case sensitivity
-		const fileInfoResult = await fileUtils.fileInfo(this._metaFilePath)
+		const fileInfoResult = await fileUtils.fileInfo(
+			this._metaFilePath,
+			fs,
+			this.ctx.basedir,
+		)
 		let fileName = fileInfoResult.filename
 
 		const foundFile = await fileUtils.getFiles(
@@ -228,7 +232,7 @@ export class Split {
 		let stats: fs.Stats
 		try {
 			stats = await fs.promises.stat(finalPath)
-		} catch (error) {
+		} catch (_error) {
 			// File doesn't exist
 			const message = `file not found: ${that.metaFilePath}`
 			const progressTracker = getGlobalProgressTracker()
@@ -337,7 +341,7 @@ export class Split {
 					)
 				}
 			}
-		} catch (error) {
+		} catch (_error) {
 			const message = `${that.#fileName.fullName} has an invalid XML root`
 			const progressTracker = getGlobalProgressTracker()
 			if (progressTracker) {

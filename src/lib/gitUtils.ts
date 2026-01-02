@@ -479,7 +479,13 @@ export async function updateLastCommit({
 		const fileName = path.join(folder, 'index.yaml')
 		let data: GitDefinition | undefined = undefined
 
-		if (await fileUtils.fileExists({ filePath: fileName, fs })) {
+		if (
+			await fileUtils.fileExists({
+				filePath: fileName,
+				fs,
+				workspaceRoot: ctx.basedir,
+			})
+		) {
 			data = (await fileUtils.readFile(ctx, fileName)) as GitDefinition
 		}
 

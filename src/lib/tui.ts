@@ -867,7 +867,7 @@ export class TUI {
 
 				// Ensure stdout is flushed but don't close it
 				process.stdout.write('')
-			} catch (error) {
+			} catch (_error) {
 				// If cleanup fails, at least try to restore terminal
 				try {
 					process.stdout.write('\x1b[?25h') // Show cursor

@@ -70,7 +70,7 @@ export async function checkVersion({
 			},
 		)
 		result = data
-	} catch (error) {
+	} catch (_error) {
 		// do not display errors
 	}
 
