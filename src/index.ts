@@ -1802,9 +1802,12 @@ async function getRootPath(packageDir?: string): Promise<string> {
 		try {
 			// SEC-002: Use safe JSON parser to prevent prototype pollution
 			const fileContent = await fs.promises.readFile(rootPath, 'utf8')
-			projectJSON = fileUtils.safeJSONParse(fileContent) as {
-				packageDirectories?: Array<{ default?: boolean; path: string }>
-			}
+			const parsed = fileUtils.safeJSONParse(fileContent)
+			// SEC-012: Validate runtime type
+			const { validateData, SfdxProjectSchema } = await import(
+				'./lib/validation.js'
+			)
+			projectJSON = validateData(parsed, SfdxProjectSchema)
 		} catch (error) {
 			if (
 				error instanceof Error &&
@@ -1812,6 +1815,14 @@ async function getRootPath(packageDir?: string): Promise<string> {
 			) {
 				global.displayError?.(
 					'sfdx-project.json has invalid JSON',
+					true,
+				)
+			} else if (
+				error instanceof Error &&
+				error.message.indexOf('Validation failed') >= 0
+			) {
+				global.displayError?.(
+					`sfdx-project.json validation failed: ${error.message}`,
 					true,
 				)
 			} else {

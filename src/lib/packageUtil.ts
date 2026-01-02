@@ -122,10 +122,15 @@ export class Package {
 		): Promise<void> {
 			try {
 				if (fileUtils) {
-					const data = (await fileUtils.readFile(
+					const data = await fileUtils.readFile(
 						path.join(global.__basedir || '', 'sfdx-project.json'),
-					)) as { sourceApiVersion: string }
-					json.Package.version = data.sourceApiVersion
+					)
+					// SEC-012: Validate runtime type
+					const { validateData, SfdxProjectSchema } = await import(
+						'./validation.js'
+					)
+					const validated = validateData(data, SfdxProjectSchema)
+					json.Package.version = validated.sourceApiVersion
 				}
 			} catch (error) {
 				json.Package.version =
