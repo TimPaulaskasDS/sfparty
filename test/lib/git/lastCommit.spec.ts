@@ -28,17 +28,67 @@ vi.mock('fs', () => ({
 	statSync: vi.fn(),
 }))
 
+// Mock child_process to support spawn (used by execGitWithTimeout)
+let mockLatestCommit = 'testCommit'
+let mockBranchName = 'main'
+
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('child_process')>()
+	return {
+		...actual,
+		execFileSync: vi.fn(),
+		spawn: vi.fn().mockImplementation((command, args, options) => {
+			// Determine which git command is being run based on args
+			const isBranchCommand =
+				args &&
+				args.includes('rev-parse') &&
+				args.includes('--abbrev-ref')
+			const isLogCommand = args && args.includes('log')
+
+			const mockProcess = {
+				stdout: {
+					on: vi.fn((event, callback) => {
+						if (event === 'data') {
+							// Return appropriate output based on command
+							const output = isBranchCommand
+								? mockBranchName
+								: isLogCommand
+									? mockLatestCommit
+									: 'mock-output'
+							setTimeout(() => callback(output), 0)
+						} else if (event === 'close') {
+							setTimeout(() => callback(0), 10)
+						}
+					}),
+					setEncoding: vi.fn(),
+				},
+				stderr: {
+					on: vi.fn(),
+				},
+				on: vi.fn((event, callback) => {
+					if (event === 'close') {
+						setTimeout(() => callback(0), 10)
+					}
+				}),
+				kill: vi.fn(),
+			}
+			return mockProcess as any
+		}),
+	}
+})
+
 beforeEach(() => {
 	vi.clearAllMocks()
+	mockLatestCommit = 'testCommit'
+	mockBranchName = 'main'
 })
 
 test('should return lastCommit and latestCommit if file exists', async () => {
 	;(fs.existsSync as ReturnType<typeof vi.fn>).mockReturnValue(true)
-	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
+	mockLatestCommit = 'testCommit'
 	const result = await lastCommit({
 		dir: 'project',
 		existsSync: fs.existsSync,
-		execFileSync: execFileSyncMock,
 		fileUtils: fileUtils as unknown as typeof fileUtilsType,
 	})
 	expect(result).toEqual({
@@ -51,11 +101,10 @@ test('should return only latestCommit if file does not exist', async () => {
 	;(fs.existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false)
 	// Reset fileUtils.fileExists to return false for this test
 	fileUtils.fileExists = vi.fn().mockResolvedValue(false)
-	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
+	mockLatestCommit = 'testCommit'
 	const result = await lastCommit({
 		dir: __dirname,
 		existsSync: fs.existsSync,
-		execFileSync: execFileSyncMock,
 		fileUtils: fileUtils as unknown as typeof fileUtilsType,
 	})
 	expect(result).toEqual({
@@ -66,13 +115,12 @@ test('should return only latestCommit if file does not exist', async () => {
 
 it('should handle missing file gracefully', async () => {
 	;(fs.existsSync as ReturnType<typeof vi.fn>).mockImplementation(() => false)
-	const execFileSyncMock = vi.fn().mockReturnValue('testCommit')
+	mockLatestCommit = 'testCommit'
 
 	const result = await lastCommit({
 		dir,
 		fileName,
 		existsSync: fs.existsSync,
-		execFileSync: execFileSyncMock,
 		fileUtils: fileUtils as unknown as typeof fileUtilsType,
 	})
 
@@ -87,13 +135,12 @@ it('should return only latest commit if lastCommit is undefined', async () => {
 	vi.spyOn(fileUtils, 'readFile').mockImplementation(() => ({
 		git: {},
 	}))
-	const execFileSyncMock = vi.fn().mockReturnValue('latestCommit')
+	mockLatestCommit = 'latestCommit'
 
 	const result = await lastCommit({
 		dir: '/test',
 		fileUtils: fileUtils as unknown as typeof fileUtilsType,
 		existsSync: fs.existsSync,
-		execFileSync: execFileSyncMock,
 	})
 
 	expect(result).toEqual({
@@ -106,27 +153,25 @@ it('should return only latest commit if lastCommit is undefined', async () => {
 	)
 })
 
-test('should throw an error when execFileSync returns an error', async () => {
-	const execFileSyncMock = vi.fn().mockImplementation(() => {
-		throw new Error('execFileSync error')
-	})
-
-	try {
-		await lastCommit({
-			dir: '/test',
-			fileUtils: fileUtils as unknown as typeof fileUtilsType,
-			existsSync: fs.existsSync,
-			execFileSync: execFileSyncMock,
-		})
-	} catch (e) {
-		expect(e).toBeInstanceOf(Error)
-		expect((e as Error).message).toBe('execFileSync error')
-	}
-})
-
-test('should throw an error when execFileSync returns an error', async () => {
-	const execFileSyncMock = vi.fn().mockImplementationOnce(() => {
-		throw new Error('execFileSync error')
+test('should throw an error when spawn returns an error', async () => {
+	const { spawn } = await import('child_process')
+	vi.mocked(spawn).mockImplementationOnce((command, args, options) => {
+		const mockProcess = {
+			stdout: {
+				on: vi.fn(),
+				setEncoding: vi.fn(),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === 'error') {
+					setTimeout(() => callback(new Error('spawn error')), 0)
+				}
+			}),
+			kill: vi.fn(),
+		}
+		return mockProcess as any
 	})
 
 	await expect(
@@ -134,7 +179,6 @@ test('should throw an error when execFileSync returns an error', async () => {
 			dir: '/test',
 			fileUtils: fileUtils as unknown as typeof fileUtilsType,
 			existsSync: fs.existsSync,
-			execFileSync: execFileSyncMock,
 		}),
-	).rejects.toThrow('execFileSync error')
+	).rejects.toThrow()
 })

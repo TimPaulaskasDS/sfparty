@@ -12,6 +12,7 @@ import { Combine } from '../../src/party/combine.js'
 
 interface GlobalContext {
 	format?: string
+	__basedir?: string
 	git?: {
 		enabled?: boolean
 		append?: boolean
@@ -66,6 +67,17 @@ vi.mock('fs', () => ({
 					size: 100,
 				}),
 			),
+			lstat: vi.fn(() =>
+				Promise.resolve({
+					isFile: () => true,
+					isDirectory: () => false,
+					isSymbolicLink: () => false,
+					atime: new Date(),
+					mtime: new Date(),
+					size: 100,
+				}),
+			),
+			readlink: vi.fn(() => Promise.resolve('')),
 			readFile: vi.fn(() => Promise.resolve('')),
 			writeFile: vi.fn(() => Promise.resolve(undefined)),
 			mkdir: vi.fn(() => Promise.resolve(undefined)),
@@ -101,6 +113,17 @@ vi.mock('../../src/lib/fileUtils.js', () => ({
 	),
 	writeFile: vi.fn(() => Promise.resolve(undefined)),
 	getDirectories: vi.fn(() => Promise.resolve([])),
+	validateSymlink: vi.fn((filePath) => Promise.resolve(filePath)),
+	lstat: vi.fn(() =>
+		Promise.resolve({
+			isFile: () => true,
+			isDirectory: () => false,
+			isSymbolicLink: () => false,
+			atime: new Date(),
+			mtime: new Date(),
+			size: 100,
+		}),
+	),
 }))
 
 describe('Combine class', () => {
@@ -121,6 +144,7 @@ describe('Combine class', () => {
 
 		// Setup globals
 		global.format = 'yaml'
+		global.__basedir = '/workspace'
 		global.git = {
 			enabled: false,
 			append: false,
@@ -156,6 +180,18 @@ describe('Combine class', () => {
 				mtime: new Date(),
 				size: 100,
 			}),
+		)
+		// Reset fs.promises.lstat to default (not a symlink)
+		;(fs.promises.lstat as ReturnType<typeof vi.fn>).mockImplementation(
+			() =>
+				Promise.resolve({
+					isFile: () => true,
+					isDirectory: () => false,
+					isSymbolicLink: () => false,
+					atime: new Date(),
+					mtime: new Date(),
+					size: 100,
+				}),
 		)
 	})
 
@@ -397,8 +433,9 @@ describe('Combine class', () => {
 			}
 			const combine = new Combine(config)
 
+			// SEC-008: Error message now sanitizes paths (removes leading slash)
 			await expect(combine.combine()).rejects.toThrow(
-				'Path does not exist: /nonexistent',
+				'Path does not exist: nonexistent',
 			)
 		})
 

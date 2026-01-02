@@ -21,6 +21,10 @@ beforeEach(() => {
 it('should return true if the directory exists and is a directory', async () => {
 	const mockFs = {
 		promises: {
+			lstat: vi.fn().mockResolvedValue({
+				isSymbolicLink: () => false,
+				isDirectory: () => true,
+			} as fs.Stats),
 			stat: vi.fn().mockResolvedValue({
 				isDirectory: () => true,
 			} as fs.Stats),
@@ -39,6 +43,10 @@ it('should return true if the directory exists and is a directory', async () => 
 it('should return false if the directory exists but is not a directory', async () => {
 	const mockFs = {
 		promises: {
+			lstat: vi.fn().mockResolvedValue({
+				isSymbolicLink: () => false,
+				isDirectory: () => false,
+			} as fs.Stats),
 			stat: vi.fn().mockResolvedValue({
 				isDirectory: () => false,
 			} as fs.Stats),
@@ -57,6 +65,7 @@ it('should return false if the directory exists but is not a directory', async (
 it('should return false if the directory does not exist', async () => {
 	const mockFs = {
 		promises: {
+			lstat: vi.fn().mockRejectedValue(new Error('ENOENT')),
 			stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
 		},
 	}
@@ -67,5 +76,6 @@ it('should return false if the directory does not exist', async () => {
 		fs: mockFs as unknown as typeof fs,
 	})
 	expect(result).toBe(false)
-	expect(mockFs.promises.stat).toHaveBeenCalledWith(dirPath)
+	// When lstat throws ENOENT, stat is not called (caught in catch block)
+	expect(mockFs.promises.lstat).toHaveBeenCalled()
 })

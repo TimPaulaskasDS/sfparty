@@ -6,19 +6,25 @@ import { diff } from '../../../src/lib/gitUtils.js'
 vi.mock('fs', () => ({
 	existsSync: vi.fn(),
 }))
-vi.mock('child_process', () => ({
-	execSync: vi.fn(),
-}))
+
 const mockStream = {
 	setEncoding: vi.fn(),
 	on: vi.fn(),
 }
-vi.mock('child_process', () => ({
-	spawn: vi.fn(() => ({
-		stdout: mockStream,
-		stderr: mockStream,
-	})),
-}))
+
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('child_process')>()
+	return {
+		...actual,
+		execSync: vi.fn(),
+		spawn: vi.fn(() => ({
+			stdout: mockStream,
+			stderr: mockStream,
+			on: vi.fn(),
+			kill: vi.fn(),
+		})),
+	}
+})
 
 const gitRef = 'HEAD~1..HEAD'
 
@@ -34,8 +40,9 @@ test('rejects if directory does not exist', async () => {
 		throw new Error('Expected function to throw an error')
 	} catch (error) {
 		expect(error).toBeInstanceOf(Error)
+		// SEC-008: Error message now sanitizes paths
 		expect((error as Error).message).toEqual(
-			'The directory "/path/to/dir" does not exist',
+			'The directory "dir" does not exist',
 		)
 	}
 })
@@ -50,8 +57,9 @@ test('rejects if .git directory does not exist', async () => {
 		throw new Error('Expected function to throw an error')
 	} catch (error) {
 		expect(error).toBeInstanceOf(Error)
+		// SEC-008: Error message now sanitizes paths
 		expect((error as Error).message).toEqual(
-			`The directory "/path/to/dir" is not a git repository`,
+			`The directory "dir" is not a git repository`,
 		)
 	}
 })
@@ -115,6 +123,7 @@ test('resolves with files when git diff command is successful', async () => {
 				}
 			}),
 		},
+		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>
 	;(spawn as ReturnType<typeof vi.fn>)
 		.mockReturnValueOnce(git)
@@ -147,6 +156,7 @@ test('rejects when git diff command fails', async () => {
 			setEncoding: vi.fn(),
 			on: vi.fn(),
 		},
+		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>
 	if (gitDiff.stderr && gitDiff.stderr.on) {
 		;(gitDiff.stderr.on as ReturnType<typeof vi.fn>).mockImplementation(((
@@ -207,6 +217,7 @@ test('ignores files when git diff output does not have a tab character', async (
 				},
 			),
 		},
+		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>
 	;(spawn as ReturnType<typeof vi.fn>)
 		.mockReturnValueOnce(git)
@@ -266,6 +277,7 @@ test('rejects when git diff command fails', async () => {
 				}
 			}),
 		},
+		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>
 	;(spawn as ReturnType<typeof vi.fn>)
 		.mockReturnValueOnce(git)

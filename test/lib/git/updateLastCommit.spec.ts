@@ -36,9 +36,38 @@ it('should not update lastCommit property if latest is undefined', async () => {
 	expect(saveFileSpy).not.toHaveBeenCalled()
 })
 
-vi.mock('child_process', () => ({
-	execFileSync: vi.fn().mockReturnValue('mock-branch'),
-}))
+vi.mock('child_process', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('child_process')>()
+	return {
+		...actual,
+		execFileSync: vi.fn().mockReturnValue('mock-branch'),
+		spawn: vi.fn().mockImplementation((command, args, options) => {
+			const mockProcess = {
+				stdout: {
+					on: vi.fn((event, callback) => {
+						if (event === 'data') {
+							// Simulate successful git command output
+							setTimeout(() => callback('mock-branch'), 0)
+						} else if (event === 'close') {
+							setTimeout(() => callback(0), 10)
+						}
+					}),
+					setEncoding: vi.fn(),
+				},
+				stderr: {
+					on: vi.fn(),
+				},
+				on: vi.fn((event, callback) => {
+					if (event === 'close') {
+						setTimeout(() => callback(0), 10)
+					}
+				}),
+				kill: vi.fn(),
+			}
+			return mockProcess as any
+		}),
+	}
+})
 
 // Then in your test:
 it('should update lastCommit property in index.yaml for the current branch', async () => {

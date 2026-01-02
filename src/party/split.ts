@@ -286,7 +286,8 @@ export class Split {
 				)
 			}
 		} catch (err) {
-			const message = `error converting xml to json: ${that.metaFilePath}`
+			// SEC-008: Sanitize file path in error message (before sanitizeErrorPath is applied)
+			const message = `error converting xml to json: ${sanitizeErrorPath(that.metaFilePath)}`
 			const progressTracker = getGlobalProgressTracker()
 			if (progressTracker) {
 				progressTracker.logError(message)

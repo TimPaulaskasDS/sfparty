@@ -10,6 +10,7 @@ import { Split } from '../../src/party/split.js'
 
 interface GlobalContext {
 	format?: string
+	__basedir?: string
 	logger?: {
 		info: (message: string) => void
 		error: (message: string) => void
@@ -42,6 +43,12 @@ vi.mock('fs', () => ({
 				isFile: () => true,
 				isDirectory: () => false,
 			}),
+			lstat: vi.fn().mockResolvedValue({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+				isDirectory: () => false,
+			}),
+			readlink: vi.fn(),
 		},
 		existsSync: vi.fn(() => true),
 		statSync: vi.fn(() => ({
@@ -69,6 +76,21 @@ vi.mock('../../src/lib/fileUtils.js', () => ({
 	deleteDirectory: vi.fn(() => Promise.resolve(undefined)),
 	saveFile: vi.fn(() => Promise.resolve(true)),
 	readFile: vi.fn(() => Promise.resolve(null)),
+	validateSymlink: vi.fn((filePath) => Promise.resolve(filePath)),
+	checkDepth: vi.fn(() => {
+		// No-op for tests - depth checking is validated in actual implementation
+	}),
+	estimateObjectSize: vi.fn(() => {
+		// Return a reasonable size estimate for tests (less than MAX_PARSED_CONTENT_SIZE)
+		return 1024 * 1024 // 1MB
+	}),
+	lstat: vi.fn(() =>
+		Promise.resolve({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+			isDirectory: () => false,
+		}),
+	),
 }))
 
 describe('Split class', () => {
@@ -88,6 +110,7 @@ describe('Split class', () => {
 		}
 		// Setup globals
 		global.format = 'yaml'
+		global.__basedir = '/workspace'
 		global.logger = {
 			info: vi.fn(),
 			warn: vi.fn(),

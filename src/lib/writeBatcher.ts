@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import yaml from 'js-yaml'
 import * as path from 'path'
+import * as auditLogger from './auditLogger.js'
 
 /**
  * Write batcher for optimizing file I/O operations
@@ -97,7 +98,25 @@ export class WriteBatcher {
 			await Promise.all(
 				writes.map(async ({ fileName, data }) => {
 					// Write file (directory already created)
-					await fs.promises.writeFile(fileName, data, 'utf8')
+					try {
+						await fs.promises.writeFile(fileName, data, 'utf8')
+						// SEC-007: Log successful file write (non-blocking, git mode only)
+						auditLogger.logFileWrite(fileName, true).catch(() => {
+							// Ignore audit logging errors
+						})
+					} catch (error) {
+						const errorMessage =
+							error instanceof Error
+								? error.message
+								: String(error)
+						// SEC-007: Log failed file write (non-blocking, git mode only)
+						auditLogger
+							.logFileWrite(fileName, false, errorMessage)
+							.catch(() => {
+								// Ignore audit logging errors
+							})
+						throw error
+					}
 				}),
 			)
 		} finally {
@@ -206,7 +225,27 @@ export class WriteBatcher {
 				await Promise.all(
 					writes.map(async ({ fileName, data }) => {
 						// Write file (directory already created)
-						await fs.promises.writeFile(fileName, data, 'utf8')
+						try {
+							await fs.promises.writeFile(fileName, data, 'utf8')
+							// SEC-007: Log successful file write (non-blocking, git mode only)
+							auditLogger
+								.logFileWrite(fileName, true)
+								.catch(() => {
+									// Ignore audit logging errors
+								})
+						} catch (error) {
+							const errorMessage =
+								error instanceof Error
+									? error.message
+									: String(error)
+							// SEC-007: Log failed file write (non-blocking, git mode only)
+							auditLogger
+								.logFileWrite(fileName, false, errorMessage)
+								.catch(() => {
+									// Ignore audit logging errors
+								})
+							throw error
+						}
 					}),
 				)
 			} finally {

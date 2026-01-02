@@ -22,6 +22,8 @@ export default defineConfig({
 				'src/index.ts', // CLI entry point - requires integration testing
 				'src/lib/tui.ts', // TUI requires TTY and is difficult to test in CI
 				'src/lib/tuiProgressTracker.ts', // TUI tracker requires TTY and is difficult to test in CI
+				'src/types/**', // Type definitions - no executable code to test
+				'**/*.d.ts', // TypeScript declaration files - no executable code to test
 			],
 		},
 	},

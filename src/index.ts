@@ -15,7 +15,9 @@ import winston from 'winston'
 import type * as Yargs from 'yargs'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
+import * as auditLogger from './lib/auditLogger.js'
 import { checkVersion } from './lib/checkVersion.js'
+import { sanitizeErrorMessage, sanitizeErrorPath } from './lib/errorUtils.js'
 import * as fileUtils from './lib/fileUtils.js'
 import * as git from './lib/gitUtils.js'
 import * as packageUtil from './lib/packageUtil.js'
@@ -169,8 +171,13 @@ global.icons = {
 }
 
 global.displayError = (error: string, quit = false): void => {
+	// SEC-008: Sanitize error messages before displaying to users
+	// Log original error (with full details) for debugging
 	global.logger?.error(error)
-	console.info(error)
+
+	// Display sanitized error to user (paths removed/replaced)
+	const sanitized = sanitizeErrorMessage(error)
+	console.info(sanitized)
 	if (quit) process.exit(1)
 }
 
@@ -738,6 +745,8 @@ yargs(hideBin(process.argv))
 							})
 					} else {
 						gitMode({ status: 'active', gitRef })
+						// SEC-007: Initialize audit logger when git mode is enabled
+						auditLogger.initAuditLogger(global.__basedir)
 						const diff = git.diff({
 							dir: global.__basedir!,
 							gitRef,
@@ -1109,7 +1118,10 @@ async function processSplit(
 						fs,
 					}))
 				) {
-					global.logger?.error('File not found: ' + metaFilePath)
+					// SEC-008: Sanitize file path in error message
+					global.logger?.error(
+						'File not found: ' + sanitizeErrorPath(metaFilePath),
+					)
 					process.exit(1)
 				}
 			}
@@ -1469,7 +1481,10 @@ async function processCombine(
 				fs,
 			})
 			if (!dirExists) {
-				global.logger?.error('Directory not found: ' + metaDirPath)
+				// SEC-008: Sanitize directory path in error message
+				global.logger?.error(
+					'Directory not found: ' + sanitizeErrorPath(metaDirPath),
+				)
 				process.exit(1)
 			}
 			processList.push(name || '')

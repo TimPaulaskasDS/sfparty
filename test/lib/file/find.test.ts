@@ -6,6 +6,8 @@ describe('find', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
+			readlink: ReturnType<typeof vi.fn>
 		}
 	}
 
@@ -13,11 +15,22 @@ describe('find', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats),
+				),
+				readlink: vi.fn(),
 			},
 		}
 	})
 
 	it('should find file in current directory', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({
 			isFile: () => true,
 		} as fs.Stats)
@@ -32,9 +45,18 @@ describe('find', () => {
 	})
 
 	it('should find file in parent directory', async () => {
-		mockFs.promises.stat
+		// First call: lstat('/test/project/subdir/package.json') -> ENOENT
+		// Second call: lstat('/test/project/package.json') -> success
+		mockFs.promises.lstat
 			.mockRejectedValueOnce(new Error('ENOENT')) // Not found in subdir
-			.mockResolvedValueOnce({ isFile: () => true } as fs.Stats) // Found in parent
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+			} as fs.Stats) // Found in parent
+		// stat() is called after lstat() succeeds
+		mockFs.promises.stat.mockResolvedValueOnce({
+			isFile: () => true,
+		} as fs.Stats) // Found in parent
 
 		const result = await find(
 			'package.json',
@@ -46,6 +68,7 @@ describe('find', () => {
 	})
 
 	it('should traverse up to root', async () => {
+		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 
 		const result = await find(
@@ -84,6 +107,10 @@ describe('find', () => {
 	})
 
 	it('should use process.cwd() when root is not provided', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({
 			isFile: () => true,
 		} as fs.Stats)
@@ -101,6 +128,10 @@ describe('find', () => {
 		mockFs.promises.stat.mockResolvedValue({
 			isFile: () => true,
 		} as fs.Stats)
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 
 		const result = await find(
 			'file*.txt',
@@ -108,6 +139,9 @@ describe('find', () => {
 			mockFs as unknown as typeof fs,
 		)
 		// Should replace * with unicode escape
+		expect(mockFs.promises.lstat).toHaveBeenCalledWith(
+			'/test/path/file\u002a.txt',
+		)
 		expect(mockFs.promises.stat).toHaveBeenCalledWith(
 			'/test/path/file\u002a.txt',
 		)
@@ -128,6 +162,15 @@ describe('find', () => {
 
 	it('should continue searching when directory exists at expected file path (line 548)', async () => {
 		// Line 548: stat exists but isFile() returns false (directory exists, not a file)
+		mockFs.promises.lstat
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => false, // Directory exists but is not a file
+			} as fs.Stats)
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => true, // File found in parent directory
+			} as fs.Stats)
 		mockFs.promises.stat
 			.mockResolvedValueOnce({
 				isFile: () => false, // Directory exists but is not a file
@@ -144,6 +187,35 @@ describe('find', () => {
 
 		// Should continue searching and find file in parent
 		expect(result).toBe('/test/project/package.json')
+		expect(mockFs.promises.lstat).toHaveBeenCalledTimes(2)
 		expect(mockFs.promises.stat).toHaveBeenCalledTimes(2)
+	})
+
+	it('should handle symlink in find (covers line 845)', async () => {
+		global.__basedir = '/workspace'
+		const { find } = await import('../../../src/lib/fileUtils.js')
+		// Mock lstat: first call in find(), second call in validateSymlink()
+		mockFs.promises.lstat
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => true,
+				isFile: () => false,
+			} as fs.Stats)
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => true, // validateSymlink also calls lstat
+				isFile: () => false,
+			} as fs.Stats)
+		mockFs.promises.readlink.mockResolvedValueOnce('target.txt') // Relative path - will be resolved
+		mockFs.promises.stat.mockResolvedValueOnce({
+			isFile: () => true,
+		} as fs.Stats)
+
+		const result = await find(
+			'symlink.txt', // filename (first parameter)
+			'/workspace', // root directory (second parameter)
+			mockFs as unknown as typeof fs,
+		)
+
+		expect(result).toBe('/workspace/symlink.txt')
+		expect(mockFs.promises.readlink).toHaveBeenCalled()
 	})
 })

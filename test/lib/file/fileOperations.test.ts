@@ -19,6 +19,7 @@ describe('getFiles', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
 			readdir: ReturnType<typeof vi.fn>
 		}
 	}
@@ -27,6 +28,12 @@ describe('getFiles', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isDirectory: () => true,
+					} as fs.Stats),
+				),
 				readdir: vi.fn(),
 			},
 		}
@@ -117,6 +124,7 @@ describe('getDirectories', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
 			readdir: ReturnType<typeof vi.fn>
 		}
 	}
@@ -125,6 +133,12 @@ describe('getDirectories', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isDirectory: () => true,
+					} as fs.Stats),
+				),
 				readdir: vi.fn(),
 			},
 		}
@@ -178,6 +192,7 @@ describe('deleteDirectory', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
 			rm: ReturnType<typeof vi.fn>
 			rmdir: ReturnType<typeof vi.fn>
 		}
@@ -187,6 +202,12 @@ describe('deleteDirectory', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isDirectory: () => true,
+					} as fs.Stats),
+				),
 				rm: vi.fn().mockResolvedValue(undefined),
 				rmdir: vi.fn().mockResolvedValue(undefined),
 			},
@@ -194,6 +215,7 @@ describe('deleteDirectory', () => {
 	})
 
 	it('should return false when directory does not exist', async () => {
+		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 
 		const result = await deleteDirectory(
@@ -203,11 +225,15 @@ describe('deleteDirectory', () => {
 		)
 
 		expect(result).toBe(false)
-		expect(mockFs.promises.stat).toHaveBeenCalled()
+		expect(mockFs.promises.lstat).toHaveBeenCalled()
 	})
 
 	it('should delete directory with files', async () => {
-		// directoryExists will call stat, then deleteDirectory will call rmdir
+		// directoryExists will call lstat and stat, then deleteDirectory will call rmdir
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
 		mockFs.promises.rmdir.mockResolvedValue(undefined)
 
@@ -222,7 +248,11 @@ describe('deleteDirectory', () => {
 	})
 
 	it('should recursively delete subdirectories', async () => {
-		// directoryExists will call stat, then deleteDirectory will call rm
+		// directoryExists will call lstat and stat, then deleteDirectory will call rm
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
 		mockFs.promises.rm.mockResolvedValue(undefined)
 
@@ -241,6 +271,10 @@ describe('deleteDirectory', () => {
 
 	it('should use rmdir fallback when rm throws error', async () => {
 		// Test error handling - if rm fails, should handle gracefully
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
 		mockFs.promises.rm.mockRejectedValueOnce(
 			new Error('EBUSY: resource busy or locked'),
@@ -252,6 +286,10 @@ describe('deleteDirectory', () => {
 	})
 
 	it('should handle ENOENT error gracefully', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
 		mockFs.promises.rmdir.mockRejectedValueOnce({
 			code: 'ENOENT',
@@ -267,7 +305,11 @@ describe('deleteDirectory', () => {
 	})
 
 	it('should return true on successful deletion', async () => {
-		// directoryExists will call stat, then deleteDirectory will call rmdir
+		// directoryExists will call lstat and stat, then deleteDirectory will call rmdir
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isDirectory: () => true })
 		mockFs.promises.rmdir.mockResolvedValue(undefined)
 
@@ -285,6 +327,7 @@ describe('deleteFile', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
 			unlink: ReturnType<typeof vi.fn>
 		}
 	}
@@ -293,12 +336,19 @@ describe('deleteFile', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats),
+				),
 				unlink: vi.fn().mockResolvedValue(undefined),
 			},
 		}
 	})
 
 	it('should return false when file does not exist', async () => {
+		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 
 		const result = await deleteFile(
@@ -310,6 +360,10 @@ describe('deleteFile', () => {
 	})
 
 	it('should delete file when it exists', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 
 		const result = await deleteFile(
@@ -322,6 +376,10 @@ describe('deleteFile', () => {
 	})
 
 	it('should handle ENOENT error gracefully', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 		mockFs.promises.unlink.mockRejectedValueOnce({
 			code: 'ENOENT',
@@ -336,6 +394,10 @@ describe('deleteFile', () => {
 	})
 
 	it('should throw error when unlink fails with non-ENOENT error (covers line 327)', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 		// unlink fails with non-ENOENT error - should throw (line 327)
 		const error = new Error('Permission denied')

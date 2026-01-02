@@ -27,6 +27,12 @@ describe('createDirectory', () => {
 		mockFs = {
 			promises: {
 				mkdir: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isDirectory: () => true,
+					} as fs.Stats),
+				),
 				stat: vi.fn(),
 			},
 		}
@@ -69,7 +75,8 @@ describe('createDirectory', () => {
 	})
 
 	it('should replace special characters in path', async () => {
-		// createDirectory calls directoryExists first (via cache check), which calls stat
+		// createDirectory calls directoryExists first (via cache check), which calls lstat and stat
+		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.mkdir.mockResolvedValue(undefined)
 
@@ -95,6 +102,10 @@ describe('createDirectory', () => {
 			code: 'EEXIST',
 		} as NodeJS.ErrnoException)
 		// Check after error - exists (directoryExists is called in catch block)
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValueOnce({ isDirectory: () => true })
 
 		await createDirectory(uniquePath, mockFs as unknown as typeof fs)
@@ -105,11 +116,13 @@ describe('createDirectory', () => {
 
 	it('should throw error if directory creation fails and directory does not exist', async () => {
 		// First check - doesn't exist
+		mockFs.promises.lstat.mockRejectedValueOnce(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValueOnce(new Error('ENOENT'))
 		// mkdir fails
 		const error = new Error('Permission denied')
 		mockFs.promises.mkdir.mockRejectedValueOnce(error)
 		// Second check after error - still doesn't exist
+		mockFs.promises.lstat.mockRejectedValueOnce(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValueOnce(new Error('ENOENT'))
 
 		await expect(
@@ -122,6 +135,7 @@ describe('createDirectory', () => {
 		const uniquePath = '/cached/path/unique-' + Date.now()
 
 		// First call: creates directory and caches it
+		mockFs.promises.lstat.mockRejectedValueOnce(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValueOnce(new Error('ENOENT'))
 		mockFs.promises.mkdir.mockResolvedValueOnce(undefined)
 
@@ -129,7 +143,11 @@ describe('createDirectory', () => {
 		expect(mockFs.promises.mkdir).toHaveBeenCalledTimes(1)
 
 		// Second call: should hit cache (line 199) and return early without calling mkdir
-		// Note: directoryExists will be called to check cache, which calls stat
+		// Note: directoryExists will be called to check cache, which calls lstat and stat
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isDirectory: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValueOnce({ isDirectory: () => true })
 
 		await createDirectory(uniquePath, mockFs as unknown as typeof fs)

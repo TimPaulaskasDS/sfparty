@@ -6,6 +6,7 @@ import {
 } from 'child_process'
 import type * as fs from 'fs'
 import path from 'path'
+import { sanitizeErrorPath } from './errorUtils.js'
 import type * as fileUtils from './fileUtils.js'
 
 // SEC-004: Default timeout for git operations (30 seconds)
@@ -153,11 +154,15 @@ export function diff({
 			new Promise<GitFileInfo[]>((innerResolve, innerReject) => {
 				try {
 					if (!existsSync(dir)) {
-						throw new Error(`The directory "${dir}" does not exist`)
+						// SEC-008: Sanitize directory path in error message
+						throw new Error(
+							`The directory "${sanitizeErrorPath(dir)}" does not exist`,
+						)
 					}
 					if (!existsSync(path.join(dir, '.git'))) {
+						// SEC-008: Sanitize directory path in error message
 						throw new Error(
-							`The directory "${dir}" is not a git repository`,
+							`The directory "${sanitizeErrorPath(dir)}" is not a git repository`,
 						)
 					}
 

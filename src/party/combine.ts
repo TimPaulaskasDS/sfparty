@@ -209,7 +209,10 @@ export class Combine {
 			fs,
 		})
 		if (!exists) {
-			throw new Error(`Path does not exist: ${that.sourceDir}`)
+			// SEC-008: Sanitize path in error message
+			throw new Error(
+				`Path does not exist: ${sanitizeErrorPath(that.sourceDir)}`,
+			)
 		}
 
 		const types = ['directories', 'singleFiles', 'main']

@@ -13,6 +13,10 @@ import { fileExists } from '../../../src/lib/fileUtils.js'
 it('should return true if file exists', async () => {
 	const mockFs = {
 		promises: {
+			lstat: vi.fn().mockResolvedValue({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+			} as fs.Stats),
 			stat: vi.fn().mockResolvedValue({ isFile: () => true } as fs.Stats),
 		},
 	}
@@ -29,6 +33,7 @@ it('should return true if file exists', async () => {
 it('should return false if file does not exist', async () => {
 	const mockFs = {
 		promises: {
+			lstat: vi.fn().mockRejectedValue(new Error('ENOENT')),
 			stat: vi.fn().mockRejectedValue(new Error('ENOENT')),
 		},
 	}
@@ -45,6 +50,10 @@ it('should return false if file does not exist', async () => {
 it('should return false if file exists but is not a file', async () => {
 	const mockFs = {
 		promises: {
+			lstat: vi.fn().mockResolvedValue({
+				isSymbolicLink: () => false,
+				isFile: () => false,
+			} as fs.Stats),
 			stat: vi
 				.fn()
 				.mockResolvedValue({ isFile: () => false } as fs.Stats),

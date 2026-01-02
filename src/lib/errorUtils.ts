@@ -24,12 +24,14 @@ export function sanitizeErrorPath(filePath: string): string {
 }
 
 /**
- * Create a sanitized error from an original error, replacing paths
+ * SEC-008: Create a sanitized error from an original error, replacing paths
+ * Enhanced to handle more path patterns and edge cases
  */
 export function createSanitizedError(
 	originalError: Error,
-	pathPattern: RegExp = /\/[^\s]+/g,
+	pathPattern: RegExp = /[\/\\][^\s"']+/g,
 ): Error {
+	// Enhanced pattern to match both forward and backslash paths
 	const sanitized = new Error(
 		originalError.message.replace(pathPattern, (match) =>
 			sanitizeErrorPath(match),
@@ -37,6 +39,19 @@ export function createSanitizedError(
 	)
 	sanitized.stack = originalError.stack
 	return sanitized
+}
+
+/**
+ * SEC-008: Sanitize error message string (for use with displayError)
+ */
+export function sanitizeErrorMessage(message: string): string {
+	if (!message || typeof message !== 'string') {
+		return 'An error occurred'
+	}
+
+	// Pattern to match file paths (both forward and backslash)
+	const pathPattern = /[\/\\][^\s"']+/g
+	return message.replace(pathPattern, (match) => sanitizeErrorPath(match))
 }
 
 /**

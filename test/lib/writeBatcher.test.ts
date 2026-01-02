@@ -3,6 +3,15 @@ import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { serializeData, WriteBatcher } from '../../src/lib/writeBatcher.js'
 
+interface GlobalContext {
+	__basedir?: string
+	git?: {
+		enabled: boolean
+	}
+}
+
+declare const global: GlobalContext & typeof globalThis
+
 describe('WriteBatcher', () => {
 	let writeBatcher: WriteBatcher
 	let tempDir: string
@@ -645,6 +654,99 @@ describe('serializeData', () => {
 			expect(() => {
 				serializeData(obj, 'json')
 			}).not.toThrow()
+		})
+	})
+
+	describe('WriteBatcher error handling', () => {
+		it('should handle write errors and log to auditLogger (covers lines 232-241)', async () => {
+			const testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-errors',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+
+			try {
+				// Enable git mode for audit logging
+				global.git = { enabled: true }
+				global.__basedir = testTempDir
+
+				// Initialize audit logger
+				const { initAuditLogger } = await import(
+					'../../src/lib/auditLogger.js'
+				)
+				initAuditLogger()
+
+				const testBatcher = new WriteBatcher(20, 5)
+
+				// Create a file path that will fail to write (invalid directory)
+				const invalidPath = path.join('/invalid', 'path', 'file.txt')
+
+				// Add write that will fail
+				const writePromise = testBatcher.addWrite(invalidPath, 'test')
+
+				// Flush should throw error - need to await the write promise first
+				// The error will be thrown when flush() processes the write
+				await expect(
+					Promise.all([testBatcher.flush(), writePromise]),
+				).rejects.toThrow()
+			} finally {
+				// Clean up
+				delete global.git
+				delete global.__basedir
+				if (fs.existsSync(testTempDir)) {
+					fs.rmSync(testTempDir, { recursive: true, force: true })
+				}
+			}
+		})
+
+		it('should handle non-Error exceptions in write (covers line 234)', async () => {
+			const testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-errors2',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+
+			try {
+				// Enable git mode for audit logging
+				global.git = { enabled: true }
+				global.__basedir = testTempDir
+
+				// Initialize audit logger
+				const { initAuditLogger } = await import(
+					'../../src/lib/auditLogger.js'
+				)
+				initAuditLogger()
+
+				const testBatcher = new WriteBatcher(20, 5)
+
+				// Mock fs.promises.writeFile to throw a non-Error
+				const originalWriteFile = fs.promises.writeFile
+				fs.promises.writeFile = vi
+					.fn()
+					.mockRejectedValue('String error')
+
+				const filePath = path.join(testTempDir, 'test.txt')
+				const writePromise = testBatcher.addWrite(filePath, 'test')
+
+				// Flush should throw error
+				await expect(testBatcher.flush()).rejects.toBe('String error')
+
+				// Restore original
+				fs.promises.writeFile = originalWriteFile
+			} finally {
+				// Clean up
+				delete global.git
+				delete global.__basedir
+				if (fs.existsSync(testTempDir)) {
+					fs.rmSync(testTempDir, { recursive: true, force: true })
+				}
+			}
 		})
 	})
 })

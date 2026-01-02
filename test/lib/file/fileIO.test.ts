@@ -42,6 +42,8 @@ describe('fileInfo', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
+			readlink: ReturnType<typeof vi.fn>
 		}
 	}
 
@@ -49,12 +51,23 @@ describe('fileInfo', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats),
+				),
+				readlink: vi.fn(),
 			},
 		}
 	})
 
 	it('should return file info when file exists', async () => {
 		const mockStats = { size: 1024, mtime: new Date() } as fs.Stats
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue(mockStats)
 
 		const result = await fileInfo(
@@ -71,6 +84,7 @@ describe('fileInfo', () => {
 	})
 
 	it('should return undefined stats when file does not exist', async () => {
+		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 
 		const result = await fileInfo(
@@ -174,6 +188,8 @@ describe('readFile', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
+			readlink: ReturnType<typeof vi.fn>
 			readFile: ReturnType<typeof vi.fn>
 		}
 	}
@@ -182,6 +198,13 @@ describe('readFile', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats),
+				),
+				readlink: vi.fn(),
 				readFile: vi.fn(),
 			},
 		}
@@ -214,7 +237,11 @@ describe('readFile', () => {
 	})
 
 	it('should read and parse YAML file', async () => {
-		// Mock stat for both fileExists check and size check
+		// Mock lstat for symlink check, then stat for both fileExists check and size check
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat
 			.mockResolvedValueOnce({
 				isFile: () => true,
@@ -233,6 +260,10 @@ describe('readFile', () => {
 	})
 
 	it('should read XML file as promise', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 		mockFs.promises.readFile.mockResolvedValue(
 			'<root><item>value</item></root>',
@@ -250,6 +281,10 @@ describe('readFile', () => {
 	})
 
 	it('should read raw text when convert is false', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 		mockFs.promises.readFile.mockResolvedValue('raw text')
 
@@ -263,6 +298,7 @@ describe('readFile', () => {
 	})
 
 	it('should return undefined when file does not exist', async () => {
+		mockFs.promises.lstat.mockRejectedValue(new Error('ENOENT'))
 		mockFs.promises.stat.mockRejectedValue(new Error('ENOENT'))
 
 		const result = await readFile(
@@ -275,7 +311,11 @@ describe('readFile', () => {
 	})
 
 	it('should throw error on YAML parsing failure', async () => {
-		// Mock stat for both fileExists check and size check
+		// Mock lstat for symlink check, then stat for both fileExists check and size check
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat
 			.mockResolvedValueOnce({
 				isFile: () => true,
@@ -476,6 +516,8 @@ describe('readFile - XML error handling', () => {
 	let mockFs: {
 		promises: {
 			stat: ReturnType<typeof vi.fn>
+			lstat: ReturnType<typeof vi.fn>
+			readlink: ReturnType<typeof vi.fn>
 			readFile: ReturnType<typeof vi.fn>
 		}
 	}
@@ -484,6 +526,13 @@ describe('readFile - XML error handling', () => {
 		mockFs = {
 			promises: {
 				stat: vi.fn(),
+				lstat: vi.fn(() =>
+					Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats),
+				),
+				readlink: vi.fn(),
 				readFile: vi.fn(),
 			},
 		}
@@ -521,6 +570,10 @@ describe('readFile - XML error handling', () => {
 		// Test for fileUtils.js line 186 - error handling in convertXML
 		// Note: fast-xml-parser is lenient and may parse some invalid XML
 		// This test verifies that XML parsing errors are handled
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 		// Use XML that will definitely cause a parsing error
 		mockFs.promises.readFile.mockResolvedValue(
@@ -547,6 +600,10 @@ describe('readFile - XML error handling', () => {
 	it('should validate path when global.__basedir is set in readFile', async () => {
 		// Test line 249: readFile with global.__basedir
 		;(global as { __basedir?: string }).__basedir = '/workspace'
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
 		mockFs.promises.readFile.mockResolvedValue('{"key":"value"}')
 
@@ -576,6 +633,10 @@ describe('readFile - XML error handling', () => {
 		//
 		// Duplicate keys cause js-yaml to THROW AN ERROR directly (not call onWarning).
 		// The try-catch wrapper in fileUtils.ts (lines 434-476) catches this error and adds
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		// the "YAML parsing" prefix.
 		//
 		// TEST APPROACH: Use the default mock behavior (calls real js-yaml). The try-catch wrapper
@@ -586,7 +647,11 @@ describe('readFile - XML error handling', () => {
 		// It may hang when run in isolation due to test framework mock setup quirks, but this is
 		// not a problem since the test correctly validates the behavior in the full suite.
 
-		// Mock stat for both fileExists check and size check
+		// Mock lstat for symlink check, then stat for both fileExists check and size check
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat
 			.mockResolvedValueOnce({
 				isFile: () => true,
@@ -618,6 +683,10 @@ describe('readFile - XML error handling', () => {
 		).logger = {
 			error: vi.fn(),
 		}
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat
 			.mockResolvedValueOnce({
 				isFile: () => true,
@@ -681,6 +750,10 @@ describe('readFile - XML error handling', () => {
 
 	describe('readFile - XML error handling', () => {
 		it('should throw error on invalid XML (line 483)', async () => {
+			mockFs.promises.lstat.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+			} as fs.Stats)
 			mockFs.promises.stat
 				.mockResolvedValueOnce({
 					isFile: () => true,
@@ -722,6 +795,10 @@ describe('readFile - XML error handling', () => {
 
 		it('should handle arrays in JSON (covers line 92)', async () => {
 			// Test that arrays are processed by sanitizeObject.map (line 92)
+			mockFs.promises.lstat.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+			} as fs.Stats)
 			mockFs.promises.stat
 				.mockResolvedValueOnce({
 					isFile: () => true,
@@ -743,6 +820,10 @@ describe('readFile - XML error handling', () => {
 		})
 
 		it('should reject __proto__ key (covers line 99)', async () => {
+			mockFs.promises.lstat.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+			} as fs.Stats)
 			mockFs.promises.stat
 				.mockResolvedValueOnce({
 					isFile: () => true,
@@ -766,6 +847,10 @@ describe('readFile - XML error handling', () => {
 		})
 
 		it('should reject constructor key (covers line 99)', async () => {
+			mockFs.promises.lstat.mockResolvedValueOnce({
+				isSymbolicLink: () => false,
+				isFile: () => true,
+			} as fs.Stats)
 			mockFs.promises.stat
 				.mockResolvedValueOnce({
 					isFile: () => true,
@@ -814,6 +899,10 @@ describe('readFile - XML error handling', () => {
 	it('should reject file exceeding MAX_FILE_SIZE (covers line 422)', async () => {
 		// MAX_FILE_SIZE is 100MB, test with file larger than that
 		const largeSize = 101 * 1024 * 1024 // 101MB
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
 		mockFs.promises.stat
 			.mockResolvedValueOnce({
 				isFile: () => true,
@@ -834,4 +923,189 @@ describe('readFile - XML error handling', () => {
 	// "should handle YAML parsing warnings" test. Additional YAML mock tests were
 	// removed to avoid isolation hang issues - the existing test covers these paths
 	// when run as part of the full test suite.
+
+	it('should handle YAML file exceeding MAX_PARSED_CONTENT_SIZE (covers line 685)', async () => {
+		// Test YAML size limit (10MB)
+		// Create a YAML structure that when parsed will have estimated size > 10MB
+		// We'll create a deeply nested structure with large strings
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
+		mockFs.promises.stat
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
+
+		// Create YAML with large nested structure that exceeds 10MB when parsed
+		// Each key-value pair adds to the estimated size
+		const largeArray: string[] = []
+		for (let i = 0; i < 10000; i++) {
+			largeArray.push(`item${i}: "${'x'.repeat(1000)}"`)
+		}
+		const largeYaml = `root:\n  ${largeArray.join('\n  ')}`
+		mockFs.promises.readFile.mockResolvedValue(largeYaml)
+
+		// This should trigger the size check and throw
+		await expect(
+			readFile('/test/file.yaml', true, mockFs as unknown as typeof fs),
+		).rejects.toThrow('YAML parsed content size')
+	})
+
+	it('should handle XML file exceeding MAX_PARSED_CONTENT_SIZE (covers line 757)', async () => {
+		// Test XML size limit (10MB)
+		// Create an XML structure that when parsed will have estimated size > 10MB
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
+		mockFs.promises.stat
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
+
+		// Create XML with large nested structure that exceeds 10MB when parsed
+		const items: string[] = []
+		for (let i = 0; i < 10000; i++) {
+			items.push(`<item id="${i}">${'x'.repeat(1000)}</item>`)
+		}
+		const largeXml = `<root>${items.join('')}</root>`
+		mockFs.promises.readFile.mockResolvedValue(largeXml)
+
+		// This should trigger the size check and throw
+		await expect(
+			readFile('/test/file.xml', true, mockFs as unknown as typeof fs),
+		).rejects.toThrow('XML parsed content size')
+	})
+
+	it('should handle symlink in fileInfo (covers line 506)', async () => {
+		global.__basedir = '/workspace'
+		// Import fileInfo and create a separate mockFs
+		const { fileInfo: fileInfoFn } = await import(
+			'../../../src/lib/fileUtils.js'
+		)
+		const fileInfoMockFs = {
+			promises: {
+				stat: vi.fn(),
+				lstat: vi.fn((path: string) => {
+					// First call in fileInfo, second call in validateSymlink
+					if (path === '/workspace/symlink.txt') {
+						return Promise.resolve({
+							isSymbolicLink: () => true,
+							isFile: () => false,
+						} as fs.Stats)
+					}
+					return Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats)
+				}),
+				readlink: vi.fn().mockResolvedValue('target.txt'), // Relative path - will be resolved
+			},
+		}
+		// After symlink resolution, stat is called on the original path (stat follows symlinks)
+		fileInfoMockFs.promises.stat.mockResolvedValue({
+			size: 1024,
+			mtime: new Date(),
+		} as fs.Stats)
+
+		const result = await fileInfoFn(
+			'/workspace/symlink.txt',
+			fileInfoMockFs as unknown as typeof fs,
+		)
+
+		expect(result.exists).toBe(true)
+		// Note: readlink may not be called if path sanitization changes the path
+		// The important part is that line 506 (validateSymlink call) is covered
+	})
+
+	it('should handle symlink in fileExists (covers line 332)', async () => {
+		global.__basedir = '/workspace'
+		// Create a separate mockFs for fileExists
+		const fileExistsMockFs = {
+			promises: {
+				stat: vi.fn(),
+				lstat: vi.fn((path: string) => {
+					// First call in fileExists, second call in validateSymlink
+					if (path === '/workspace/symlink.txt') {
+						return Promise.resolve({
+							isSymbolicLink: () => true,
+							isFile: () => false,
+						} as fs.Stats)
+					}
+					return Promise.resolve({
+						isSymbolicLink: () => false,
+						isFile: () => true,
+					} as fs.Stats)
+				}),
+				readlink: vi.fn().mockResolvedValue('target.txt'), // Relative path - will be resolved
+			},
+		}
+		// After symlink resolution, stat is called on the original path (stat follows symlinks)
+		fileExistsMockFs.promises.stat.mockResolvedValue({
+			isFile: () => true,
+		} as fs.Stats)
+
+		const { fileExists } = await import('../../../src/lib/fileUtils.js')
+		const result = await fileExists({
+			filePath: '/workspace/symlink.txt',
+			fs: fileExistsMockFs as unknown as typeof fs,
+		})
+
+		expect(result).toBe(true)
+		expect(fileExistsMockFs.promises.readlink).toHaveBeenCalled()
+	})
+
+	it('should handle symlink in readFile (covers line 603)', async () => {
+		global.__basedir = '/workspace'
+		mockFs.promises.lstat
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => true,
+				isFile: () => false,
+			} as fs.Stats)
+			.mockResolvedValueOnce({
+				isSymbolicLink: () => true, // validateSymlink also calls lstat
+				isFile: () => false,
+			} as fs.Stats)
+		mockFs.promises.readlink.mockResolvedValueOnce('target.json') // Relative path - will be resolved
+		// After symlink resolution, stat is called on the resolved path (twice - once for fileExists, once for size check)
+		mockFs.promises.stat
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
+		mockFs.promises.readFile.mockResolvedValue('{"key":"value"}')
+
+		const result = await readFile(
+			'/workspace/symlink.json',
+			true,
+			mockFs as unknown as typeof fs,
+		)
+
+		expect(result).toEqual({ key: 'value' })
+		expect(mockFs.promises.readlink).toHaveBeenCalled()
+	})
+
+	it('should handle file not found after symlink validation (covers line 620)', async () => {
+		global.__basedir = '/workspace'
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => true,
+			isFile: () => false,
+		} as fs.Stats)
+		mockFs.promises.readlink.mockResolvedValueOnce('/workspace/target.json')
+		mockFs.promises.stat.mockRejectedValueOnce(new Error('ENOENT'))
+
+		const result = await readFile(
+			'/workspace/symlink.json',
+			true,
+			mockFs as unknown as typeof fs,
+		)
+
+		expect(result).toBeUndefined()
+	})
 })

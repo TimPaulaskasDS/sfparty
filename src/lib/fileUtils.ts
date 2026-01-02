@@ -2,6 +2,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as fs from 'fs'
 import yaml from 'js-yaml'
 import * as path from 'path'
+import * as auditLogger from './auditLogger.js'
 import { handleFileError } from './errorUtils.js'
 import { replaceSpecialChars } from './pathUtils.js'
 import { serializeData, WriteBatcher } from './writeBatcher.js'
@@ -528,6 +529,7 @@ export async function saveFile(
 	fsTmp: typeof fs = fs,
 	useBatching = true,
 ): Promise<boolean> {
+	let errorMessage: string | undefined
 	try {
 		const sanitizedFileName = replaceSpecialChars(fileName)
 
@@ -542,9 +544,22 @@ export async function saveFile(
 			// Direct write (fallback or when batching disabled)
 			await fsTmp.promises.writeFile(sanitizedFileName, data, 'utf8')
 		}
+
+		// SEC-007: Log file write operation (non-blocking, git mode only)
+		auditLogger.logFileWrite(sanitizedFileName, true).catch(() => {
+			// Ignore audit logging errors - they shouldn't break the application
+		})
+
 		return true
 	} catch (error) {
+		errorMessage = error instanceof Error ? error.message : String(error)
 		global.logger?.error(error)
+
+		// SEC-007: Log failed file write operation (non-blocking, git mode only)
+		auditLogger.logFileWrite(fileName, false, errorMessage).catch(() => {
+			// Ignore audit logging errors
+		})
+
 		throw error
 	}
 }
@@ -754,6 +769,7 @@ export async function writeFile(
 	mtime: Date = new Date(),
 	fsTmp: typeof fs = fs,
 ): Promise<void> {
+	let errorMessage: string | undefined
 	try {
 		// Security: Validate path before writing
 		let validatedFileName: string
@@ -772,8 +788,19 @@ export async function writeFile(
 
 		// update XML file to match the latest atime and mtime of the files processed
 		await fsTmp.promises.utimes(sanitizedFileName, finalAtime, finalMtime)
+
+		// SEC-007: Log file write operation (non-blocking, git mode only)
+		auditLogger.logFileWrite(sanitizedFileName, true).catch(() => {
+			// Ignore audit logging errors - they shouldn't break the application
+		})
 	} catch (error) {
+		errorMessage = error instanceof Error ? error.message : String(error)
 		handleFileError(error, global.logger)
+
+		// SEC-007: Log failed file write operation (non-blocking, git mode only)
+		auditLogger.logFileWrite(fileName, false, errorMessage).catch(() => {
+			// Ignore audit logging errors
+		})
 	}
 }
 
