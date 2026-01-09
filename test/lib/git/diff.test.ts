@@ -327,3 +327,121 @@ test('handles unknown status type with default action', async () => {
 	// When statusType is undefined, should default to type 'A' (line 176) and action 'add' (line 180)
 	expect(files).toEqual([{ type: 'A', path: 'file1.txt', action: 'add' }])
 })
+
+test('should handle gitDiff.on error event (covers line 248-250)', async () => {
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
+	const git = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
+	} as unknown as ReturnType<typeof spawn>
+	const gitDiff = {
+		stdout: {
+			setEncoding: vi.fn(),
+			on: vi.fn(),
+		},
+		stderr: {
+			on: vi.fn(),
+		},
+		on: vi.fn((event, callback) => {
+			if (event === 'error') {
+				// Trigger error event to cover lines 248-250
+				setTimeout(
+					() => callback(new Error('git diff process error')),
+					0,
+				)
+			}
+		}),
+		kill: vi.fn(),
+	} as unknown as ReturnType<typeof spawn>
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
+
+	await expect(
+		diff({ dir: '/path/to/dir', gitRef, existsSync, spawn }),
+	).rejects.toThrow('git diff process error')
+})
+
+test('should handle git.on error event after handlers registered (covers line 253-255)', async () => {
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
+
+	// Track all error handlers registered
+	const errorHandlers: Array<(error: Error) => void> = []
+
+	const git = {
+		on: vi.fn((event, callback) => {
+			if (event === 'error') {
+				// Store all error handlers - both the one at line 171 and line 253
+				errorHandlers.push(callback)
+			} else if (event === 'close') {
+				// After close handler is registered, trigger error on the SECOND handler (line 253-255)
+				// The first handler (line 171) throws, but we want to test the second one
+				setTimeout(() => {
+					// Call the second error handler (index 1) which is at line 253-255
+					if (errorHandlers.length > 1) {
+						// The second handler calls innerReject, not throw
+						errorHandlers[1](
+							new Error('git process error after setup'),
+						)
+					}
+				}, 10)
+			}
+		}),
+	} as unknown as ReturnType<typeof spawn>
+	;(spawn as ReturnType<typeof vi.fn>).mockReturnValueOnce(git)
+
+	// The first error handler throws, but the second one (line 253-255) calls innerReject
+	// We need to catch the error from innerReject, not the thrown error
+	await expect(
+		diff({ dir: '/path/to/dir', gitRef, existsSync, spawn }),
+	).rejects.toThrow('git process error after setup')
+})
+
+test('should clear timeout when timeoutCleared is false in then handler (covers line 266)', async () => {
+	;(existsSync as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(true)
+		.mockReturnValueOnce(true)
+	const git = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
+	} as unknown as ReturnType<typeof spawn>
+	const gitDiff = {
+		stdout: {
+			setEncoding: vi.fn(),
+			on: vi.fn((event, callback) => {
+				if (event === 'data') {
+					callback('A\tfile1.txt\n')
+				} else if (event === 'close') {
+					// Delay close to ensure timeout hasn't been cleared yet
+					setTimeout(() => callback(0), 5)
+				}
+			}),
+		},
+		stderr: {
+			on: vi.fn(),
+		},
+		on: vi.fn(), // Add on method for error handler
+		kill: vi.fn(),
+	} as unknown as ReturnType<typeof spawn>
+	;(spawn as ReturnType<typeof vi.fn>)
+		.mockReturnValueOnce(git)
+		.mockReturnValueOnce(gitDiff)
+
+	// Set a longer timeout so the operation completes before timeout
+	process.env.SFPARTY_GIT_TIMEOUT = '10000'
+
+	const files = await diff({ dir: '/path/to/dir', gitRef, existsSync, spawn })
+	expect(files).toEqual([{ type: 'add', path: 'file1.txt', action: 'add' }])
+
+	delete process.env.SFPARTY_GIT_TIMEOUT
+})

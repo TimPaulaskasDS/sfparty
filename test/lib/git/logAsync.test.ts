@@ -193,4 +193,60 @@ describe('logAsync', () => {
 			'Git command failed',
 		)
 	})
+
+	it('should handle ENOENT error (covers line 324)', async () => {
+		const { spawn } = await import('child_process')
+		const mockProcess = {
+			stdout: {
+				on: vi.fn(),
+				setEncoding: vi.fn(),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === 'error') {
+					// Trigger error with ENOENT message to cover line 324
+					setTimeout(() => {
+						callback(new Error('ENOENT: git not found'))
+					}, 0)
+				}
+			}),
+			kill: vi.fn(),
+		}
+
+		vi.mocked(spawn).mockReturnValue(mockProcess as any)
+
+		await expect(logAsync('/test/dir', 'main')).rejects.toThrow(
+			'git not installed or no entry found in path',
+		)
+	})
+
+	it('should handle non-ENOENT error in git process (covers line 326)', async () => {
+		const { spawn } = await import('child_process')
+		const mockProcess = {
+			stdout: {
+				on: vi.fn(),
+				setEncoding: vi.fn(),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === 'error') {
+					// Trigger error without ENOENT to cover line 326
+					setTimeout(() => {
+						callback(new Error('Some other error'))
+					}, 0)
+				}
+			}),
+			kill: vi.fn(),
+		}
+
+		vi.mocked(spawn).mockReturnValue(mockProcess as any)
+
+		await expect(logAsync('/test/dir', 'main')).rejects.toThrow(
+			'Some other error',
+		)
+	})
 })
