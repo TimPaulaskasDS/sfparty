@@ -127,4 +127,108 @@ describe('Runtime Type Validation (SEC-012)', () => {
 			expect(result).toBeUndefined()
 		})
 	})
+
+	describe('validateData error handling', () => {
+		it('should re-throw non-ZodError exceptions (covers line 79)', () => {
+			// Create a mock schema that throws a non-ZodError
+			const mockSchema = {
+				parse: () => {
+					throw new Error('Custom error')
+				},
+			} as unknown as typeof SfdxProjectSchema
+
+			// Should re-throw the non-ZodError (line 79)
+			expect(() => validateData({}, mockSchema)).toThrow('Custom error')
+		})
+
+		it('should format ZodError with path information', () => {
+			const invalid = {
+				packageDirectories: [
+					{
+						path: '', // Invalid: empty string
+						default: 'not-a-boolean', // Invalid: not a boolean
+					},
+				],
+			}
+
+			expect(() => validateData(invalid, SfdxProjectSchema)).toThrow(
+				'Validation failed',
+			)
+			// Should include path information in error message
+			try {
+				validateData(invalid, SfdxProjectSchema)
+			} catch (error) {
+				expect((error as Error).message).toContain('Validation failed')
+				expect((error as Error).message).toContain(':')
+			}
+		})
+
+		it('should handle root-level validation errors', () => {
+			// Test with data that fails at root level (no path)
+			const invalid = 'not-an-object'
+
+			expect(() => validateData(invalid, SfdxProjectSchema)).toThrow(
+				'Validation failed',
+			)
+			try {
+				validateData(invalid, SfdxProjectSchema)
+			} catch (error) {
+				// Should include 'root' in error message when path is empty
+				const errorMessage = (error as Error).message
+				expect(errorMessage).toContain('Validation failed')
+			}
+		})
+
+		it('should handle nested path errors', () => {
+			const invalid = {
+				packageDirectories: [
+					{
+						path: 'valid-path',
+						// Missing required fields or invalid structure
+					},
+					{
+						path: '', // Invalid: empty path
+					},
+				],
+			}
+
+			expect(() => validateData(invalid, SfdxProjectSchema)).toThrow(
+				'Validation failed',
+			)
+		})
+
+		it('should handle PackageXmlSchema with string members', () => {
+			const valid = {
+				Package: {
+					$: { xmlns: 'http://soap.sforce.com/2006/04/metadata' },
+					types: [
+						{
+							members: 'SingleMember', // String instead of array
+							name: 'Profile',
+						},
+					],
+				},
+			}
+
+			const result = validateData(valid, PackageXmlSchema)
+			expect(result.Package.types?.[0]?.members).toBe('SingleMember')
+		})
+
+		it('should handle PackageXmlSchema with array members', () => {
+			const valid = {
+				Package: {
+					$: { xmlns: 'http://soap.sforce.com/2006/04/metadata' },
+					types: [
+						{
+							members: ['Member1', 'Member2'],
+							name: 'Profile',
+						},
+					],
+				},
+			}
+
+			const result = validateData(valid, PackageXmlSchema)
+			expect(Array.isArray(result.Package.types?.[0]?.members)).toBe(true)
+		})
+	})
 })
