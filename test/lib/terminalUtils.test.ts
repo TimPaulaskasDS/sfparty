@@ -17,15 +17,20 @@ describe('terminalUtils', () => {
 		originalStderrWrite = process.stderr.write.bind(process.stderr)
 		stderrWriteCalls = []
 
-		// Track calls to original stderr.write
+		// Track calls to stderr.write without actually writing to stderr (prevents test output pollution)
 		process.stderr.write = function (
 			chunk: string | Uint8Array,
 			encodingOrCb?: BufferEncoding | ((err?: Error | null) => void),
 			cb?: (err?: Error | null) => void,
 		): boolean {
 			stderrWriteCalls.push({ chunk, encodingOrCb, cb })
-			// biome-ignore lint/suspicious/noExplicitAny: Test mock - Type assertion needed for test mock compatibility with Node.js process.stderr.write types
-			return originalStderrWrite(chunk, encodingOrCb as any, cb)
+			// Call callback if provided, but don't write to actual stderr
+			const actualCb =
+				typeof encodingOrCb === 'function' ? encodingOrCb : cb
+			if (typeof actualCb === 'function') {
+				actualCb()
+			}
+			return true
 		} as typeof process.stderr.write
 	})
 

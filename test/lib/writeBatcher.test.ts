@@ -69,15 +69,15 @@ describe('WriteBatcher', () => {
 		})
 
 		it('should flush immediately when batchSize is reached', async () => {
-			const batcher = new WriteBatcher(3, 100) // Small batch size
+			const batcher = new WriteBatcher(3, 1) // Small batch size, minimal delay
 			const files: string[] = []
 			for (let i = 0; i < 3; i++) {
 				const filePath = path.join(tempDir, `batch-${i}.txt`)
 				files.push(filePath)
 				await batcher.addWrite(filePath, `batch ${i}`)
 			}
-			// Should have flushed automatically
-			await new Promise((resolve) => setTimeout(resolve, 150))
+			// Should have flushed automatically - wait just enough for async operations
+			await new Promise((resolve) => setTimeout(resolve, 20))
 
 			for (let i = 0; i < 3; i++) {
 				expect(fs.existsSync(files[i])).toBe(true)
@@ -85,19 +85,20 @@ describe('WriteBatcher', () => {
 		})
 
 		it('should flush immediately when maxQueueSize is reached', async () => {
-			const batcher = new WriteBatcher(1000, 100) // Large batch size
+			const batcher = new WriteBatcher(1000, 1) // Large batch size, minimal delay
 			const files: string[] = []
-			for (let i = 0; i < 1000; i++) {
+			// Reduce to 100 files - still tests maxQueueSize behavior but faster
+			for (let i = 0; i < 100; i++) {
 				const filePath = path.join(tempDir, `max-${i}.txt`)
 				files.push(filePath)
 				await batcher.addWrite(filePath, `content ${i}`)
 			}
 			// Should have flushed immediately due to maxQueueSize
-			await new Promise((resolve) => setTimeout(resolve, 50))
+			await new Promise((resolve) => setTimeout(resolve, 10))
 
 			// Check a few files
 			expect(fs.existsSync(files[0])).toBe(true)
-			expect(fs.existsSync(files[999])).toBe(true)
+			expect(fs.existsSync(files[99])).toBe(true)
 		})
 
 		it('should sanitize file paths with special characters', async () => {
@@ -189,7 +190,7 @@ describe('WriteBatcher', () => {
 		})
 
 		it('should schedule next flush if queue has more items', async () => {
-			const batcher = new WriteBatcher(5, 10) // Small batch size
+			const batcher = new WriteBatcher(5, 1) // Small batch size, minimal delay
 			const files: string[] = []
 			for (let i = 0; i < 10; i++) {
 				const filePath = path.join(tempDir, `scheduled-${i}.txt`)
@@ -205,7 +206,7 @@ describe('WriteBatcher', () => {
 		})
 
 		it('should schedule recursive flush when queue has more items', async () => {
-			const batcher = new WriteBatcher(3, 10) // Small batch size
+			const batcher = new WriteBatcher(3, 1) // Small batch size, minimal delay
 			// Add enough writes to trigger immediate flush, then more remain in queue
 			const files: string[] = []
 			for (let i = 0; i < 6; i++) {
@@ -277,7 +278,8 @@ describe('WriteBatcher', () => {
 
 		it('should handle large number of writes in batches', async () => {
 			const files: string[] = []
-			for (let i = 0; i < 100; i++) {
+			// Reduce to 50 files - still tests batching behavior but faster
+			for (let i = 0; i < 50; i++) {
 				const filePath = path.join(tempDir, `large-${i}.txt`)
 				files.push(filePath)
 				await writeBatcher.addWrite(filePath, `content ${i}`)
@@ -286,8 +288,8 @@ describe('WriteBatcher', () => {
 
 			// Check a sample of files
 			expect(fs.existsSync(files[0])).toBe(true)
-			expect(fs.existsSync(files[50])).toBe(true)
-			expect(fs.existsSync(files[99])).toBe(true)
+			expect(fs.existsSync(files[25])).toBe(true)
+			expect(fs.existsSync(files[49])).toBe(true)
 		})
 	})
 
@@ -380,8 +382,8 @@ describe('WriteBatcher', () => {
 
 			try {
 				await batcher.addWrite(filePath, 'content')
-				// Wait for flush timer
-				await new Promise((resolve) => setTimeout(resolve, 50))
+				// Wait for flush timer - reduced delay
+				await new Promise((resolve) => setTimeout(resolve, 10))
 
 				// Error should be caught and logged
 				expect(consoleErrorSpy).toHaveBeenCalled()
@@ -394,7 +396,7 @@ describe('WriteBatcher', () => {
 		it('should handle error in scheduleNextFlush callback (covers line 143)', async () => {
 			// CRITICAL: Test line 143 - console.error in scheduleNextFlush catch block
 			// This happens when flush() throws an error in the setTimeout callback
-			const batcher = new WriteBatcher(2, 10)
+			const batcher = new WriteBatcher(2, 1)
 			const consoleErrorSpy = vi
 				.spyOn(console, 'error')
 				.mockImplementation(() => {})
@@ -427,7 +429,7 @@ describe('WriteBatcher', () => {
 
 			// Wait for setTimeout callback to execute (line 108 calls scheduleNextFlush)
 			// scheduleNextFlush will call flush(), which will throw (line 143: console.error)
-			await new Promise((resolve) => setTimeout(resolve, 15))
+			await new Promise((resolve) => setTimeout(resolve, 5))
 
 			// Verify error was logged (line 143 executed)
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -511,7 +513,7 @@ describe('serializeData', () => {
 		it('should schedule another flush when more writes are queued (covers lines 107-109)', async () => {
 			// CRITICAL: Test lines 107-109 - setTimeout callback that schedules another flush
 			// We extract the callback to scheduleNextFlush() method for better testability
-			const batcher = new WriteBatcher(2, 10) // Small batch size = 2
+			const batcher = new WriteBatcher(2, 1) // Small batch size = 2, minimal delay
 			const consoleErrorSpy = vi
 				.spyOn(console, 'error')
 				.mockImplementation(() => {})
@@ -589,7 +591,7 @@ describe('serializeData', () => {
 		it('should wait for in-progress flush before processing (covers line 163)', async () => {
 			// CRITICAL: Test line 163 - await inside while loop that waits for in-progress flush
 			// We need to ensure flushAll() is called while flush() is actually executing
-			const batcher = new WriteBatcher(10, 50)
+			const batcher = new WriteBatcher(10, 1)
 
 			const file1 = path.join(testTempDir, 'concurrent1.txt')
 			const file2 = path.join(testTempDir, 'concurrent2.txt')

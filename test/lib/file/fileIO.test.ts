@@ -957,7 +957,7 @@ describe('readFile - XML error handling', () => {
 		// Test YAML size limit (10MB)
 		ctx = createTestContext({ basedir: '/test' })
 		// Create a YAML structure that when parsed will have estimated size > 10MB
-		// We'll create a deeply nested structure with large strings
+		// Optimized: Use fewer items with larger strings to reduce parsing overhead
 		mockFs.promises.lstat.mockResolvedValueOnce({
 			isSymbolicLink: () => false,
 			isFile: () => true,
@@ -969,13 +969,14 @@ describe('readFile - XML error handling', () => {
 			} as unknown as fs.Stats)
 			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
 
-		// Create YAML with large nested structure that exceeds 10MB when parsed
-		// Each key-value pair adds to the estimated size
-		const largeArray: string[] = []
-		for (let i = 0; i < 10000; i++) {
-			largeArray.push(`item${i}: "${'x'.repeat(1000)}"`)
-		}
-		const largeYaml = `root:\n  ${largeArray.join('\n  ')}`
+		// Create YAML with large structure that exceeds 10MB when parsed
+		// Optimized: Single large string value - minimal size (just over limit) to reduce parsing overhead
+		// Need >10MB: 10MB = 10*1024*1024 bytes, UTF-16 = 2 bytes/char, so need >5,242,880 chars
+		// Using 5.25MB chars = ~10.5MB when parsed (just barely over limit for fastest parsing)
+		const minSize = Math.ceil((10 * 1024 * 1024) / 2) // 5,242,880 chars (exactly 10MB)
+		const targetSize = minSize + 1024 // Just 1KB over limit for safety margin
+		const largeString = 'x'.repeat(targetSize)
+		const largeYaml = `root: "${largeString}"`
 		mockFs.promises.readFile.mockResolvedValue(largeYaml)
 
 		// This should trigger the size check and throw
@@ -988,6 +989,7 @@ describe('readFile - XML error handling', () => {
 		// Test XML size limit (10MB)
 		ctx = createTestContext({ basedir: '/test' })
 		// Create an XML structure that when parsed will have estimated size > 10MB
+		// Optimized: Use fewer items with larger content to reduce parsing overhead
 		mockFs.promises.lstat.mockResolvedValueOnce({
 			isSymbolicLink: () => false,
 			isFile: () => true,
@@ -999,12 +1001,14 @@ describe('readFile - XML error handling', () => {
 			} as unknown as fs.Stats)
 			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
 
-		// Create XML with large nested structure that exceeds 10MB when parsed
-		const items: string[] = []
-		for (let i = 0; i < 10000; i++) {
-			items.push(`<item id="${i}">${'x'.repeat(1000)}</item>`)
-		}
-		const largeXml = `<root>${items.join('')}</root>`
+		// Create XML with large structure that exceeds 10MB when parsed
+		// Optimized: Single large text content - minimal size (just over limit) to reduce parsing overhead
+		// Need >10MB: 10MB = 10*1024*1024 bytes, UTF-16 = 2 bytes/char, so need >5,242,880 chars
+		// Using 5.25MB chars = ~10.5MB when parsed (just barely over limit for fastest parsing)
+		const minSize = Math.ceil((10 * 1024 * 1024) / 2) // 5,242,880 chars (exactly 10MB)
+		const targetSize = minSize + 1024 // Just 1KB over limit for safety margin
+		const largeContent = 'x'.repeat(targetSize)
+		const largeXml = `<root>${largeContent}</root>`
 		mockFs.promises.readFile.mockResolvedValue(largeXml)
 
 		// This should trigger the size check and throw
