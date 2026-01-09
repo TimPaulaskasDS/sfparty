@@ -3856,5 +3856,284 @@ describe('Split class', () => {
 				expect(result).toBe(1)
 			})
 		})
+
+		describe('isObjectPermissionEmpty branch coverage', () => {
+			it('should return true when all permissions are false', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: permsetDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Test.permissionset-meta.xml',
+					sequence: 1,
+					total: 1,
+					keepFalseValues: false,
+				}
+
+				const split = new Split(config)
+				const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+	<objectPermissions>
+		<allowCreate>false</allowCreate>
+		<allowRead>false</allowRead>
+		<allowEdit>false</allowEdit>
+		<allowDelete>false</allowDelete>
+		<viewAllRecords>false</viewAllRecords>
+		<modifyAllRecords>false</modifyAllRecords>
+		<object>Account</object>
+	</objectPermissions>
+</PermissionSet>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue(xmlContent)
+
+				const result = await split.split()
+				expect(result).toBe(true)
+			})
+
+			it('should return false when at least one permission is true', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: permsetDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Test.permissionset-meta.xml',
+					sequence: 1,
+					total: 1,
+					keepFalseValues: false,
+				}
+
+				const split = new Split(config)
+				const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+	<objectPermissions>
+		<allowCreate>true</allowCreate>
+		<allowRead>false</allowRead>
+		<allowEdit>false</allowEdit>
+		<allowDelete>false</allowDelete>
+		<viewAllRecords>false</viewAllRecords>
+		<modifyAllRecords>false</modifyAllRecords>
+		<object>Account</object>
+	</objectPermissions>
+</PermissionSet>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue(xmlContent)
+
+				const result = await split.split()
+				expect(result).toBe(true)
+			})
+		})
+
+		describe('processFile array filtering branches', () => {
+			it('should delete key when filtered array is empty', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+					keepFalseValues: false,
+				}
+
+				const split = new Split(config)
+				const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+	<fieldPermissions>
+		<field>Account.Name</field>
+		<editable>false</editable>
+		<readable>false</readable>
+	</fieldPermissions>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue(xmlContent)
+
+				const result = await split.split()
+				expect(result).toBe(true)
+			})
+
+			it('should set filtered array when filtered array is not empty', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+					keepFalseValues: false,
+				}
+
+				const split = new Split(config)
+				const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+	<fieldPermissions>
+		<field>Account.Name</field>
+		<editable>true</editable>
+		<readable>true</readable>
+	</fieldPermissions>
+	<fieldPermissions>
+		<field>Account.Phone</field>
+		<editable>false</editable>
+		<readable>false</readable>
+	</fieldPermissions>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue(xmlContent)
+
+				const result = await split.split()
+				expect(result).toBe(true)
+			})
+		})
+
+		describe('symlink validation branches', () => {
+			it('should validate symlink when ctx.basedir is set', async () => {
+				const ctx = createCtxFromGlobal()
+				ctx.basedir = '/workspace'
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/workspace/source/symlink.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+				}
+
+				const split = new Split(config)
+				;(
+					fs.promises.lstat as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce({
+					isSymbolicLink: () => true,
+				} as fs.Stats)
+				;(
+					fs.promises.readlink as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce('target/Admin.profile-meta.xml')
+				;(
+					fs.promises.stat as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce({
+					size: 1024,
+					isFile: () => true,
+				} as fs.Stats)
+
+				const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+	<fullName>Admin</fullName>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue(xmlContent)
+
+				const result = await split.split()
+				expect(result).toBe(true)
+			})
+
+			it('should handle symlink when ctx.basedir is not set', async () => {
+				const ctx = createCtxFromGlobal()
+				ctx.basedir = undefined
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/symlink.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+				}
+
+				const split = new Split(config)
+				;(
+					fs.promises.lstat as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce({
+					isSymbolicLink: () => true,
+				} as fs.Stats)
+				;(
+					fs.promises.readlink as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce('../target/Admin.profile-meta.xml')
+				;(
+					fs.promises.stat as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce({
+					size: 1024,
+					isFile: () => true,
+				} as fs.Stats)
+
+				const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+	<fullName>Admin</fullName>
+</Profile>`
+
+				;(
+					fs.promises.readFile as ReturnType<typeof vi.fn>
+				).mockResolvedValue(xmlContent)
+
+				const result = await split.split()
+				expect(result).toBe(true)
+			})
+
+			it('should throw error when symlink points outside workspace', async () => {
+				const ctx = createCtxFromGlobal()
+				ctx.basedir = '/workspace'
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/workspace/source/symlink.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+				}
+
+				const split = new Split(config)
+				;(
+					fs.promises.lstat as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce({
+					isSymbolicLink: () => true,
+				} as fs.Stats)
+				;(
+					fs.promises.readlink as ReturnType<typeof vi.fn>
+				).mockResolvedValueOnce('/outside/workspace/file.xml')
+
+				await expect(split.split()).rejects.toThrow(
+					'Symlink points outside workspace',
+				)
+			})
+
+			it('should handle non-symlink error in catch block', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaFilePath: '/source/Admin.profile-meta.xml',
+					sequence: 1,
+					total: 1,
+				}
+
+				const split = new Split(config)
+				;(
+					fs.promises.lstat as ReturnType<typeof vi.fn>
+				).mockRejectedValueOnce(new Error('ENOENT'))
+				;(
+					fs.promises.stat as ReturnType<typeof vi.fn>
+				).mockRejectedValueOnce(new Error('ENOENT'))
+
+				const result = await split.split()
+				expect(result).toBe(false)
+			})
+		})
 	})
 })
