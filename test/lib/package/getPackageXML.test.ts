@@ -831,6 +831,106 @@ it('should cover lines 266-267 sorting package types from test data', async () =
 	}
 })
 
+it('should handle xml2json with array length === 1 (covers line 358)', async () => {
+	// Test line 358: if (value.length === 1) in xml2json
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
+		Package: {
+			types: [
+				{
+					name: ['SingleName'], // Array with single element
+					members: ['member1'],
+				},
+			],
+			version: '56.0',
+		},
+	})
+	global.git = { append: true }
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
+	expect(result).toBe('existing')
+	// After xml2json, single-element array should be converted to string
+	if (pkg.packageJSON?.Package.types) {
+		expect(pkg.packageJSON.Package.types[0].name).toBe('SingleName')
+	}
+})
+
+it('should handle cleanPackage when typeArray includes typeItem.name (covers lines 185-189)', async () => {
+	// Test lines 185-189: typeArray.includes(typeItem.name || '') branch
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
+		Package: {
+			types: [
+				{
+					members: ['Test', 'Test.yaml', 'Test2'],
+					name: 'Profile',
+				},
+			],
+			version: '56.0',
+		},
+	})
+	global.git = { append: true }
+	global.format = 'yaml'
+	// Ensure global.metaTypes has the definition.root for Profile
+	if (global.metaTypes) {
+		global.metaTypes.profile = {
+			...global.metaTypes.profile,
+			definition: {
+				root: 'Profile',
+			},
+		}
+	}
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		format: 'yaml',
+		metaTypes: global.metaTypes,
+	})
+	const result = await pkg.getPackageXML(ctx, fileUtils)
+	expect(result).toBe('existing')
+	if (pkg.packageJSON?.Package.types) {
+		// Profile members should have .yaml filtered out because typeArray includes 'Profile'
+		const profileType = pkg.packageJSON.Package.types.find(
+			(t) => t.name === 'Profile',
+		)
+		expect(profileType?.members).toEqual(['Test', 'Test2'])
+	}
+})
+
+it('should handle processJSON with fileUtils provided (covers line 151)', async () => {
+	// Test line 151: if (fileUtils) branch
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockImplementation((ctx: unknown, filePath: string) => {
+		if (filePath.includes('sfdx-project.json')) {
+			// Return sfdx-project.json data
+			return Promise.resolve({ sourceApiVersion: '59.0' })
+		}
+		// Return package XML data
+		return Promise.resolve({
+			Package: {
+				types: [],
+				version: '56.0',
+			},
+		})
+	})
+	global.git = { append: true }
+	global.__basedir = '/test/project'
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		basedir: '/test/project',
+	})
+	const result = await pkg.getPackageXML(ctx, fileUtils)
+	expect(result).toBe('existing')
+	// Verify that readFile was called with sfdx-project.json (line 151-161 executed)
+	expect(fileUtils.readFile).toHaveBeenCalledWith(
+		ctx,
+		expect.stringContaining('sfdx-project.json'),
+	)
+	// Version should be set from sfdx-project.json
+	if (pkg.packageJSON) {
+		expect(pkg.packageJSON.Package.version).toBe('59.0')
+	}
+})
+
 it('should handle xml2json boolean conversion for false', async () => {
 	// Test line 341: value === 'false' converts to boolean false
 	mockFileExists.mockReturnValue(true)

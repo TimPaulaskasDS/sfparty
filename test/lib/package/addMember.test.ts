@@ -250,31 +250,39 @@ it('should handle sort comparison when names are equal', () => {
 	}
 })
 
-it('should handle sort comparison when a.name is less than b.name', () => {
-	// Test line 267: a.name < b.name returns -1
+it('should handle sort comparison when a.name is less than b.name (covers line 282)', () => {
+	// Test line 282: (a.name || '') < (b.name || '') returns -1
+	// Create multiple types out of order to ensure sort is called with both comparison directions
 	if (pkg.packageJSON) {
 		pkg.packageJSON.Package.types = [
 			{ name: 'TypeZ', members: ['member1'] },
+			{ name: 'TypeM', members: ['member2'] },
 		]
 	}
-	pkg.addMember('TypeA', 'member2')
+	// Adding TypeA should trigger sort where TypeA < TypeM and TypeA < TypeZ (line 282)
+	pkg.addMember('TypeA', 'member3')
 	if (pkg.packageJSON?.Package.types) {
 		expect(pkg.packageJSON.Package.types[0].name).toBe('TypeA')
-		expect(pkg.packageJSON.Package.types[1].name).toBe('TypeZ')
+		expect(pkg.packageJSON.Package.types[1].name).toBe('TypeM')
+		expect(pkg.packageJSON.Package.types[2].name).toBe('TypeZ')
 	}
 })
 
-it('should handle sort comparison when a.name is greater than b.name', () => {
-	// Test line 268: a.name > b.name returns 1
+it('should handle sort comparison when a.name is greater than b.name (covers line 283)', () => {
+	// Test line 283: (a.name || '') > (b.name || '') returns 1
+	// Create multiple types out of order to ensure sort is called with both comparison directions
 	if (pkg.packageJSON) {
 		pkg.packageJSON.Package.types = [
 			{ name: 'TypeA', members: ['member1'] },
+			{ name: 'TypeM', members: ['member2'] },
 		]
 	}
-	pkg.addMember('TypeZ', 'member2')
+	// Adding TypeZ should trigger sort where TypeZ > TypeM and TypeZ > TypeA (line 283)
+	pkg.addMember('TypeZ', 'member3')
 	if (pkg.packageJSON?.Package.types) {
 		expect(pkg.packageJSON.Package.types[0].name).toBe('TypeA')
-		expect(pkg.packageJSON.Package.types[1].name).toBe('TypeZ')
+		expect(pkg.packageJSON.Package.types[1].name).toBe('TypeM')
+		expect(pkg.packageJSON.Package.types[2].name).toBe('TypeZ')
 	}
 })
 
