@@ -340,5 +340,95 @@ describe('terminalUtils', () => {
 
 			expect(stderrWriteCalls.length).toBe(1)
 		})
+
+		it('should handle undefined TERM (covers line 12)', () => {
+			process.stdout.isTTY = true
+			delete process.env.TERM
+
+			suppressTerminalErrors()
+
+			// When TERM is undefined, validateEnvVar returns undefined (line 12)
+			// term !== 'dumb' is still true (undefined !== 'dumb'), so suppression still works
+			const message = 'xterm-256color.Setulc error'
+			process.stderr.write(message)
+
+			// Suppression still works because term !== 'dumb' is true
+			// The important part is that validateEnvVar was called and returned undefined (line 12)
+			expect(stderrWriteCalls.length).toBe(0) // Filtered
+		})
+
+		it('should handle empty TERM string (covers line 12)', () => {
+			process.stdout.isTTY = true
+			process.env.TERM = ''
+
+			suppressTerminalErrors()
+
+			// Empty string is falsy, so validateEnvVar returns undefined (line 12)
+			const message = 'xterm-256color.Setulc error'
+			process.stderr.write(message)
+
+			// Suppression still works
+			expect(stderrWriteCalls.length).toBe(0) // Filtered
+		})
+
+		it('should handle TERM with null bytes (covers line 24)', () => {
+			process.stdout.isTTY = true
+			// TERM with null bytes gets sanitized to empty string, which fails validation (line 24)
+			process.env.TERM = 'xterm\0-256color'
+
+			suppressTerminalErrors()
+
+			// After sanitization, term becomes empty, so validation fails (line 24)
+			const message = 'xterm-256color.Setulc error'
+			process.stderr.write(message)
+
+			// Suppression still works
+			expect(stderrWriteCalls.length).toBe(0) // Filtered
+		})
+
+		it('should handle TERM exceeding maxLength (covers line 24)', () => {
+			process.stdout.isTTY = true
+			// TERM longer than 64 chars (maxLength for TERM) fails validation (line 24)
+			process.env.TERM = 'x'.repeat(65) // 65 chars > 64 maxLength
+
+			suppressTerminalErrors()
+
+			// Term exceeds maxLength, so validation fails (line 24)
+			const message = 'xterm-256color.Setulc error'
+			process.stderr.write(message)
+
+			// Suppression still works
+			expect(stderrWriteCalls.length).toBe(0) // Filtered
+		})
+
+		it('should handle TERM with dangerous characters (covers line 24)', () => {
+			process.stdout.isTTY = true
+			// TERM with dangerous characters (<>"|\\) fails validation (line 24)
+			process.env.TERM = 'xterm<256color'
+
+			suppressTerminalErrors()
+
+			// Term contains dangerous character, so validation fails (line 24)
+			const message = 'xterm-256color.Setulc error'
+			process.stderr.write(message)
+
+			// Suppression still works
+			expect(stderrWriteCalls.length).toBe(0) // Filtered
+		})
+
+		it('should handle TERM with only whitespace (covers line 24)', () => {
+			process.stdout.isTTY = true
+			// TERM with only whitespace gets trimmed to empty, which fails validation (line 24)
+			process.env.TERM = '   \n\r   '
+
+			suppressTerminalErrors()
+
+			// After trimming, term is empty, so validation fails (line 24)
+			const message = 'xterm-256color.Setulc error'
+			process.stderr.write(message)
+
+			// Suppression still works
+			expect(stderrWriteCalls.length).toBe(0) // Filtered
+		})
 	})
 })
