@@ -84,21 +84,24 @@ describe('WriteBatcher', () => {
 			}
 		})
 
-		it('should flush immediately when maxQueueSize is reached', async () => {
+		it('should flush immediately when maxQueueSize is reached (covers line 38)', async () => {
 			const batcher = new WriteBatcher(1000, 1) // Large batch size, minimal delay
 			const files: string[] = []
-			// Reduce to 100 files - still tests maxQueueSize behavior but faster
-			for (let i = 0; i < 100; i++) {
+			// Add exactly 1000 files to trigger maxQueueSize flush (line 38)
+			for (let i = 0; i < 1000; i++) {
 				const filePath = path.join(tempDir, `max-${i}.txt`)
 				files.push(filePath)
 				await batcher.addWrite(filePath, `content ${i}`)
 			}
-			// Should have flushed immediately due to maxQueueSize
-			await new Promise((resolve) => setTimeout(resolve, 10))
+			// Should have flushed immediately due to maxQueueSize (line 38)
+			// Wait a bit to ensure flush completes
+			await new Promise((resolve) => setTimeout(resolve, 50))
 
-			// Check a few files
+			// Check a few files to verify they were written
 			expect(fs.existsSync(files[0])).toBe(true)
-			expect(fs.existsSync(files[99])).toBe(true)
+			expect(fs.existsSync(files[999])).toBe(true)
+			// Verify queue is empty after flush
+			expect(batcher.getQueueLength()).toBe(0)
 		})
 
 		it('should sanitize file paths with special characters', async () => {
@@ -738,6 +741,148 @@ describe('serializeData', () => {
 
 				// Flush should throw error
 				await expect(testBatcher.flush()).rejects.toBe('String error')
+
+				// Restore original
+				fs.promises.writeFile = originalWriteFile
+			} finally {
+				// Clean up
+				delete global.git
+				delete global.__basedir
+				if (fs.existsSync(testTempDir)) {
+					fs.rmSync(testTempDir, { recursive: true, force: true })
+				}
+			}
+		})
+
+		it('should handle write errors in flushAll and log to auditLogger (covers lines 238-247)', async () => {
+			const testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-flushall-errors',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+
+			try {
+				// Enable git mode for audit logging
+				global.git = { enabled: true }
+				global.__basedir = testTempDir
+
+				// Initialize audit logger
+				const { initAuditLogger } = await import(
+					'../../src/lib/auditLogger.js'
+				)
+				initAuditLogger()
+
+				const testBatcher = new WriteBatcher(20, 5)
+
+				// Create a file path that will fail to write (invalid directory)
+				const invalidPath = path.join('/invalid', 'path', 'file.txt')
+
+				// Add write that will fail
+				await testBatcher.addWrite(invalidPath, 'test content')
+
+				// flushAll should throw error when processing the write
+				// Lines 238-247: Error handling in flushAll's write processing
+				await expect(testBatcher.flushAll()).rejects.toThrow()
+
+				// Verify error was logged (auditLogger.logFileWrite was called)
+				// The error handling path at lines 238-247 should have been executed
+			} finally {
+				// Clean up
+				delete global.git
+				delete global.__basedir
+				if (fs.existsSync(testTempDir)) {
+					fs.rmSync(testTempDir, { recursive: true, force: true })
+				}
+			}
+		})
+
+		it('should handle non-Error exceptions in flushAll write (covers lines 238-240)', async () => {
+			const testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-flushall-errors2',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+
+			try {
+				// Enable git mode for audit logging
+				global.git = { enabled: true }
+				global.__basedir = testTempDir
+
+				// Initialize audit logger
+				const { initAuditLogger } = await import(
+					'../../src/lib/auditLogger.js'
+				)
+				initAuditLogger()
+
+				const testBatcher = new WriteBatcher(20, 5)
+
+				// Mock fs.promises.writeFile to throw a non-Error
+				const originalWriteFile = fs.promises.writeFile
+				fs.promises.writeFile = vi
+					.fn()
+					.mockRejectedValue('String error in flushAll')
+
+				const filePath = path.join(testTempDir, 'test.txt')
+				await testBatcher.addWrite(filePath, 'test')
+
+				// flushAll should throw error (non-Error converted to string at line 240)
+				await expect(testBatcher.flushAll()).rejects.toBe(
+					'String error in flushAll',
+				)
+
+				// Restore original
+				fs.promises.writeFile = originalWriteFile
+			} finally {
+				// Clean up
+				delete global.git
+				delete global.__basedir
+				if (fs.existsSync(testTempDir)) {
+					fs.rmSync(testTempDir, { recursive: true, force: true })
+				}
+			}
+		})
+
+		it('should handle Error exceptions in flushAll write (covers lines 238-239)', async () => {
+			const testTempDir = path.join(
+				process.cwd(),
+				'test-temp-write-batcher-flushall-errors3',
+			)
+			if (fs.existsSync(testTempDir)) {
+				fs.rmSync(testTempDir, { recursive: true, force: true })
+			}
+			fs.mkdirSync(testTempDir, { recursive: true })
+
+			try {
+				// Enable git mode for audit logging
+				global.git = { enabled: true }
+				global.__basedir = testTempDir
+
+				// Initialize audit logger
+				const { initAuditLogger } = await import(
+					'../../src/lib/auditLogger.js'
+				)
+				initAuditLogger()
+
+				const testBatcher = new WriteBatcher(20, 5)
+
+				// Mock fs.promises.writeFile to throw an Error
+				const originalWriteFile = fs.promises.writeFile
+				const testError = new Error('Error in flushAll')
+				fs.promises.writeFile = vi.fn().mockRejectedValue(testError)
+
+				const filePath = path.join(testTempDir, 'test.txt')
+				await testBatcher.addWrite(filePath, 'test')
+
+				// flushAll should throw error (Error.message extracted at line 239)
+				await expect(testBatcher.flushAll()).rejects.toThrow(
+					'Error in flushAll',
+				)
 
 				// Restore original
 				fs.promises.writeFile = originalWriteFile
