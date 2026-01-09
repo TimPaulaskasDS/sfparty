@@ -1279,6 +1279,47 @@ describe('readFile - XML error handling', () => {
 		).rejects.toThrow('File read error')
 	})
 
+	// Note: Lines 680-682 (YAML warning message formatting) and line 718 (non-Error exception re-throw)
+	// are edge cases that are difficult to test directly due to js-yaml's behavior and mock limitations.
+	// These code paths exist for safety but are rarely triggered in practice.
+	// The existing YAML parsing tests cover the main error paths.
+
+	it('should re-throw error in convertXML catch block (covers line 790)', async () => {
+		// Test line 790: throw error in convertXML catch block
+		// fast-xml-parser is very lenient and will parse even malformed XML
+		// We need to cause an error in a different way - by making checkDepth throw
+		mockFs.promises.lstat.mockResolvedValueOnce({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
+		mockFs.promises.stat
+			.mockResolvedValueOnce({
+				isFile: () => true,
+				size: 100,
+			} as unknown as fs.Stats)
+			.mockResolvedValueOnce({ size: 100 } as unknown as fs.Stats)
+
+		// Create XML that will cause checkDepth to throw (deeply nested)
+		let deepXml = '<root>'
+		for (let i = 0; i < 150; i++) {
+			deepXml += '<nested>'
+		}
+		for (let i = 0; i < 150; i++) {
+			deepXml += '</nested>'
+		}
+		deepXml += '</root>'
+		mockFs.promises.readFile.mockResolvedValue(deepXml)
+
+		await expect(
+			readFile(
+				ctx,
+				'/test/file.xml',
+				true,
+				mockFs as unknown as typeof fs,
+			),
+		).rejects.toThrow('exceeds maximum allowed depth')
+	})
+
 	it('should return parsed XML when validation module fails to load (covers line 787)', async () => {
 		// Test XML parsing when validation module fails to load
 		// The catch block at line 785-787 handles import failures and returns parsed
