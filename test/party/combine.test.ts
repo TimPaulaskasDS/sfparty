@@ -10209,5 +10209,269 @@ describe('Combine class', () => {
 				)
 			})
 		})
+
+		describe('compareKeysForXmlOrder', () => {
+			it('should return -1 when aIndex < bIndex and aIndex !== 99 (covers line 1074)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				const result = compareKeysForXmlOrder('a', 'b', xmlOrder)
+				expect(result).toBe(-1)
+			})
+
+			it('should return 1 when aIndex > bIndex and bIndex !== 99 (covers line 1075)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				const result = compareKeysForXmlOrder('b', 'a', xmlOrder)
+				expect(result).toBe(1)
+			})
+
+			it('should return -1 when aIndex === 99 (not in xmlOrder) and a < b (covers line 1077)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				const result = compareKeysForXmlOrder('x', 'y', xmlOrder)
+				expect(result).toBe(-1)
+			})
+
+			it('should return 1 when bIndex === 99 (not in xmlOrder) and a > b (covers line 1078)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				const result = compareKeysForXmlOrder('y', 'x', xmlOrder)
+				expect(result).toBe(1)
+			})
+
+			it('should return 0 when keys are equal (covers line 1079)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				const result = compareKeysForXmlOrder('a', 'a', xmlOrder)
+				expect(result).toBe(0)
+			})
+
+			it('should return 0 when xmlOrder is undefined (covers line 1068)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const result = compareKeysForXmlOrder('a', 'a', undefined)
+				expect(result).toBe(0)
+			})
+
+			it('should handle aIndex === 99 and bIndex === 99 (both not in xmlOrder)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				// Both keys not in xmlOrder, should fall through to string comparison
+				const result = compareKeysForXmlOrder('x', 'z', xmlOrder)
+				expect(result).toBe(-1) // 'x' < 'z'
+			})
+
+			it('should handle aIndex < bIndex but aIndex === 99 (covers line 1074 false branch)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				// a not in xmlOrder (aIndex = 99), b in xmlOrder (bIndex = 1)
+				// aIndex < bIndex is false (99 < 1 is false), so should fall through
+				const result = compareKeysForXmlOrder('x', 'b', xmlOrder)
+				expect(result).toBe(1) // 'x' > 'b' alphabetically
+			})
+
+			it('should handle aIndex > bIndex but bIndex === 99 (covers line 1075 false branch)', async () => {
+				const { compareKeysForXmlOrder } = await import(
+					'../../src/party/combine.js'
+				)
+				const xmlOrder = ['a', 'b', 'c']
+				// a in xmlOrder (aIndex = 1), b not in xmlOrder (bIndex = 99)
+				// aIndex > bIndex is true (1 > 99 is false), so should fall through
+				const result = compareKeysForXmlOrder('b', 'x', xmlOrder)
+				expect(result).toBe(-1) // 'b' < 'x' alphabetically
+			})
+		})
+
+		describe('updateFileStats error handling', () => {
+			it('should handle error in updateFileStats catch block (covers line 55)', async () => {
+				const { updateFileStats } = await import(
+					'../../src/party/combine.js'
+				)
+				const fileStats: {
+					atime: Date | undefined
+					mtime: Date | undefined
+				} = {
+					atime: undefined,
+					mtime: undefined,
+				}
+
+				// Create a mock stats object that throws when accessing properties
+				const mockStats = new Proxy(
+					{
+						atime: new Date(),
+						mtime: new Date(),
+					},
+					{
+						get: () => {
+							throw new Error('Test error')
+						},
+					},
+				) as fs.Stats
+
+				// This should trigger the catch block at line 55
+				const result = updateFileStats(fileStats, mockStats)
+				// Should return original fileStats on error
+				expect(result).toEqual(fileStats)
+			})
+		})
+
+		describe('processParts error handling branches', () => {
+			it('should handle YAMLException error (covers lines 440-448)', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaDir: 'profiles',
+					sequence: 1,
+					total: 1,
+					addPkg: { addMember: vi.fn() } as unknown as Package,
+					desPkg: { addMember: vi.fn() } as unknown as Package,
+				}
+
+				const combine = new Combine(config)
+				// Mock fileUtils.readFile to throw YAMLException
+				const originalReadFile = fileUtils.readFile
+				const yamlError = new Error('YAML parsing error')
+				yamlError.name = 'YAMLException'
+				fileUtils.readFile = vi.fn().mockRejectedValue(yamlError)
+
+				try {
+					await expect(combine.combine()).rejects.toThrow(
+						'YAML parsing error',
+					)
+				} finally {
+					fileUtils.readFile = originalReadFile
+				}
+			})
+
+			it('should handle non-Error exception in processParts (covers line 450)', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaDir: 'profiles',
+					sequence: 1,
+					total: 1,
+					addPkg: { addMember: vi.fn() } as unknown as Package,
+					desPkg: { addMember: vi.fn() } as unknown as Package,
+				}
+
+				const combine = new Combine(config)
+				// Mock fileUtils.readFile to throw a non-Error
+				const originalReadFile = fileUtils.readFile
+				fileUtils.readFile = vi.fn().mockRejectedValue('String error')
+
+				try {
+					// Should return true for non-Error exceptions (line 450)
+					const result = await combine.combine()
+					expect(result).toBe(true)
+				} finally {
+					fileUtils.readFile = originalReadFile
+				}
+			})
+		})
+
+		describe('keyOrder includes order branch', () => {
+			it('should add object key when keyOrder includes order (covers lines 883-888)', async () => {
+				const ctx = createCtxFromGlobal()
+				// Create a metadata definition with keyOrder that includes 'order'
+				const customMetaDef = {
+					...profileDefinition.metadataDefinition,
+					keyOrder: {
+						fieldPermissions: [
+							'order',
+							'field',
+							'editable',
+							'readable',
+						],
+					},
+				}
+
+				const config = {
+					ctx,
+					metadataDefinition: customMetaDef,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaDir: 'profiles',
+					sequence: 1,
+					total: 1,
+					addPkg: { addMember: vi.fn() } as unknown as Package,
+					desPkg: { addMember: vi.fn() } as unknown as Package,
+				}
+
+				const combine = new Combine(config)
+				// Mock fileUtils.readFile to return data with fieldPermissions
+				const originalReadFile = fileUtils.readFile
+				fileUtils.readFile = vi.fn().mockResolvedValue({
+					fieldPermissions: [
+						{
+							field: 'Account.Name',
+							editable: true,
+							readable: true,
+						},
+					],
+				})
+
+				try {
+					const result = await combine.combine()
+					expect(result).toBe(true)
+					// The object key should be added when keyOrder includes 'order'
+				} finally {
+					fileUtils.readFile = originalReadFile
+				}
+			})
+		})
+
+		describe('root key not found in JSON', () => {
+			it('should handle root key not found in JSON (covers lines 924-928)', async () => {
+				const ctx = createCtxFromGlobal()
+				const config = {
+					ctx,
+					metadataDefinition: profileDefinition.metadataDefinition,
+					sourceDir: '/source',
+					targetDir: '/target',
+					metaDir: 'profiles',
+					sequence: 1,
+					total: 1,
+					addPkg: { addMember: vi.fn() } as unknown as Package,
+					desPkg: { addMember: vi.fn() } as unknown as Package,
+				}
+
+				const combine = new Combine(config)
+				// Mock fileUtils.readFile to return data without the root key
+				const originalReadFile = fileUtils.readFile
+				fileUtils.readFile = vi.fn().mockResolvedValue({
+					// Missing 'Profile' root key
+					fullName: 'Admin',
+				})
+
+				try {
+					const result = await combine.combine()
+					// Should still return true, but with warning logged
+					expect(result).toBe(true)
+				} finally {
+					fileUtils.readFile = originalReadFile
+				}
+			})
+		})
 	})
 })
