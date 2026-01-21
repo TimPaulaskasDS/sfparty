@@ -103,7 +103,9 @@ test('should return lastCommit and latestCommit if file exists', async () => {
 test('should return only latestCommit if file does not exist', async () => {
 	;(fs.existsSync as ReturnType<typeof vi.fn>).mockReturnValue(false)
 	// Reset fileUtils.fileExists to return false for this test
-	fileUtils.fileExists = vi.fn().mockResolvedValue(false)
+	const fileExistsSpy = vi
+		.spyOn(fileUtils, 'fileExists')
+		.mockResolvedValue(false)
 	mockLatestCommit = 'testCommit'
 	const _ctx = createTestContext()
 	const result = await lastCommit({
@@ -115,6 +117,7 @@ test('should return only latestCommit if file does not exist', async () => {
 		lastCommit: undefined,
 		latestCommit: 'testCommit',
 	})
+	fileExistsSpy.mockRestore()
 })
 
 it('should handle missing file gracefully', async () => {
