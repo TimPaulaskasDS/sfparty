@@ -731,9 +731,8 @@ describe('serializeData', () => {
 				const testBatcher = new WriteBatcher(20, 5)
 
 				// Mock fs.promises.writeFile to throw a non-Error
-				const originalWriteFile = fs.promises.writeFile
-				fs.promises.writeFile = vi
-					.fn()
+				const writeFileSpy = vi
+					.spyOn(fs.promises, 'writeFile')
 					.mockRejectedValue('String error')
 
 				const filePath = path.join(testTempDir, 'test.txt')
@@ -743,7 +742,7 @@ describe('serializeData', () => {
 				await expect(testBatcher.flush()).rejects.toBe('String error')
 
 				// Restore original
-				fs.promises.writeFile = originalWriteFile
+				writeFileSpy.mockRestore()
 			} finally {
 				// Clean up
 				delete global.git
@@ -823,9 +822,8 @@ describe('serializeData', () => {
 				const testBatcher = new WriteBatcher(20, 5)
 
 				// Mock fs.promises.writeFile to throw a non-Error
-				const originalWriteFile = fs.promises.writeFile
-				fs.promises.writeFile = vi
-					.fn()
+				const writeFileSpy = vi
+					.spyOn(fs.promises, 'writeFile')
 					.mockRejectedValue('String error in flushAll')
 
 				const filePath = path.join(testTempDir, 'test.txt')
@@ -837,7 +835,7 @@ describe('serializeData', () => {
 				)
 
 				// Restore original
-				fs.promises.writeFile = originalWriteFile
+				writeFileSpy.mockRestore()
 			} finally {
 				// Clean up
 				delete global.git
@@ -872,9 +870,10 @@ describe('serializeData', () => {
 				const testBatcher = new WriteBatcher(20, 5)
 
 				// Mock fs.promises.writeFile to throw an Error
-				const originalWriteFile = fs.promises.writeFile
 				const testError = new Error('Error in flushAll')
-				fs.promises.writeFile = vi.fn().mockRejectedValue(testError)
+				const writeFileSpy = vi
+					.spyOn(fs.promises, 'writeFile')
+					.mockRejectedValue(testError)
 
 				const filePath = path.join(testTempDir, 'test.txt')
 				await testBatcher.addWrite(filePath, 'test')
@@ -885,7 +884,7 @@ describe('serializeData', () => {
 				)
 
 				// Restore original
-				fs.promises.writeFile = originalWriteFile
+				writeFileSpy.mockRestore()
 			} finally {
 				// Clean up
 				delete global.git

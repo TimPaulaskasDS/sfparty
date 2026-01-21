@@ -4818,14 +4818,20 @@ describe('Combine class', () => {
 			).mockResolvedValue(true)
 
 			// Mock fs.promises.stat to throw for sandbox file (line 579)
-			const originalStat = fs.promises.stat
-			fs.promises.stat = vi
-				.fn()
+			const statSpy = vi
+				.spyOn(fs.promises, 'stat')
 				.mockImplementation((filePath: string) => {
 					if (filePath.includes('loginIpRanges-sandbox')) {
 						throw new Error('File not found')
 					}
-					return originalStat(filePath)
+					// For other files, return a default stats object
+					return Promise.resolve({
+						isFile: () => true,
+						isDirectory: () => false,
+						atime: new Date(),
+						mtime: new Date(),
+						size: 100,
+					} as fs.Stats)
 				})
 
 			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -4857,7 +4863,7 @@ describe('Combine class', () => {
 			expect(result).toBe(true)
 
 			// Restore
-			fs.promises.stat = originalStat
+			statSpy.mockRestore()
 		})
 
 		it('should cover line 661: return true when file path matches main.{format}', async () => {
@@ -4916,9 +4922,8 @@ describe('Combine class', () => {
 			).mockResolvedValue(true)
 
 			// Mock fs.promises.stat - main file exists, sandbox doesn't
-			const originalStat = fs.promises.stat
-			fs.promises.stat = vi
-				.fn()
+			const statSpy = vi
+				.spyOn(fs.promises, 'stat')
 				.mockImplementation((filePath: string) => {
 					if (filePath.includes('loginIpRanges-sandbox')) {
 						throw new Error('File not found') // Sandbox doesn't exist
@@ -4958,7 +4963,7 @@ describe('Combine class', () => {
 			expect(result).toBe(true)
 
 			// Restore
-			fs.promises.stat = originalStat
+			statSpy.mockRestore()
 		})
 
 		it('should cover line 685: loginIpRanges with only sandbox file (not main)', async () => {
@@ -4981,9 +4986,8 @@ describe('Combine class', () => {
 			})
 
 			// Mock fs.promises.stat - main file doesn't exist, sandbox does
-			const originalStat = fs.promises.stat
-			fs.promises.stat = vi
-				.fn()
+			const statSpy = vi
+				.spyOn(fs.promises, 'stat')
 				.mockImplementation((filePath: string) => {
 					if (filePath.includes('loginIpRanges-sandbox')) {
 						// Sandbox exists
@@ -5030,7 +5034,7 @@ describe('Combine class', () => {
 			expect(result === true || result === 'deleted').toBe(true)
 
 			// Restore
-			fs.promises.stat = originalStat
+			statSpy.mockRestore()
 		})
 
 		it('should handle package mapping when git is enabled', async () => {
@@ -9232,9 +9236,8 @@ describe('Combine class', () => {
 
 				// Mock fs.promises.stat to throw for files in classAccesses directory (file doesn't exist)
 				// This makes fileExists = false, triggering the branch at line 591-643
-				const originalStat = fs.promises.stat
-				fs.promises.stat = vi
-					.fn()
+				const statSpy = vi
+					.spyOn(fs.promises, 'stat')
 					.mockImplementation((filePath: string) => {
 						// File in classAccesses directory doesn't exist
 						if (
@@ -9295,7 +9298,7 @@ describe('Combine class', () => {
 				}
 
 				// Restore
-				fs.promises.stat = originalStat
+				statSpy.mockRestore()
 			})
 
 			it('should cover branch: packageTypeIsDirectory when file does not exist (line 633-641)', async () => {
@@ -9323,9 +9326,8 @@ describe('Combine class', () => {
 				).mockResolvedValue(true)
 
 				// Mock fs.promises.stat to throw for the directory file (file doesn't exist)
-				const originalStat = fs.promises.stat
-				fs.promises.stat = vi
-					.fn()
+				const statSpy = vi
+					.spyOn(fs.promises, 'stat')
 					.mockImplementation((filePath: string) => {
 						// File in fieldPermissions directory doesn't exist
 						if (
@@ -9381,7 +9383,7 @@ describe('Combine class', () => {
 				}
 
 				// Restore
-				fs.promises.stat = originalStat
+				statSpy.mockRestore()
 			})
 
 			it('should cover branch: delta true and file not in git list and not main (line 647-661)', async () => {
@@ -9835,9 +9837,8 @@ describe('Combine class', () => {
 				).mockResolvedValue(['loginIpRanges.yaml'])
 
 				// Mock fs.promises.stat - sandbox file doesn't exist
-				const originalStat = fs.promises.stat
-				fs.promises.stat = vi
-					.fn()
+				const statSpy = vi
+					.spyOn(fs.promises, 'stat')
 					.mockImplementation((filePath: string) => {
 						if (filePath.includes('loginIpRanges-sandbox')) {
 							throw new Error('File not found')
@@ -9884,7 +9885,7 @@ describe('Combine class', () => {
 				expect(fileUtils.readFile).toHaveBeenCalled()
 
 				// Restore
-				fs.promises.stat = originalStat
+				statSpy.mockRestore()
 			})
 
 			it('should cover branch: fileExists check in loginIpRanges (line 668)', async () => {
@@ -9904,16 +9905,17 @@ describe('Combine class', () => {
 				).mockResolvedValue(['loginIpRanges.yaml'])
 
 				// Mock fs.promises.stat - main file exists
-				const originalStat = fs.promises.stat
-				fs.promises.stat = vi.fn().mockImplementation(() => {
-					return Promise.resolve({
-						isFile: () => true,
-						isDirectory: () => false,
-						atime: new Date(),
-						mtime: new Date(),
-						size: 100,
-					} as fs.Stats)
-				})
+				const statSpy = vi
+					.spyOn(fs.promises, 'stat')
+					.mockImplementation(() => {
+						return Promise.resolve({
+							isFile: () => true,
+							isDirectory: () => false,
+							atime: new Date(),
+							mtime: new Date(),
+							size: 100,
+						} as fs.Stats)
+					})
 
 				;(
 					fileUtils.readFile as ReturnType<typeof vi.fn>
@@ -9948,7 +9950,7 @@ describe('Combine class', () => {
 				expect(fileUtils.readFile).toHaveBeenCalled()
 
 				// Restore
-				fs.promises.stat = originalStat
+				statSpy.mockRestore()
 			})
 
 			it('should cover branch: updateFileStats with undefined atime initially (line 45-48)', async () => {
@@ -9968,16 +9970,17 @@ describe('Combine class', () => {
 				).mockResolvedValue(['main.yaml'])
 
 				// Mock fs.promises.stat to return stats with atime
-				const originalStat = fs.promises.stat
-				fs.promises.stat = vi.fn().mockImplementation(() => {
-					return Promise.resolve({
-						isFile: () => true,
-						isDirectory: () => false,
-						atime: new Date('2024-01-01'), // New atime
-						mtime: new Date('2024-01-01'),
-						size: 100,
-					} as fs.Stats)
-				})
+				const statSpy = vi
+					.spyOn(fs.promises, 'stat')
+					.mockImplementation(() => {
+						return Promise.resolve({
+							isFile: () => true,
+							isDirectory: () => false,
+							atime: new Date('2024-01-01'), // New atime
+							mtime: new Date('2024-01-01'),
+							size: 100,
+						} as fs.Stats)
+					})
 
 				;(
 					fileUtils.readFile as ReturnType<typeof vi.fn>
@@ -10005,7 +10008,7 @@ describe('Combine class', () => {
 				expect(fileUtils.readFile).toHaveBeenCalled()
 
 				// Restore
-				fs.promises.stat = originalStat
+				statSpy.mockRestore()
 			})
 
 			it('should cover branch: updateFileStats with undefined mtime initially (line 49-52)', async () => {
@@ -10025,16 +10028,17 @@ describe('Combine class', () => {
 				).mockResolvedValue(['main.yaml'])
 
 				// Mock fs.promises.stat to return stats with mtime
-				const originalStat = fs.promises.stat
-				fs.promises.stat = vi.fn().mockImplementation(() => {
-					return Promise.resolve({
-						isFile: () => true,
-						isDirectory: () => false,
-						atime: new Date('2024-01-01'),
-						mtime: new Date('2024-01-01'), // New mtime
-						size: 100,
-					} as fs.Stats)
-				})
+				const statSpy = vi
+					.spyOn(fs.promises, 'stat')
+					.mockImplementation(() => {
+						return Promise.resolve({
+							isFile: () => true,
+							isDirectory: () => false,
+							atime: new Date('2024-01-01'),
+							mtime: new Date('2024-01-01'), // New mtime
+							size: 100,
+						} as fs.Stats)
+					})
 
 				;(
 					fileUtils.readFile as ReturnType<typeof vi.fn>
@@ -10062,7 +10066,7 @@ describe('Combine class', () => {
 				expect(fileUtils.readFile).toHaveBeenCalled()
 
 				// Restore
-				fs.promises.stat = originalStat
+				statSpy.mockRestore()
 			})
 
 			it('should cover branch: updateFileStats with stats undefined (line 41)', async () => {
