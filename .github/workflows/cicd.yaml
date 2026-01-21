@@ -36,7 +36,7 @@ jobs:
           echo "🔒 Running security audit..."
           bun audit --production || (echo "❌ Security vulnerabilities found! Please run 'bun audit' locally and fix issues." && exit 1)
         working-directory: ${{env.working-directory}}
-      - run: bun run build --if-present
+      - run: bun run build
         working-directory: ${{env.working-directory}}
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
