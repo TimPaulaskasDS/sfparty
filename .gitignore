@@ -239,3 +239,6 @@ coverage/
 
 # Codebase optimization review outputs
 .optimization/
+
+# Test planning artifacts (transient work files)
+.testplan/run/
