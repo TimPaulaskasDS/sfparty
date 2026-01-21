@@ -1,0 +1,23 @@
+name: "CodeQL Config"
+
+# Disable queries that require custom properties
+queries:
+  - uses: security-and-quality
+
+# Paths to exclude from analysis
+paths-ignore:
+  - '**/*.test.ts'
+  - '**/*.spec.ts'
+  - 'test/**'
+  - 'examples/**'
+  - 'force-app/**'
+  - 'force-app-party/**'
+  - 'node_modules/**'
+  - 'dist/**'
+  - '.testplan/**'
+  - '.security/**'
+
+# Paths to include in analysis
+paths:
+  - 'src/**'
+  - 'lib/**'
