@@ -10347,17 +10347,18 @@ describe('Combine class', () => {
 
 				const combine = new Combine(config)
 				// Mock fileUtils.readFile to throw YAMLException
-				const originalReadFile = fileUtils.readFile
 				const yamlError = new Error('YAML parsing error')
 				yamlError.name = 'YAMLException'
-				fileUtils.readFile = vi.fn().mockRejectedValue(yamlError)
+				const readFileSpy = vi
+					.spyOn(fileUtils, 'readFile')
+					.mockRejectedValue(yamlError)
 
 				try {
 					await expect(combine.combine()).rejects.toThrow(
 						'YAML parsing error',
 					)
 				} finally {
-					fileUtils.readFile = originalReadFile
+					readFileSpy.mockRestore()
 				}
 			})
 
@@ -10377,15 +10378,16 @@ describe('Combine class', () => {
 
 				const combine = new Combine(config)
 				// Mock fileUtils.readFile to throw a non-Error
-				const originalReadFile = fileUtils.readFile
-				fileUtils.readFile = vi.fn().mockRejectedValue('String error')
+				const readFileSpy = vi
+					.spyOn(fileUtils, 'readFile')
+					.mockRejectedValue('String error')
 
 				try {
 					// Should return true for non-Error exceptions (line 450)
 					const result = await combine.combine()
 					expect(result).toBe(true)
 				} finally {
-					fileUtils.readFile = originalReadFile
+					readFileSpy.mockRestore()
 				}
 			})
 		})
@@ -10420,23 +10422,24 @@ describe('Combine class', () => {
 
 				const combine = new Combine(config)
 				// Mock fileUtils.readFile to return data with fieldPermissions
-				const originalReadFile = fileUtils.readFile
-				fileUtils.readFile = vi.fn().mockResolvedValue({
-					fieldPermissions: [
-						{
-							field: 'Account.Name',
-							editable: true,
-							readable: true,
-						},
-					],
-				})
+				const readFileSpy = vi
+					.spyOn(fileUtils, 'readFile')
+					.mockResolvedValue({
+						fieldPermissions: [
+							{
+								field: 'Account.Name',
+								editable: true,
+								readable: true,
+							},
+						],
+					})
 
 				try {
 					const result = await combine.combine()
 					expect(result).toBe(true)
 					// The object key should be added when keyOrder includes 'order'
 				} finally {
-					fileUtils.readFile = originalReadFile
+					readFileSpy.mockRestore()
 				}
 			})
 		})
@@ -10458,18 +10461,19 @@ describe('Combine class', () => {
 
 				const combine = new Combine(config)
 				// Mock fileUtils.readFile to return data without the root key
-				const originalReadFile = fileUtils.readFile
-				fileUtils.readFile = vi.fn().mockResolvedValue({
-					// Missing 'Profile' root key
-					fullName: 'Admin',
-				})
+				const readFileSpy = vi
+					.spyOn(fileUtils, 'readFile')
+					.mockResolvedValue({
+						// Missing 'Profile' root key
+						fullName: 'Admin',
+					})
 
 				try {
 					const result = await combine.combine()
 					// Should still return true, but with warning logged
 					expect(result).toBe(true)
 				} finally {
-					fileUtils.readFile = originalReadFile
+					readFileSpy.mockRestore()
 				}
 			})
 		})
