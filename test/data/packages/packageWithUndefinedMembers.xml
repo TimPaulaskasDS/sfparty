@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+  <types>
+    <name>Workflow</name>
+    <!-- No members element - this should trigger the undefined members initialization -->
+  </types>
+  <types>
+    <members>CustomLabel</members>
+    <members>CustomLabel.yaml</members>
+    <name>CustomLabels</name>
+  </types>
+  <version>56.0</version>
+</Package>

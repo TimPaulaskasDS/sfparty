@@ -225,6 +225,20 @@ force-app/main/default/workflows/**
 .vscode/settings.json
 .vscode/launch.json
 yarn.lock
+package-lock.json
 manifest/**-party.xml
 force-app-party/main/default/profiles/DS -**/**
 config/user/**
+
+# Test coverage reports
+html/
+coverage/
+
+# Security documentation (contains sensitive vulnerability details)
+.security/
+
+# Codebase optimization review outputs
+.optimization/
+
+# Test planning artifacts (transient work files)
+.testplan/run/
