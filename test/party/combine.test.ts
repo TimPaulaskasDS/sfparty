@@ -4818,21 +4818,23 @@ describe('Combine class', () => {
 			).mockResolvedValue(true)
 
 			// Mock fs.promises.stat to throw for sandbox file (line 579)
-			const statSpy = vi
-				.spyOn(fs.promises, 'stat')
-				.mockImplementation((filePath: string) => {
-					if (filePath.includes('loginIpRanges-sandbox')) {
-						throw new Error('File not found')
-					}
-					// For other files, return a default stats object
-					return Promise.resolve({
-						isFile: () => true,
-						isDirectory: () => false,
-						atime: new Date(),
-						mtime: new Date(),
-						size: 100,
-					} as fs.Stats)
-				})
+			const statMock = fs.promises.stat as unknown as ReturnType<
+				typeof vi.fn
+			>
+			const originalStat = statMock.getMockImplementation()
+			statMock.mockImplementation((filePath: string) => {
+				if (filePath.includes('loginIpRanges-sandbox')) {
+					throw new Error('File not found')
+				}
+				// For other files, return a default stats object
+				return Promise.resolve({
+					isFile: () => true,
+					isDirectory: () => false,
+					atime: new Date(),
+					mtime: new Date(),
+					size: 100,
+				} as fs.Stats)
+			})
 
 			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
 				{
@@ -4863,7 +4865,11 @@ describe('Combine class', () => {
 			expect(result).toBe(true)
 
 			// Restore
-			statSpy.mockRestore()
+			if (originalStat) {
+				statMock.mockImplementation(originalStat)
+			} else {
+				statMock.mockReset()
+			}
 		})
 
 		it('should cover line 661: return true when file path matches main.{format}', async () => {
@@ -4922,17 +4928,19 @@ describe('Combine class', () => {
 			).mockResolvedValue(true)
 
 			// Mock fs.promises.stat - main file exists, sandbox doesn't
-			const statSpy = vi
-				.spyOn(fs.promises, 'stat')
-				.mockImplementation((filePath: string) => {
-					if (filePath.includes('loginIpRanges-sandbox')) {
-						throw new Error('File not found') // Sandbox doesn't exist
-					}
-					// Main file exists
-					return Promise.resolve({
-						isFile: () => true,
-					} as fs.Stats)
-				})
+			const statMock = fs.promises.stat as unknown as ReturnType<
+				typeof vi.fn
+			>
+			const originalStat = statMock.getMockImplementation()
+			statMock.mockImplementation((filePath: string) => {
+				if (filePath.includes('loginIpRanges-sandbox')) {
+					throw new Error('File not found') // Sandbox doesn't exist
+				}
+				// Main file exists
+				return Promise.resolve({
+					isFile: () => true,
+				} as fs.Stats)
+			})
 
 			;(fileUtils.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
 				{
@@ -4963,7 +4971,11 @@ describe('Combine class', () => {
 			expect(result).toBe(true)
 
 			// Restore
-			statSpy.mockRestore()
+			if (originalStat) {
+				statMock.mockImplementation(originalStat)
+			} else {
+				statMock.mockReset()
+			}
 		})
 
 		it('should cover line 685: loginIpRanges with only sandbox file (not main)', async () => {
@@ -4986,18 +4998,20 @@ describe('Combine class', () => {
 			})
 
 			// Mock fs.promises.stat - main file doesn't exist, sandbox does
-			const statSpy = vi
-				.spyOn(fs.promises, 'stat')
-				.mockImplementation((filePath: string) => {
-					if (filePath.includes('loginIpRanges-sandbox')) {
-						// Sandbox exists
-						return Promise.resolve({
-							isFile: () => true,
-						} as fs.Stats)
-					}
-					// Main file doesn't exist
-					throw new Error('File not found')
-				})
+			const statMock = fs.promises.stat as unknown as ReturnType<
+				typeof vi.fn
+			>
+			const originalStat = statMock.getMockImplementation()
+			statMock.mockImplementation((filePath: string) => {
+				if (filePath.includes('loginIpRanges-sandbox')) {
+					// Sandbox exists
+					return Promise.resolve({
+						isFile: () => true,
+					} as fs.Stats)
+				}
+				// Main file doesn't exist
+				throw new Error('File not found')
+			})
 
 			;(
 				fileUtils.readFile as ReturnType<typeof vi.fn>
@@ -5034,7 +5048,11 @@ describe('Combine class', () => {
 			expect(result === true || result === 'deleted').toBe(true)
 
 			// Restore
-			statSpy.mockRestore()
+			if (originalStat) {
+				statMock.mockImplementation(originalStat)
+			} else {
+				statMock.mockReset()
+			}
 		})
 
 		it('should handle package mapping when git is enabled', async () => {

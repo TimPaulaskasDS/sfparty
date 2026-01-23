@@ -7,12 +7,9 @@
 name: "CodeQL Advanced"
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  schedule:
-    - cron: '31 20 * * 2'
+  # Disabled: CodeQL init fails in this repo due to GitHub-side custom properties API access.
+  # Re-enable once CodeQL init/analyze can run successfully for this repository.
+  workflow_dispatch:
 
 jobs:
   analyze:

@@ -44,6 +44,6 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       - run: echo "🧪 Running tests ${{ job.status }}."
-      - run: bun test
+      - run: bun run test
         working-directory: ${{env.working-directory}}
       - run: echo "🍏 This job's status is ${{ job.status }}."
