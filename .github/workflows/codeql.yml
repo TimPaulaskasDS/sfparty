@@ -14,7 +14,7 @@ on:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: [self-hosted, Linux]
+    runs-on: ${{ github.repository_owner == 'DTS-Productivity-Engineering' && fromJSON('["self-hosted", "Linux"]') || 'ubuntu-latest' }}
     permissions:
       # required for all workflows
       security-events: write

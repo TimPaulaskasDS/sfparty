@@ -15,7 +15,7 @@ permissions:
 jobs:
   auto-merge:
     if: github.actor != 'dependabot[bot]'
-    runs-on: [self-hosted, Linux]
+    runs-on: ${{ github.repository_owner == 'DTS-Productivity-Engineering' && fromJSON('["self-hosted", "Linux"]') || 'ubuntu-latest' }}
     steps:
       - name: Wait for tests to start and run
         run: |
