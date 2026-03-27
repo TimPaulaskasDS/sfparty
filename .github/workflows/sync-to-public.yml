@@ -1,0 +1,22 @@
+name: Sync to public fork
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync:
+    runs-on: ${{ github.repository_owner == 'DTS-Productivity-Engineering' && 'self-hosted' || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to TimPaulaskasDS/sfparty
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SYNC_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          git config core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          git remote add public git@github.com:TimPaulaskasDS/sfparty.git
+          git push public main
