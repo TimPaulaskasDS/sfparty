@@ -1324,7 +1324,12 @@ describe('readFile - XML error handling', () => {
 				true,
 				mockFs as unknown as typeof fs,
 			),
-		).rejects.toThrow('exceeds maximum allowed depth')
+			// fast-xml-parser >= 5.4.0 enforces maxNestedTags during parsing and throws
+			// "Maximum nested tags exceeded". Our post-parse checkDepth() throws
+			// "exceeds maximum allowed depth". Either confirms depth protection is working.
+		).rejects.toThrow(
+			/exceeds maximum allowed depth|Maximum nested tags exceeded/,
+		)
 	})
 
 	it('should return parsed XML when validation module fails to load (covers line 787)', async () => {

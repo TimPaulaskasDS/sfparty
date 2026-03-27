@@ -737,8 +737,9 @@ let xmlParserInstance: XMLParser | null = null
 function getXmlParser(): XMLParser {
 	if (!xmlParserInstance) {
 		// SEC-006: XML parser configuration
-		// Note: fast-xml-parser doesn't have explicit depth limit option,
-		// but we validate depth after parsing in convertXML()
+		// maxNestedTags enforces the depth limit at parse time (fast-xml-parser >= 5.4.0).
+		// The post-parse checkDepth() call below provides a secondary defence for any
+		// depth that slips through and also covers YAML/JSON paths.
 		xmlParserInstance = new XMLParser({
 			ignoreAttributes: false, // Keep attributes (needed for xmlns)
 			attributesGroupName: '$', // Group attributes in $ object (matches xml2js format)
@@ -750,6 +751,7 @@ function getXmlParser(): XMLParser {
 			parseTagValue: false, // Don't parse tag values as numbers/booleans
 			alwaysCreateTextNode: false,
 			isArray: () => false, // Don't force arrays (single elements stay as objects, like xml2js explicitArray: false)
+			maxNestedTags: MAX_PARSING_DEPTH, // SEC-006: enforce nesting limit during parsing
 		})
 	}
 	return xmlParserInstance
