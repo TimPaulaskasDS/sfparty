@@ -116,8 +116,11 @@ describe('Security Test Suite', () => {
 
 			try {
 				const ctx = createTestContext({ basedir: os.tmpdir() })
+				// fast-xml-parser >= 5.4.0 enforces maxNestedTags during parsing and throws
+				// "Maximum nested tags exceeded". Our post-parse checkDepth() throws
+				// "exceeds maximum allowed depth". Either message confirms depth protection.
 				await expect(readFile(ctx, tempFile, true)).rejects.toThrow(
-					'exceeds maximum allowed depth',
+					/exceeds maximum allowed depth|Maximum nested tags exceeded/,
 				)
 			} finally {
 				if (fs.existsSync(tempFile)) {
