@@ -43,9 +43,7 @@ layoutAssignments:
   - layout: ServiceContract-Service Contract Layout
   - layout: SessionHijackingEventStore-Session Hijacking Event Store Layout
   - layout: Shift-Shift Layout
-  - layout: >-
-      ShiftWorkTopic-%5F%5FMISSING LABEL%5F%5F PropertyFile - val ShiftWorkTopic
-      not found in section StandardLayouts
+  - layout: ShiftWorkTopic-%5F%5FMISSING LABEL%5F%5F PropertyFile - val ShiftWorkTopic not found in section StandardLayouts
   - layout: ThreatDetectionFeedback-Threat Detection Feedback Layout
   - layout: UserAlt-User Profile Layout
   - layout: UserProvAccount-User Provisioning Account Layout

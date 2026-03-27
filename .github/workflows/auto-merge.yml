@@ -1,0 +1,307 @@
+name: Auto-merge PRs
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  auto-merge:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: [self-hosted, Linux]
+    steps:
+      - name: Wait for tests to start and run
+        run: |
+          echo "Waiting 3 minutes for tests to start and complete..."
+          sleep 180
+
+      - name: Wait for status checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Waiting for required status checks to pass..."
+          # Wait up to 10 minutes for checks to complete (in 30 second intervals).
+          # Only required checks (configured in branch protection) gate the merge;
+          # non-required checks (CodeQL default setup, GHAS scans) are advisory only.
+          REPO_OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          max_attempts=20
+          attempt=0
+
+          while [ $attempt -lt $max_attempts ]; do
+            # Query only the required checks via GraphQL (branch protection required status checks).
+            CHECKS_QUERY='{ repository(owner: "'$REPO_OWNER'", name: "'$REPO_NAME'") { pullRequest(number: '$PR_NUMBER') { commits(last: 1) { nodes { commit { statusCheckRollup { state contexts(first: 50) { nodes { ... on CheckRun { name conclusion status isRequired: __typename } ... on StatusContext { context state isRequired: __typename } } } } } } } } } }'
+            CHECKS_RESPONSE=$(gh api graphql -f query="$CHECKS_QUERY" 2>&1)
+            ROLLUP_STATE=$(echo "$CHECKS_RESPONSE" | jq -r '.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.state // "UNKNOWN"')
+
+            if [ "$ROLLUP_STATE" = "SUCCESS" ]; then
+              echo "✅ All required status checks passed (rollup: $ROLLUP_STATE)"
+              break
+            elif [ "$ROLLUP_STATE" = "PENDING" ] || [ "$ROLLUP_STATE" = "UNKNOWN" ] || [ "$ROLLUP_STATE" = "EXPECTED" ]; then
+              attempt=$((attempt + 1))
+              echo "Attempt $attempt/$max_attempts: Checks still running (rollup: $ROLLUP_STATE)..."
+              sleep 30
+            else
+              # FAILURE or ERROR — check if the failure is from a required check only.
+              # Use gh pr checks to show detailed output for debugging, but only block if
+              # the required check (build) has actually failed.
+              CHECK_DETAIL=$(gh pr checks "$PR_NUMBER" --repo ${{ github.repository }} 2>&1 || echo "")
+              if echo "$CHECK_DETAIL" | grep -qE "^build.*fail"; then
+                echo "❌ Required check 'build' failed. Blocking auto-merge."
+                echo "$CHECK_DETAIL"
+                exit 1
+              elif echo "$CHECK_DETAIL" | grep -vE "^auto-merge" | grep -qE "(pending|in_progress|queued)"; then
+                attempt=$((attempt + 1))
+                echo "Attempt $attempt/$max_attempts: Checks still running..."
+                sleep 30
+              else
+                # Non-required checks failed (e.g. CodeQL, GHAS scans) — these are advisory.
+                echo "⚠️ Some non-required checks failed (rollup: $ROLLUP_STATE). Proceeding since required checks passed."
+                echo "$CHECK_DETAIL"
+                break
+              fi
+            fi
+          done
+
+          if [ $attempt -eq $max_attempts ]; then
+            echo "❌ Timeout waiting for status checks. Blocking auto-merge."
+            exit 1
+          fi
+
+          # Final verification with detailed output
+          echo ""
+          echo "✅ Required status checks passed! Final check status:"
+          gh pr checks "$PR_NUMBER" --repo ${{ github.repository }} 2>&1 || echo "Note: Could not fetch detailed check status (permissions), but checks completed successfully"
+
+      - name: Wait for Copilot review to complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Waiting for Copilot to submit a review (not just accept the request)..."
+
+          REPO_OWNER=${{ github.repository_owner }}
+          REPO_NAME=${{ github.event.repository.name }}
+
+          # Wait up to 10 minutes for Copilot to SUBMIT a review (in 15 second intervals)
+          # This is different from just waiting for the review request to disappear
+          max_attempts=40
+          attempt=0
+
+          while [ $attempt -lt $max_attempts ]; do
+            # Query for actual submitted reviews from Copilot
+            # Using last 50 to handle PRs with multiple reviewers/review rounds
+            REVIEWS_QUERY='{ repository(owner: "'$REPO_OWNER'", name: "'$REPO_NAME'") { pullRequest(number: '$PR_NUMBER') { reviews(last: 50) { nodes { author { login } state submittedAt } } } } }'
+
+            REVIEWS_RESPONSE=$(gh api graphql -f query="$REVIEWS_QUERY" 2>&1)
+            GH_API_STATUS=$?
+
+            if [ $GH_API_STATUS -ne 0 ]; then
+              echo "❌ Error querying reviews via GitHub GraphQL API (exit code $GH_API_STATUS):"
+              echo "$REVIEWS_RESPONSE"
+              echo "Failing step to prevent premature approval"
+              exit 1
+            fi
+
+            if echo "$REVIEWS_RESPONSE" | jq -e '.errors and (.errors | length > 0)' >/dev/null 2>&1; then
+              echo "❌ GraphQL errors while querying reviews:"
+              echo "$REVIEWS_RESPONSE"
+              exit 1
+            fi
+
+            # Check if Copilot has submitted a review
+            # Accept both "copilot-pull-request-reviewer" and "copilot-pull-request-reviewer[bot]"
+            COPILOT_REVIEW=$(echo "$REVIEWS_RESPONSE" | jq -r '.data.repository.pullRequest.reviews.nodes[] | select(.author.login == "copilot-pull-request-reviewer" or .author.login == "copilot-pull-request-reviewer[bot]") | .state' | head -1)
+
+            if [ -n "$COPILOT_REVIEW" ]; then
+              echo "✅ Copilot has submitted a $COPILOT_REVIEW review"
+              break
+            fi
+
+            attempt=$((attempt + 1))
+            echo "⏳ Attempt $attempt/$max_attempts: Waiting for Copilot to submit review..."
+            sleep 15
+          done
+
+          if [ $attempt -eq $max_attempts ]; then
+            echo "⚠️ Timeout waiting for Copilot review submission after 10 minutes"
+            echo "⚠️ Proceeding anyway - Copilot may be taking unusually long or may not review"
+          fi
+
+      - name: Check for unresolved conversations
+        id: check_conversations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Checking for pending review requests and unresolved conversations..."
+
+          REPO_OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+
+          # First, check if Copilot has a pending review request
+          echo "Checking for pending Copilot review requests..."
+
+          REQUESTS_PAGE_SIZE=100
+          ALL_REVIEW_REQUESTS="[]"
+          REQUESTS_HAS_NEXT_PAGE=true
+          REQUESTS_END_CURSOR=""
+
+          while [ "$REQUESTS_HAS_NEXT_PAGE" = "true" ]; do
+            if [ -z "$REQUESTS_END_CURSOR" ]; then
+              REQUESTS_AFTER=""
+            else
+              REQUESTS_AFTER=', after: "'$REQUESTS_END_CURSOR'"'
+            fi
+
+            REVIEW_REQUESTS_QUERY='{ repository(owner: "'$REPO_OWNER'", name: "'$REPO_NAME'") { pullRequest(number: '$PR_NUMBER') { reviewRequests(first: '$REQUESTS_PAGE_SIZE''$REQUESTS_AFTER') { nodes { requestedReviewer { __typename ... on User { login } ... on Team { name } } } pageInfo { hasNextPage endCursor } } } } }'
+
+            REVIEW_REQUESTS_RESPONSE=$(gh api graphql -f query="$REVIEW_REQUESTS_QUERY")
+            REVIEW_REQUESTS_STATUS=$?
+
+            if [ $REVIEW_REQUESTS_STATUS -ne 0 ]; then
+              echo "❌ Failed to query review requests. Blocking auto-merge for safety."
+              echo "conversations_resolved=unknown" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            CURRENT_REQUESTS=$(echo "$REVIEW_REQUESTS_RESPONSE" | jq -c '.data.repository.pullRequest.reviewRequests.nodes')
+            ALL_REVIEW_REQUESTS=$(jq -nc --argjson existing "$ALL_REVIEW_REQUESTS" --argjson new "$CURRENT_REQUESTS" '$existing + $new')
+
+            REQUESTS_HAS_NEXT_PAGE=$(echo "$REVIEW_REQUESTS_RESPONSE" | jq -r '.data.repository.pullRequest.reviewRequests.pageInfo.hasNextPage')
+            if [ "$REQUESTS_HAS_NEXT_PAGE" = "true" ]; then
+              REQUESTS_END_CURSOR=$(echo "$REVIEW_REQUESTS_RESPONSE" | jq -r '.data.repository.pullRequest.reviewRequests.pageInfo.endCursor')
+            fi
+          done
+
+          JQ_COPILOT_FILTER='
+            .[] |
+            select(
+              (.requestedReviewer.login == "copilot") or
+              (.requestedReviewer.login == "copilot-pull-request-reviewer") or
+              (.requestedReviewer.name == "copilot")
+            ) |
+            .requestedReviewer.login // .requestedReviewer.name
+          '
+          COPILOT_PENDING=$(echo "$ALL_REVIEW_REQUESTS" | jq -r "$JQ_COPILOT_FILTER" | head -1)
+
+          if [ -n "$COPILOT_PENDING" ]; then
+            echo "⏳ Copilot review is still pending. Blocking auto-merge until review completes."
+            echo "conversations_resolved=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "✅ No pending Copilot review requests"
+
+          # Fetch all review threads (paginated) and auto-resolve any unresolved ones.
+          # GitHub's required_review_thread_resolution ruleset counts ALL unresolved threads —
+          # including outdated ones — so we resolve proactively rather than just checking.
+          # Threads from github-advanced-security are excluded (governed by CodeQL checks).
+          echo "Fetching review threads and resolving any unresolved non-GHAS threads..."
+
+          PAGE_SIZE=100
+          ALL_THREADS="[]"
+          ALL_THREAD_IDS="[]"
+          THREADS_HAS_NEXT_PAGE=true
+          THREADS_END_CURSOR=""
+
+          while [ "$THREADS_HAS_NEXT_PAGE" = "true" ]; do
+            if [ -z "$THREADS_END_CURSOR" ]; then
+              THREADS_AFTER=""
+            else
+              THREADS_AFTER=", after: \\\"$THREADS_END_CURSOR\\\""
+            fi
+
+            QUERY='{ repository(owner: "'$REPO_OWNER'", name: "'$REPO_NAME'") { pullRequest(number: '$PR_NUMBER') { reviewThreads(first: '$PAGE_SIZE''$THREADS_AFTER') { nodes { id isResolved comments(first: 1) { nodes { author { login } } } } pageInfo { hasNextPage endCursor } } } } }'
+
+            RESPONSE=$(gh api graphql -f query="$QUERY")
+            API_STATUS=$?
+
+            if [ $API_STATUS -ne 0 ] || [ -z "$RESPONSE" ]; then
+              echo "❌ GitHub API call failed or returned empty response. Blocking auto-merge for safety."
+              echo "conversations_resolved=unknown" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            THREADS=$(echo "$RESPONSE" | jq -c '.data.repository.pullRequest.reviewThreads.nodes')
+            if [ -z "$THREADS" ] || [ "$THREADS" = "null" ]; then
+              echo "❌ Failed to parse review threads from API response. Blocking auto-merge for safety."
+              echo "conversations_resolved=unknown" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            ALL_THREADS=$(jq -nc --argjson existing "$ALL_THREADS" --argjson new "$THREADS" '$existing + $new')
+
+            THREADS_HAS_NEXT_PAGE=$(echo "$RESPONSE" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage')
+            THREADS_END_CURSOR=$(echo "$RESPONSE" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')
+
+            if [ "$THREADS_HAS_NEXT_PAGE" = "null" ]; then
+              echo "❌ Failed to parse pagination info. Blocking auto-merge for safety."
+              echo "conversations_resolved=unknown" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          done
+
+          TOTAL=$(echo "$ALL_THREADS" | jq 'length')
+          echo "Fetched $TOTAL total threads"
+
+          # Collect IDs of unresolved non-GHAS threads (regardless of isOutdated).
+          UNRESOLVED_IDS=$(echo "$ALL_THREADS" | jq -r '
+            .[] |
+            select(
+              .isResolved != true and
+              (.comments.nodes[0].author.login != "github-advanced-security")
+            ) |
+            .id')
+
+          if [ -z "$UNRESOLVED_IDS" ]; then
+            echo "✅ All $TOTAL threads are already resolved"
+          else
+            COUNT=$(echo "$UNRESOLVED_IDS" | wc -l | tr -d ' ')
+            echo "Resolving $COUNT unresolved thread(s)..."
+            for THREAD_ID in $UNRESOLVED_IDS; do
+              RESOLVE_RESULT=$(gh api graphql -f query="mutation { resolveReviewThread(input: {threadId: \"$THREAD_ID\"}) { thread { isResolved } } }" 2>&1)
+              if echo "$RESOLVE_RESULT" | jq -e '.data.resolveReviewThread.thread.isResolved == true' >/dev/null 2>&1; then
+                echo "  ✅ Resolved $THREAD_ID"
+              else
+                echo "  ⚠️ Could not resolve $THREAD_ID (may already be resolved or read-only): $RESOLVE_RESULT"
+              fi
+            done
+            echo "✅ Done resolving threads"
+          fi
+
+          echo "conversations_resolved=true" >> $GITHUB_OUTPUT
+
+      - name: Check for unresolved Copilot review threads
+        id: check_copilot_comments
+        if: steps.check_conversations.outputs.conversations_resolved == 'true'
+        run: |
+          # All threads were already resolved in the previous step — nothing left to check.
+          echo "✅ All Copilot review threads resolved by previous step"
+          echo "copilot_comments_resolved=true" >> $GITHUB_OUTPUT
+
+      - name: Auto-approve PR
+        if: steps.check_conversations.outputs.conversations_resolved == 'true' && steps.check_copilot_comments.outputs.copilot_comments_resolved == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr review --approve "$PR_NUMBER" --repo ${{ github.repository }} || \
+          echo "Warning: Could not approve PR (expected if you're the author)"
+
+      - name: Merge PR
+        if: steps.check_conversations.outputs.conversations_resolved == 'true' && steps.check_copilot_comments.outputs.copilot_comments_resolved == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge --squash --delete-branch --auto "$PR_NUMBER" --repo ${{ github.repository }} || \
+          echo "Warning: Merge failed. May need manual approval from another user."

@@ -1,8 +1,8 @@
 object: Idea
 fieldPermissions:
   - field: Attachment
-    editable: false
-    readable: false
+    editable: 'false'
+    readable: 'false'
   - field: Status
-    editable: true
-    readable: true
+    editable: 'true'
+    readable: 'true'

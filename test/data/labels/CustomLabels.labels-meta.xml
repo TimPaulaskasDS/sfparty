@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomLabels xmlns="https://soap.sforce.com/2006/04/metadata">
+  <labels>
+    <fullName>ABM_ProductPurchasedBatch_Query</fullName>
+    <categories>SOQL</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ABM_ProductPurchasedBatch_Query</shortDescription>
+    <value>SELECT Id,Name,Type,Products_Purchased_Customer_Parent__c ,Products_Purchased_ABM__c FROM Account WHERE DocuSign_Account_Type__c in ('Customer managed by Partner', 'Direct', 'Restricted', 'Undefined') and Type in ('Customer Sub','Prospect','Former Customer','Free or Trial')</value>
+  </labels>
+  <labels>
+    <fullName>ACE_AccountSummaryandUsage</fullName>
+    <categories>lwc_accountIntelligenceTabForAccountLWC</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ACE_AccountSummaryandUsage</shortDescription>
+    <value>Account Summary &amp; Usage</value>
+  </labels>
+  <labels>
+    <fullName>ACE_CompetitiveDetails</fullName>
+    <categories>lwc_accountIntelligenceTabForAccountLWC</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ACE_CompetitiveDetails</shortDescription>
+    <value>Competitive Details</value>
+  </labels>
+  <labels>
+    <fullName>ACE_GTMIntelligenceScores</fullName>
+    <categories>lwc_accountIntelligenceTabForAccountLWC</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ACE_GTMIntelligenceScores</shortDescription>
+    <value>GTM Intelligence Scores</value>
+  </labels>
+  <labels>
+    <fullName>ACE_PurchasedProducts</fullName>
+    <categories>lwc_accountIntelligenceTabForAccountLWC</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ACE_PurchasedProducts</shortDescription>
+    <value>Products Purchased</value>
+  </labels>
+  <labels>
+    <fullName>ACE_Recommended_Products</fullName>
+    <categories>lwc_accountIntelligenceTabForAccountLWC</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ACE_Recommended_Products</shortDescription>
+    <value>Product Recommendations</value>
+  </labels>
+  <labels>
+    <fullName>ACE_Technographics</fullName>
+    <categories>lwc_accountIntelligenceTabForAccountLWC</categories>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>ACE_Technographics</shortDescription>
+    <value>Technologies in Use</value>
+  </labels>
+  <labels>
+    <fullName>ACH_PaymentMethod_ZuoraId</fullName>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>Zuora ID for ACH payment method</shortDescription>
+    <value>4028e48731867083013187ad6f873985</value>
+  </labels>
+  <labels>
+    <fullName>AE_Direct</fullName>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>AE Direct</shortDescription>
+    <value>AE Direct</value>
+  </labels>
+  <labels>
+    <fullName>AE_Indirect</fullName>
+    <language>en_US</language>
+    <protected>false</protected>
+    <shortDescription>AE Indirect</shortDescription>
+    <value>AE Indirect</value>
+  </labels>
+</CustomLabels>

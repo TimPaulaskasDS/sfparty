@@ -1,0 +1,33 @@
+# Cursor Rules for sfparty
+
+## CRITICAL: Test File Execution Rules
+
+### test/lib/file/fileIO.test.ts - NEVER RUN WITHOUT TIMEOUT
+
+**ABSOLUTE RULE**: The test file `test/lib/file/fileIO.test.ts` MUST NEVER be run in isolation without a timeout command.
+
+**Why**: This test file hangs indefinitely when run in isolation due to test framework mock setup quirks. It works correctly when run as part of the full test suite (`bun run test:coverage`).
+
+**Required Command Format**:
+```bash
+timeout 10 bun test test/lib/file/fileIO.test.ts [other args]
+```
+
+**NEVER DO THIS**:
+- ❌ `bun test test/lib/file/fileIO.test.ts`
+- ❌ `bun test test/lib/file/fileIO.test.ts -t "test name"`
+- ❌ Any command that runs this file without `timeout`
+
+**ALWAYS DO THIS**:
+- ✅ `timeout 10 bun test test/lib/file/fileIO.test.ts`
+- ✅ `bun run test:coverage` (runs all tests, works fine)
+- ✅ `bun test` (runs all tests, works fine)
+
+**If you need to test changes to fileIO.test.ts**:
+1. Make your changes
+2. Run the FULL test suite: `bun run test:coverage`
+3. If that passes, your changes are good
+4. DO NOT run the file in isolation
+
+**This rule is PERMANENT and MUST be followed. Violating this rule causes the test to hang indefinitely.**
+
