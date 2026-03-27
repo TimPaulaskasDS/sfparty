@@ -10,6 +10,7 @@ export const metadataDefinition: MetadataDefinition = {
 	alias: 'profile',
 	main: ['fullName', 'custom', 'description', 'userLicense', '$'],
 	singleFiles: [
+		'agentAccesses', // API v63, Summer '25
 		'applicationVisibilities',
 		'categoryGroupVisibilities',
 		'classAccesses',
@@ -23,6 +24,7 @@ export const metadataDefinition: MetadataDefinition = {
 		'loginIpRanges',
 		'pageAccesses',
 		// TODO 'profileActionOverrides',
+		'servicePresenceStatusAccesses', // API v64, Summer '25
 		'tabVisibilities',
 		'userPermissions',
 	],
@@ -38,6 +40,7 @@ export const metadataDefinition: MetadataDefinition = {
 		'recordTypeVisibilities',
 	],
 	sortKeys: {
+		agentAccesses: 'agent',
 		applicationVisibilities: 'application',
 		categoryGroupVisibilities: 'dataCategoryGroup',
 		classAccesses: 'apexClass',
@@ -54,10 +57,12 @@ export const metadataDefinition: MetadataDefinition = {
 		pageAccesses: 'apexPage',
 		profileActionOverrides: 'pageOrSobjectType',
 		recordTypeVisibilities: 'recordType',
+		servicePresenceStatusAccesses: 'servicePresenceStatus',
 		tabVisibilities: 'tab',
 		userPermissions: 'name',
 	},
 	keyOrder: {
+		agentAccesses: ['agent', 'enabled'],
 		applicationVisibilities: ['application', 'visible'],
 		categoryGroupVisibilities: ['dataCategoryGroup'], // TODO
 		classAccesses: ['apexClass', 'enabled'],
@@ -78,6 +83,7 @@ export const metadataDefinition: MetadataDefinition = {
 			'allowDelete',
 			'viewAllRecords',
 			'modifyAllRecords',
+			'viewAllFields', // API v63, Spring '25
 		],
 		pageAccesses: ['apexPage', 'enabled'],
 		profileActionOverrides: ['pageOrSobjectType'], // TODO
@@ -87,6 +93,7 @@ export const metadataDefinition: MetadataDefinition = {
 			'visible',
 			'personAccountDefault',
 		],
+		servicePresenceStatusAccesses: ['servicePresenceStatus', 'enabled'],
 		tabVisibilities: ['tab', 'visibility'],
 		userPermissions: ['name', 'enabled'],
 	},

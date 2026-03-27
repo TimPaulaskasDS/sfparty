@@ -18,6 +18,7 @@ export const metadataDefinition: MetadataDefinition = {
 		'$',
 	],
 	singleFiles: [
+		'agentAccesses', // API v63, Summer '25
 		'applicationVisibilities',
 		'classAccesses',
 		'customMetadataTypeAccesses',
@@ -27,6 +28,7 @@ export const metadataDefinition: MetadataDefinition = {
 		'externalDataSourceAccesses',
 		'flowAccesses',
 		'pageAccesses',
+		'servicePresenceStatusAccesses', // API v64, Summer '25
 		'tabSettings',
 		'userPermissions',
 	],
@@ -41,6 +43,7 @@ export const metadataDefinition: MetadataDefinition = {
 		'recordTypeVisibilities',
 	],
 	sortKeys: {
+		agentAccesses: 'agent',
 		applicationVisibilities: 'application',
 		classAccesses: 'apexClass',
 		customMetadataTypeAccesses: 'name',
@@ -53,10 +56,12 @@ export const metadataDefinition: MetadataDefinition = {
 		objectPermissions: 'object',
 		pageAccesses: 'apexPage',
 		recordTypeVisibilities: 'recordType',
+		servicePresenceStatusAccesses: 'servicePresenceStatus',
 		tabSettings: 'tab',
 		userPermissions: 'name',
 	},
 	keyOrder: {
+		agentAccesses: ['agent', 'enabled'],
 		applicationVisibilities: ['application', 'visible'],
 		classAccesses: ['apexClass', 'enabled'],
 		customMetadataTypeAccesses: ['name', 'enabled'],
@@ -77,6 +82,7 @@ export const metadataDefinition: MetadataDefinition = {
 			'allowDelete',
 			'viewAllRecords',
 			'modifyAllRecords',
+			'viewAllFields', // API v63, Spring '25
 		],
 		pageAccesses: ['apexPage', 'enabled'],
 		recordTypeVisibilities: [
@@ -85,6 +91,7 @@ export const metadataDefinition: MetadataDefinition = {
 			'visible',
 			'personAccountDefault',
 		],
+		servicePresenceStatusAccesses: ['servicePresenceStatus', 'enabled'],
 		tabSettings: ['tab', 'visibility'],
 		userPermissions: ['name', 'enabled'],
 	},
