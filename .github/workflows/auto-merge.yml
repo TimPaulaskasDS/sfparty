@@ -37,37 +37,25 @@ jobs:
           attempt=0
 
           while [ $attempt -lt $max_attempts ]; do
-            # Query only the required checks via GraphQL (branch protection required status checks).
-            CHECKS_QUERY='{ repository(owner: "'$REPO_OWNER'", name: "'$REPO_NAME'") { pullRequest(number: '$PR_NUMBER') { commits(last: 1) { nodes { commit { statusCheckRollup { state contexts(first: 50) { nodes { ... on CheckRun { name conclusion status isRequired: __typename } ... on StatusContext { context state isRequired: __typename } } } } } } } } } }'
+            # Query the required 'build' check directly rather than the overall rollup.
+            # The rollup always stays PENDING while auto-merge itself is running (circular),
+            # so we check only the required check (build) by name.
+            CHECKS_QUERY='{ repository(owner: "'$REPO_OWNER'", name: "'$REPO_NAME'") { pullRequest(number: '$PR_NUMBER') { commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 50) { nodes { ... on CheckRun { name conclusion status } } } } } } } } } }'
             CHECKS_RESPONSE=$(gh api graphql -f query="$CHECKS_QUERY" 2>&1)
-            ROLLUP_STATE=$(echo "$CHECKS_RESPONSE" | jq -r '.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.state // "UNKNOWN"')
 
-            if [ "$ROLLUP_STATE" = "SUCCESS" ]; then
-              echo "✅ All required status checks passed (rollup: $ROLLUP_STATE)"
+            BUILD_STATUS=$(echo "$CHECKS_RESPONSE" | jq -r '.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.contexts.nodes[] | select(.name == "build") | .status' | head -1)
+            BUILD_CONCLUSION=$(echo "$CHECKS_RESPONSE" | jq -r '.data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.contexts.nodes[] | select(.name == "build") | .conclusion' | head -1)
+
+            if [ "$BUILD_STATUS" = "COMPLETED" ] && [ "$BUILD_CONCLUSION" = "SUCCESS" ]; then
+              echo "✅ Required 'build' check passed"
               break
-            elif [ "$ROLLUP_STATE" = "PENDING" ] || [ "$ROLLUP_STATE" = "UNKNOWN" ] || [ "$ROLLUP_STATE" = "EXPECTED" ]; then
-              attempt=$((attempt + 1))
-              echo "Attempt $attempt/$max_attempts: Checks still running (rollup: $ROLLUP_STATE)..."
-              sleep 30
+            elif [ "$BUILD_STATUS" = "COMPLETED" ] && [ "$BUILD_CONCLUSION" != "SUCCESS" ]; then
+              echo "❌ Required check 'build' failed (conclusion: $BUILD_CONCLUSION). Blocking auto-merge."
+              exit 1
             else
-              # FAILURE or ERROR — check if the failure is from a required check only.
-              # Use gh pr checks to show detailed output for debugging, but only block if
-              # the required check (build) has actually failed.
-              CHECK_DETAIL=$(gh pr checks "$PR_NUMBER" --repo ${{ github.repository }} 2>&1 || echo "")
-              if echo "$CHECK_DETAIL" | grep -qE "^build.*fail"; then
-                echo "❌ Required check 'build' failed. Blocking auto-merge."
-                echo "$CHECK_DETAIL"
-                exit 1
-              elif echo "$CHECK_DETAIL" | grep -vE "^auto-merge" | grep -qE "(pending|in_progress|queued)"; then
-                attempt=$((attempt + 1))
-                echo "Attempt $attempt/$max_attempts: Checks still running..."
-                sleep 30
-              else
-                # Non-required checks failed (e.g. CodeQL, GHAS scans) — these are advisory.
-                echo "⚠️ Some non-required checks failed (rollup: $ROLLUP_STATE). Proceeding since required checks passed."
-                echo "$CHECK_DETAIL"
-                break
-              fi
+              attempt=$((attempt + 1))
+              echo "Attempt $attempt/$max_attempts: 'build' check still running (status: $BUILD_STATUS)..."
+              sleep 30
             fi
           done
 
