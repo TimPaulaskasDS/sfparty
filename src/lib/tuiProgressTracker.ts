@@ -76,7 +76,7 @@ export class TUIProgressTracker {
 		this.total = total
 		// SEC-005: Validate TERM environment variable
 		const term = this.validateEnvVar(process.env.TERM, 64)
-		this.useTUI = process.stdout.isTTY && term !== 'dumb'
+		this.useTUI = process.stdout.isTTY && term !== 'dumb' && !process.env.CI
 
 		// Disable Winston console transport when TUI is active to prevent console output
 		if (this.useTUI && global.consoleTransport) {
@@ -92,15 +92,17 @@ export class TUIProgressTracker {
 			if (this.useTUI) {
 				this.tui = new TUI('sfparty')
 				this.tui.init(total, operation)
-			} else {
-				// Fallback to ora spinner for non-TTY environments
+			} else if (!process.env.CI) {
+				// Fallback to ora spinner for non-TTY environments (skip in CI)
 				this.fallbackSpinner = ora('Starting...').start()
 			}
 		} catch (error) {
-			// If TUI fails to initialize, fall back to spinner
+			// If TUI fails to initialize, fall back to spinner (skip in CI)
 			this.useTUI = false
 			this.tui = null
-			this.fallbackSpinner = ora('Starting...').start()
+			if (!process.env.CI) {
+				this.fallbackSpinner = ora('Starting...').start()
+			}
 			// Log error in development (but don't break the tool)
 			// SEC-005: Validate DEBUG environment variable
 			const debug = this.validateEnvVar(process.env.DEBUG, 10)

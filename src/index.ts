@@ -155,6 +155,12 @@ global.logger = winston.createLogger({
 // Store console transport reference for toggling
 global.consoleTransport = consoleTransport
 
+// In CI mode, raise the console log level to errors only to suppress per-file noise
+// while keeping error output visible for diagnosing CI failures
+if (process.env.CI) {
+	consoleTransport.level = 'error'
+}
+
 global.icons = {
 	warn: '🔕',
 	success: clc.greenBright('✔'),
@@ -1428,7 +1434,9 @@ async function processSplit(
 
 		// Now safe to output console messages after TUI is cleaned up
 		// Show app name and version in ANSI box like before
-		displayHeader()
+		if (!process.env.CI) {
+			displayHeader()
+		}
 		console.log(
 			`Split operation completed: ${processed.total - processed.errors} successful, ${processed.errors} failed`,
 		)
@@ -1720,7 +1728,9 @@ async function processCombine(
 
 		// Now safe to output console messages after TUI is cleaned up
 		// Show app name and version in ANSI box like before
-		displayHeader()
+		if (!process.env.CI) {
+			displayHeader()
+		}
 		console.log(
 			`Combine operation completed: ${processed.total - processed.errors} successful, ${processed.errors} failed`,
 		)

@@ -1,5 +1,8 @@
 name: Sync to public fork
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]

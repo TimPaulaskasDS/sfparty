@@ -273,6 +273,7 @@ export class PerformanceLogger {
 	 * Print summary to console and optionally write to file
 	 */
 	printSummary(startTime?: bigint): void {
+		const isCI = Boolean(process.env.CI)
 		const summary = this.getSummary()
 		// Use provided startTime if available, otherwise use internal calculation
 		let totalDurationSeconds: number
@@ -284,38 +285,41 @@ export class PerformanceLogger {
 			totalDurationSeconds = summary.totalDuration / 1000
 		}
 
-		console.log('\n=== Performance Summary ===')
-		console.log(`Total files: ${summary.totalFiles}`)
-		console.log(`Successful: ${summary.successful}`)
-		console.log(`Failed: ${summary.failed}`)
-		console.log(
-			`Total duration: ${this.formatDuration(totalDurationSeconds)}`,
-		)
-		console.log(
-			`Average per file: ${this.formatMilliseconds(summary.averageDuration)}`,
-		)
+		// Only print to console outside of CI to avoid cluttering CI logs
+		if (!isCI) {
+			console.log('\n=== Performance Summary ===')
+			console.log(`Total files: ${summary.totalFiles}`)
+			console.log(`Successful: ${summary.successful}`)
+			console.log(`Failed: ${summary.failed}`)
+			console.log(
+				`Total duration: ${this.formatDuration(totalDurationSeconds)}`,
+			)
+			console.log(
+				`Average per file: ${this.formatMilliseconds(summary.averageDuration)}`,
+			)
 
-		console.log('\n=== Bottlenecks ===')
-		console.log(
-			`Average read time: ${this.formatMilliseconds(summary.bottlenecks.avgReadTime)}`,
-		)
-		console.log(
-			`Average parse time: ${this.formatMilliseconds(summary.bottlenecks.avgParseTime)}`,
-		)
-		console.log(
-			`Average write time: ${this.formatMilliseconds(summary.bottlenecks.avgWriteTime)}`,
-		)
+			console.log('\n=== Bottlenecks ===')
+			console.log(
+				`Average read time: ${this.formatMilliseconds(summary.bottlenecks.avgReadTime)}`,
+			)
+			console.log(
+				`Average parse time: ${this.formatMilliseconds(summary.bottlenecks.avgParseTime)}`,
+			)
+			console.log(
+				`Average write time: ${this.formatMilliseconds(summary.bottlenecks.avgWriteTime)}`,
+			)
 
-		if (summary.slowestFiles.length > 0) {
-			console.log('\n=== Slowest Files (top 10) ===')
-			summary.slowestFiles.forEach((item, index) => {
-				console.log(
-					`${index + 1}. ${path.basename(item.file)}: ${this.formatMilliseconds(item.duration)}`,
-				)
-			})
+			if (summary.slowestFiles.length > 0) {
+				console.log('\n=== Slowest Files (top 10) ===')
+				summary.slowestFiles.forEach((item, index) => {
+					console.log(
+						`${index + 1}. ${path.basename(item.file)}: ${this.formatMilliseconds(item.duration)}`,
+					)
+				})
+			}
 		}
 
-		// Write to file if log file path is provided
+		// Always write to file if log file path is provided (even in CI)
 		if (this.logFile) {
 			this.writeSummaryToFile()
 		}

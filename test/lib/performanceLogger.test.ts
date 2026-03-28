@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
 	getPerformanceLogger,
 	PerformanceLogger,
@@ -11,6 +11,7 @@ describe('PerformanceLogger', () => {
 	let logger: PerformanceLogger
 	let consoleLogSpy: ReturnType<typeof vi.spyOn>
 	let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+	let originalCI: string | undefined
 
 	beforeEach(() => {
 		logger = new PerformanceLogger()
@@ -18,6 +19,18 @@ describe('PerformanceLogger', () => {
 		consoleErrorSpy = vi
 			.spyOn(console, 'error')
 			.mockImplementation(() => {})
+		// Save and clear CI env var so printSummary tests exercise the full code path
+		originalCI = process.env.CI
+		delete process.env.CI
+	})
+
+	afterEach(() => {
+		// Restore CI env var to its original value
+		if (originalCI !== undefined) {
+			process.env.CI = originalCI
+		} else {
+			delete process.env.CI
+		}
 	})
 
 	describe('startOperation and endOperation', () => {
@@ -327,6 +340,36 @@ describe('PerformanceLogger', () => {
 			logger.printSummary(startTime)
 
 			expect(consoleLogSpy).toHaveBeenCalled()
+		})
+
+		it('should suppress console output when CI env var is set', () => {
+			process.env.CI = 'true'
+			logger.recordRead('test.xml', 100)
+			logger.completeFile('test.xml', true)
+
+			logger.printSummary()
+
+			expect(consoleLogSpy).not.toHaveBeenCalled()
+		})
+
+		it('should still write to file when CI env var is set', () => {
+			process.env.CI = 'true'
+			const logFile = '/tmp/performance-ci-test.json'
+			// Clean up any prior run
+			try {
+				fs.unlinkSync(logFile)
+			} catch {
+				// ignore if not exists
+			}
+			const loggerWithFile = new PerformanceLogger(logFile)
+			loggerWithFile.completeFile('test.xml', true)
+
+			loggerWithFile.printSummary()
+
+			// Console output should be suppressed
+			expect(consoleLogSpy).not.toHaveBeenCalled()
+			// But the log file should still be written
+			expect(fs.existsSync(logFile)).toBe(true)
 		})
 	})
 
