@@ -32,7 +32,6 @@
 	"author": "Tim Paulaskas",
 	"license": "BSD-3-Clause",
 	"dependencies": {
-		"@types/js-yaml": "^4.0.9",
 		"axios": "^1.13.6",
 		"blessed": "^0.1.81",
 		"blessed-contrib": "^4.11.0",
@@ -52,6 +51,7 @@
 		"zod": "^4.3.4"
 	},
 	"devDependencies": {
+		"@types/js-yaml": "^4.0.9",
 		"@commitlint/cli": "^19.6.0",
 		"@commitlint/config-conventional": "^19.6.0",
 		"@types/cli-color": "^2.0.6",
