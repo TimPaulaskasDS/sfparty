@@ -5,8 +5,7 @@
     "": {
       "name": "@ds-sfdc/sfparty",
       "dependencies": {
-        "@types/js-yaml": "^4.0.9",
-        "axios": "^1.13.6",
+        "axios": "1.13.6",
         "blessed": "^0.1.81",
         "blessed-contrib": "^4.11.0",
         "ci-info": "^4.1.0",
@@ -28,6 +27,7 @@
         "@commitlint/cli": "^19.6.0",
         "@commitlint/config-conventional": "^19.6.0",
         "@types/cli-color": "^2.0.6",
+        "@types/js-yaml": "^4.0.9",
         "@types/node": "^22.0.0",
         "@types/ora": "^3.2.0",
         "@types/semver": "^7.5.8",
@@ -43,6 +43,7 @@
     },
   },
   "overrides": {
+    "axios": "1.13.6",
     "lodash": "4.17.23",
     "xml2js": ">=0.5.0",
   },
