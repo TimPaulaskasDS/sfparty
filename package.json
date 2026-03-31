@@ -1,15 +1,13 @@
 {
 	"name": "@ds-sfdc/sfparty",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"description": "Salesforce metadata XML splitter for CI/CD",
 	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/TimPaulaskasDS/sfparty.git"
 	},
-	"files": [
-		"dist/"
-	],
+	"files": ["dist/"],
 	"bin": {
 		"sfparty": "dist/index.js"
 	},
@@ -30,13 +28,11 @@
 		"prepare": "husky || true",
 		"prepublishOnly": "bun run build"
 	},
-	"keywords": [
-		"salesforce,metadata,xml,split,yaml,json"
-	],
+	"keywords": ["salesforce,metadata,xml,split,yaml,json"],
 	"author": "Tim Paulaskas",
 	"license": "BSD-3-Clause",
 	"dependencies": {
-		"axios": "^1.13.6",
+		"axios": "1.13.6",
 		"blessed": "^0.1.81",
 		"blessed-contrib": "^4.11.0",
 		"ci-info": "^4.1.0",
@@ -83,12 +79,11 @@
 		"test": "tests"
 	},
 	"lint-staged": {
-		"*.{js,ts}": [
-			"biome check --write"
-		]
+		"*.{js,ts}": ["biome check --write"]
 	},
 	"overrides": {
 		"xml2js": ">=0.5.0",
-		"lodash": "4.17.23"
+		"lodash": "4.17.23",
+		"axios": "1.13.6"
 	}
 }
