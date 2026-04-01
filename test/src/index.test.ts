@@ -1,4 +1,6 @@
+import { execFileSync, spawnSync } from 'child_process'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -221,5 +223,158 @@ describe('index.ts CLI Structure', () => {
 			expect(combineExamplesMatch).toBeTruthy()
 			expect(combineExamplesMatch?.[1]).toBe('combineExamples')
 		})
+	})
+
+	describe('CLI integration', () => {
+		it('should resolve the Salesforce project root before git combine runs', () => {
+			const tempRoot = fs.mkdtempSync(
+				path.join(os.tmpdir(), 'sfparty-index-'),
+			)
+
+			try {
+				const projectDir = path.join(tempRoot, 'salesforce-ci')
+				fs.mkdirSync(projectDir, { recursive: true })
+				fs.writeFileSync(
+					path.join(projectDir, 'sfdx-project.json'),
+					JSON.stringify(
+						{
+							packageDirectories: [
+								{ path: 'force-app', default: true },
+							],
+							sourceApiVersion: '60.0',
+						},
+						null,
+						2,
+					),
+				)
+
+				execFileSync('git', ['init'], { cwd: projectDir })
+				execFileSync('git', ['add', 'sfdx-project.json'], {
+					cwd: projectDir,
+				})
+				execFileSync(
+					'git',
+					[
+						'-c',
+						'user.name=Test User',
+						'-c',
+						'user.email=test@example.com',
+						'commit',
+						'-m',
+						'Initial commit',
+					],
+					{ cwd: projectDir },
+				)
+
+				const cliPath = path.resolve(process.cwd(), 'dist/index.js')
+				const result = spawnSync(
+					process.execPath,
+					[
+						cliPath,
+						'combine',
+						'--type=profile',
+						'--git=HEAD',
+						'--append',
+						'--delta',
+						'--package=deploy-zip/package/package.xml',
+						'--destructive=deploy-zip/destructiveChanges/destructiveChanges.xml',
+						'--target=deploy-zip/force-app',
+					],
+					{
+						cwd: projectDir,
+						encoding: 'utf8',
+						env: { ...process.env, CI: 'true' },
+					},
+				)
+
+				expect(result.status).toBe(0)
+				expect(result.stderr).not.toContain(
+					'The directory "unknown" does not exist',
+				)
+				expect(
+					fs.existsSync(
+						path.join(projectDir, 'deploy-zip/package/package.xml'),
+					),
+				).toBe(true)
+				expect(
+					fs.existsSync(
+						path.join(
+							projectDir,
+							'deploy-zip/destructiveChanges/destructiveChanges.xml',
+						),
+					),
+				).toBe(true)
+			} finally {
+				fs.rmSync(tempRoot, { recursive: true, force: true })
+			}
+		}, 15000)
+
+		it('should allow bare --git without treating it as an invalid reference', () => {
+			const tempRoot = fs.mkdtempSync(
+				path.join(os.tmpdir(), 'sfparty-index-'),
+			)
+
+			try {
+				const projectDir = path.join(tempRoot, 'salesforce-ci')
+				fs.mkdirSync(projectDir, { recursive: true })
+				fs.writeFileSync(
+					path.join(projectDir, 'sfdx-project.json'),
+					JSON.stringify(
+						{
+							packageDirectories: [
+								{ path: 'force-app', default: true },
+							],
+							sourceApiVersion: '60.0',
+						},
+						null,
+						2,
+					),
+				)
+
+				execFileSync('git', ['init'], { cwd: projectDir })
+				execFileSync('git', ['add', 'sfdx-project.json'], {
+					cwd: projectDir,
+				})
+				execFileSync(
+					'git',
+					[
+						'-c',
+						'user.name=Test User',
+						'-c',
+						'user.email=test@example.com',
+						'commit',
+						'-m',
+						'Initial commit',
+					],
+					{ cwd: projectDir },
+				)
+
+				const cliPath = path.resolve(process.cwd(), 'dist/index.js')
+				const result = spawnSync(
+					process.execPath,
+					[
+						cliPath,
+						'combine',
+						'--type=profile',
+						'--git',
+						'--append',
+						'--delta',
+						'--package=deploy-zip/package/package.xml',
+						'--destructive=deploy-zip/destructiveChanges/destructiveChanges.xml',
+						'--target=deploy-zip/force-app',
+					],
+					{
+						cwd: projectDir,
+						encoding: 'utf8',
+						env: { ...process.env, CI: 'true' },
+					},
+				)
+
+				expect(result.status).toBe(0)
+				expect(result.stderr).not.toContain('Invalid git reference')
+			} finally {
+				fs.rmSync(tempRoot, { recursive: true, force: true })
+			}
+		}, 15000)
 	})
 })

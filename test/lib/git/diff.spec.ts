@@ -104,14 +104,17 @@ test('resolves with files when git diff command is successful', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event: string, callback: (code: number) => void) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
 		stdout: {
 			setEncoding: vi.fn(),
 			on: vi.fn(
 				(event: string, callback: (data: string | number) => void) => {
 					if (event === 'data') {
 						callback('A\tfile1.txt\nM\tfile2.txt\nD\tfile3.txt')
-					} else if (event === 'close') {
-						callback(0)
 					}
 				},
 			),
@@ -149,6 +152,7 @@ test('rejects when git diff command fails', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn(),
 		stderr: {
 			on: vi.fn(),
 		},
@@ -199,6 +203,11 @@ test('ignores files when git diff output does not have a tab character', async (
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
 		stderr: {
 			on: vi.fn(),
 		},
@@ -210,9 +219,6 @@ test('ignores files when git diff output does not have a tab character', async (
 						callback(
 							`\t\t\nA\tfile1.txt\nM\tfile2.txt\nfile3.txt\n`,
 						)
-					}
-					if (event === 'close') {
-						callback(0)
 					}
 				},
 			),
@@ -266,16 +272,17 @@ test('rejects when git diff command fails', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(1)
+			}
+		}),
 		stderr: {
 			on: vi.fn(),
 		},
 		stdout: {
 			setEncoding: vi.fn(),
-			on: vi.fn((event: string, callback: (code: number) => void) => {
-				if (event === 'close') {
-					callback(1)
-				}
-			}),
+			on: vi.fn(),
 		},
 		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>

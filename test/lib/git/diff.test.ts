@@ -105,13 +105,16 @@ test('resolves with files when git diff command is successful', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
 		stdout: {
 			setEncoding: vi.fn(),
 			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					callback('A\tfile1.txt\nM\tfile2.txt\nD\tfile3.txt')
-				} else if (event === 'close') {
-					callback(0)
 				}
 			}),
 		},
@@ -148,6 +151,7 @@ test('rejects when git diff command fails', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn(),
 		stderr: {
 			on: vi.fn(),
 		},
@@ -198,6 +202,11 @@ test('ignores files when git diff output does not have a tab character', async (
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
 		stderr: {
 			on: vi.fn(),
 		},
@@ -206,9 +215,6 @@ test('ignores files when git diff output does not have a tab character', async (
 			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					callback(`\t\t\nA\tfile1.txt\nM\tfile2.txt\nfile3.txt\n`)
-				}
-				if (event === 'close') {
-					callback(0)
 				}
 			}),
 		},
@@ -261,16 +267,17 @@ test('rejects when git diff command fails', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event, callback: (code: number) => void) => {
+			if (event === 'close') {
+				callback(1)
+			}
+		}),
 		stderr: {
 			on: vi.fn(),
 		},
 		stdout: {
 			setEncoding: vi.fn(),
-			on: vi.fn((event, callback) => {
-				if (event === 'close') {
-					callback(1)
-				}
-			}),
+			on: vi.fn(),
 		},
 		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>
@@ -303,14 +310,17 @@ test('handles unknown status type with default action', async () => {
 		}),
 	} as unknown as ReturnType<typeof spawn>
 	const gitDiff = {
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				callback(0)
+			}
+		}),
 		stdout: {
 			setEncoding: vi.fn(),
 			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					// Use '!' which is not in status object (A,C,D,M,R,T,U,X are the only ones)
 					callback('!\tfile1.txt\n')
-				} else if (event === 'close') {
-					callback(0)
 				}
 			}),
 		},
@@ -421,16 +431,17 @@ test('should clear timeout when timeoutCleared is false in then handler (covers 
 			on: vi.fn((event, callback) => {
 				if (event === 'data') {
 					callback('A\tfile1.txt\n')
-				} else if (event === 'close') {
-					// Delay close to ensure timeout hasn't been cleared yet
-					setTimeout(() => callback(0), 5)
 				}
 			}),
 		},
 		stderr: {
 			on: vi.fn(),
 		},
-		on: vi.fn(), // Add on method for error handler
+		on: vi.fn((event, callback) => {
+			if (event === 'close') {
+				setTimeout(() => callback(0), 5)
+			}
+		}),
 		kill: vi.fn(),
 	} as unknown as ReturnType<typeof spawn>
 	;(spawn as ReturnType<typeof vi.fn>)

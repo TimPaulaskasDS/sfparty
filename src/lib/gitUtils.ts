@@ -27,16 +27,29 @@ function getGitTimeout(): number {
 }
 
 // SEC-004: Create timeout wrapper for spawn operations
-function createTimeoutPromise(timeoutMs: number): Promise<never> {
-	return new Promise((_, reject) => {
-		setTimeout(() => {
-			reject(
-				new Error(
-					`Git operation timed out after ${timeoutMs / 1000} seconds`,
-				),
-			)
-		}, timeoutMs)
-	})
+function createTimeoutPromise(timeoutMs: number): {
+	promise: Promise<never>
+	clear: () => void
+} {
+	let timeoutId: NodeJS.Timeout | undefined
+
+	return {
+		promise: new Promise((_, reject) => {
+			timeoutId = setTimeout(() => {
+				reject(
+					new Error(
+						`Git operation timed out after ${timeoutMs / 1000} seconds`,
+					),
+				)
+			}, timeoutMs)
+		}),
+		clear: () => {
+			if (timeoutId) {
+				clearTimeout(timeoutId)
+				timeoutId = undefined
+			}
+		},
+	}
 }
 
 // Security: Validate git references to prevent command injection
@@ -143,11 +156,14 @@ export function diff({
 
 	return new Promise((resolve, reject) => {
 		// SEC-004: Set up timeout
-		const timeoutPromise = createTimeoutPromise(timeoutMs)
+		const timeout = createTimeoutPromise(timeoutMs)
 		let timeoutCleared = false
 
 		const clearTimeout = () => {
-			timeoutCleared = true
+			if (!timeoutCleared) {
+				timeoutCleared = true
+				timeout.clear()
+			}
 		}
 
 		// Race between operation and timeout
@@ -210,7 +226,7 @@ export function diff({
 						gitDiff.stdout?.on('data', (chunk: string) => {
 							data += chunk
 						})
-						gitDiff.stdout?.on('close', (code: number | null) => {
+						gitDiff.on('close', (code: number | null) => {
 							if (code !== 0 && code !== null) {
 								innerReject(
 									new Error(
@@ -259,7 +275,7 @@ export function diff({
 					innerReject(error)
 				}
 			}),
-			timeoutPromise,
+			timeout.promise,
 		])
 			.then((result) => {
 				if (!timeoutCleared) {

@@ -729,98 +729,95 @@ yargs(hideBin(process.argv))
 				}
 			}
 			const startProm = new Promise<boolean>((resolve, reject) => {
-				if (argvTyped.git !== undefined) {
-					const gitRef = sanitizeGitRef(argvTyped.git)
-					global.git!.append = argvTyped.append || global.git!.append
-					global.git!.delta = argvTyped.delta || global.git!.delta
-					if (argvTyped.git === '') {
-						// SEC-013: Create temporary context for lastCommit call
-						const tempCtx = createContext({
-							basedir: global.__basedir || '',
-							logger: global.logger!,
-							displayError: global.displayError!,
-							format: 'yaml',
-							metaTypes: global.metaTypes!,
-							git: global.git,
-							signConfig: false,
-							verifyConfig: false,
-							icons: global.icons!,
-							consoleTransport: global.consoleTransport!,
-							runType: global.runType ?? null,
-						})
-						const commit = git.lastCommit({
-							ctx: tempCtx,
-							dir: global.__basedir!,
-							existsSync: fs.existsSync,
-							execFileSync,
-							fileUtils,
-						})
-						commit
-							.then((data) => {
-								global.git!.latestCommit = data.latestCommit
-								global.git!.lastCommit = data.lastCommit
-								if (data.lastCommit === undefined) {
-									gitMode({ status: 'not active' })
-									resolve(false)
-								} else {
-									gitMode({
-										status: 'active',
-										lastCommit: data.lastCommit,
-										latestCommit: data.latestCommit,
-									})
-									const diff = git.diff({
-										dir: global.__basedir!,
-										gitRef: `${data.lastCommit}..${data.latestCommit}`,
-										existsSync: fs.existsSync,
-										spawn,
-									})
-									diff.then(async (data) => {
-										// Use tempCtx that was created above for lastCommit
-										await gitFiles(tempCtx, data)
-										resolve(true)
-									}).catch((error) => {
-										global.logger?.error(error)
-										reject(error)
-									})
-								}
-							})
-							.catch((error) => {
-								global.logger?.error(error)
-								throw error
-							})
-					} else {
-						gitMode({ status: 'active', gitRef })
-						// SEC-007: Initialize audit logger when git mode is enabled
-						auditLogger.initAuditLogger(global.__basedir)
-						const diff = git.diff({
-							dir: global.__basedir!,
-							gitRef,
-							existsSync: fs.existsSync,
-							spawn,
-						})
-						diff.then(async (data) => {
-							// Create a temporary ctx for gitFiles
-							const tempCtx = createContext({
-								basedir: global.__basedir || '',
-								logger: global.logger!,
-								displayError: global.displayError!,
-								format: global.format || 'yaml',
-								metaTypes: global.metaTypes!,
-								git: global.git,
-								icons: global.icons!,
-								consoleTransport: global.consoleTransport!,
-								runType: global.runType ?? null,
-							})
-							await gitFiles(tempCtx, data)
-							resolve(true)
-						}).catch((error) => {
-							global.logger?.error(error)
-							reject(error)
-						})
-					}
-				} else {
+				if (argvTyped.git === undefined) {
 					resolve(false)
+					return
 				}
+				const gitArg = argvTyped.git
+
+				const tempCtx = createContext({
+					basedir: global.__basedir || '',
+					logger: global.logger!,
+					displayError: global.displayError!,
+					format: global.format || 'yaml',
+					metaTypes: global.metaTypes!,
+					git: global.git,
+					signConfig: false,
+					verifyConfig: false,
+					icons: global.icons!,
+					consoleTransport: global.consoleTransport!,
+					runType: global.runType ?? null,
+				})
+
+				void ensurePackageDir(tempCtx)
+					.then(() => {
+						global.git!.append =
+							argvTyped.append || global.git!.append
+						global.git!.delta = argvTyped.delta || global.git!.delta
+						if (gitArg === '') {
+							const commit = git.lastCommit({
+								ctx: tempCtx,
+								dir: tempCtx.basedir,
+								existsSync: fs.existsSync,
+								execFileSync,
+								fileUtils,
+							})
+							commit
+								.then((data) => {
+									global.git!.latestCommit = data.latestCommit
+									global.git!.lastCommit = data.lastCommit
+									if (data.lastCommit === undefined) {
+										gitMode({ status: 'not active' })
+										resolve(false)
+									} else {
+										gitMode({
+											status: 'active',
+											lastCommit: data.lastCommit,
+											latestCommit: data.latestCommit,
+										})
+										const diff = git.diff({
+											dir: tempCtx.basedir,
+											gitRef: `${data.lastCommit}..${data.latestCommit}`,
+											existsSync: fs.existsSync,
+											spawn,
+										})
+										diff.then(async (data) => {
+											await gitFiles(tempCtx, data)
+											resolve(true)
+										}).catch((error) => {
+											global.logger?.error(error)
+											reject(error)
+										})
+									}
+								})
+								.catch((error) => {
+									global.logger?.error(error)
+									reject(error)
+								})
+						} else {
+							const gitRef = sanitizeGitRef(gitArg)
+							gitMode({ status: 'active', gitRef })
+							// SEC-007: Initialize audit logger when git mode is enabled
+							auditLogger.initAuditLogger(tempCtx.basedir)
+							const diff = git.diff({
+								dir: tempCtx.basedir,
+								gitRef,
+								existsSync: fs.existsSync,
+								spawn,
+							})
+							diff.then(async (data) => {
+								await gitFiles(tempCtx, data)
+								resolve(true)
+							}).catch((error) => {
+								global.logger?.error(error)
+								reject(error)
+							})
+						}
+					})
+					.catch((error) => {
+						global.logger?.error(error)
+						reject(error)
+					})
 			})
 			startProm.then((result) => {
 				global.git!.enabled = result
@@ -1129,12 +1126,7 @@ function splitHandler(argv: SplitCombineArgv, startTime: bigint): void {
 	})
 }
 
-async function processSplit(
-	ctx: AppContext,
-	typeItem: string,
-	argv: SplitCombineArgv,
-): Promise<boolean> {
-	// Ensure packageDir is initialized
+async function ensurePackageDir(ctx: AppContext): Promise<void> {
 	if (!packageDirInitialized) {
 		if (!packageDirPromise) {
 			packageDirPromise = getRootPath(ctx)
@@ -1142,10 +1134,18 @@ async function processSplit(
 		packageDir = await packageDirPromise
 		packageDirInitialized = true
 	}
-	// Update ctx.basedir if it was just initialized
-	if (packageDir && global.__basedir && ctx.basedir !== global.__basedir) {
+
+	if (global.__basedir && ctx.basedir !== global.__basedir) {
 		ctx.basedir = global.__basedir
 	}
+}
+
+async function processSplit(
+	ctx: AppContext,
+	typeItem: string,
+	argv: SplitCombineArgv,
+): Promise<boolean> {
+	await ensurePackageDir(ctx)
 
 	return new Promise(async (resolve, _reject) => {
 		const processed: ProcessedStats = {
@@ -1525,14 +1525,7 @@ async function processCombine(
 	typeItem: string,
 	argv: SplitCombineArgv,
 ): Promise<boolean> {
-	// Ensure packageDir is initialized
-	if (!packageDirInitialized) {
-		if (!packageDirPromise) {
-			packageDirPromise = getRootPath(ctx)
-		}
-		packageDir = await packageDirPromise
-		packageDirInitialized = true
-	}
+	await ensurePackageDir(ctx)
 
 	return new Promise(async (resolve, _reject) => {
 		const processed: ProcessedStats = {
@@ -1762,14 +1755,7 @@ interface GitFileItem {
 }
 
 async function gitFiles(ctx: AppContext, data: GitFileItem[]): Promise<void> {
-	// Ensure packageDir is initialized
-	if (!packageDirInitialized) {
-		if (!packageDirPromise) {
-			packageDirPromise = getRootPath(ctx)
-		}
-		packageDir = await packageDirPromise
-		packageDirInitialized = true
-	}
+	await ensurePackageDir(ctx)
 
 	data.forEach((item) => {
 		if (item.path.indexOf(packageDir + '-party/') === 0) {
