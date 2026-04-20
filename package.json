@@ -32,7 +32,7 @@
 	"author": "Tim Paulaskas",
 	"license": "BSD-3-Clause",
 	"dependencies": {
-		"axios": "1.14.0",
+		"axios": "1.15.1",
 		"blessed": "^0.1.81",
 		"blessed-contrib": "^4.11.0",
 		"ci-info": "^4.1.0",
@@ -84,6 +84,6 @@
 	"overrides": {
 		"xml2js": ">=0.5.0",
 		"lodash": "4.17.23",
-		"axios": "1.14.0"
+		"axios": "1.15.1"
 	}
 }
