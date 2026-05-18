@@ -2,6 +2,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as fs from 'fs'
 import yaml from 'js-yaml'
 import * as path from 'path'
+import { PACKAGE_ARRAY_ELEMENTS } from '../meta/Package.js'
 import type { AppContext } from '../types/context.js'
 import * as auditLogger from './auditLogger.js'
 import { handleFileError } from './errorUtils.js'
@@ -214,6 +215,14 @@ export { sanitizeErrorPath } from './errorUtils.js'
 // Re-export for backward compatibility
 export { clearPathSanitizationCache, replaceSpecialChars } from './pathUtils.js'
 
+// True when `target` is the root itself or a descendant of it. A bare
+// startsWith() check would wrongly accept a sibling like /work-evil for /work.
+function isWithinRoot(target: string, root: string): boolean {
+	if (target === root) return true
+	const rootWithSep = root.endsWith(path.sep) ? root : root + path.sep
+	return target.startsWith(rootWithSep)
+}
+
 // Security: Validate paths to prevent traversal attacks
 export function validatePath(userPath: string, workspaceRoot?: string): string {
 	if (!userPath || typeof userPath !== 'string') {
@@ -232,7 +241,7 @@ export function validatePath(userPath: string, workspaceRoot?: string): string {
 		const resolved = path.resolve(workspaceRoot, normalized)
 		const resolvedRoot = path.resolve(workspaceRoot)
 
-		if (!resolved.startsWith(resolvedRoot)) {
+		if (!isWithinRoot(resolved, resolvedRoot)) {
 			throw new Error('Path traversal detected: path outside workspace')
 		}
 
@@ -269,7 +278,7 @@ export async function validateSymlink(
 			// Validate the resolved target is within workspace
 			if (workspaceRoot) {
 				const resolvedRoot = path.resolve(workspaceRoot)
-				if (!resolvedTarget.startsWith(resolvedRoot)) {
+				if (!isWithinRoot(resolvedTarget, resolvedRoot)) {
 					throw new Error(
 						`Symlink points outside workspace: ${filePath} -> ${targetPath}`,
 					)
@@ -277,7 +286,7 @@ export async function validateSymlink(
 			} else {
 				// If no workspace root, validate against current working directory
 				const cwd = process.cwd()
-				if (!resolvedTarget.startsWith(cwd)) {
+				if (!isWithinRoot(resolvedTarget, cwd)) {
 					throw new Error(
 						`Symlink points outside current directory: ${filePath} -> ${targetPath}`,
 					)
@@ -749,7 +758,11 @@ function getXmlParser(): XMLParser {
 			parseAttributeValue: false, // Don't parse attribute values as numbers/booleans
 			parseTagValue: false, // Don't parse tag values as numbers/booleans
 			alwaysCreateTextNode: false,
-			isArray: () => false, // Don't force arrays (single elements stay as objects, like xml2js explicitArray: false)
+			// This parser only ever handles package-shaped XML (package.xml,
+			// destructiveChanges.xml). Force their repeatable elements to arrays
+			// so a single-element file doesn't parse as an object and crash
+			// consumers. Other tags (e.g. $, version) stay scalar/object.
+			isArray: (tagName: string) => PACKAGE_ARRAY_ELEMENTS.has(tagName),
 		})
 	}
 	return xmlParserInstance

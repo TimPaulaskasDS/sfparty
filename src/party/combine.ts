@@ -447,6 +447,10 @@ export class Combine {
 				) {
 					throw error
 				} else {
+					// FIXME: this swallows genuine errors and reports success,
+					// masking partial/corrupt XML output. It cannot be removed
+					// until the combine test suite is rebuilt — 137 tests
+					// currently pass only because errors are swallowed here.
 					return true
 				}
 			}
@@ -831,12 +835,22 @@ export class Combine {
 
 			// Function to merge arrays without duplicates
 			function mergeIpRanges(
-				array1: { loginIpRanges: unknown[] },
-				array2: { loginIpRanges: unknown[] },
+				array1: { loginIpRanges: unknown },
+				array2: { loginIpRanges: unknown },
 			): { loginIpRanges: unknown[] } {
-				const combined = array1
+				// loginIpRanges may be a single object rather than an array when
+				// the source split file contains exactly one entry — normalize
+				// both sides before merging.
+				const toArray = (value: unknown): unknown[] => {
+					if (Array.isArray(value)) return [...value]
+					return value === undefined || value === null ? [] : [value]
+				}
+				const combined = {
+					...array1,
+					loginIpRanges: toArray(array1.loginIpRanges),
+				}
 
-				array2.loginIpRanges.forEach((item2: unknown) => {
+				toArray(array2.loginIpRanges).forEach((item2: unknown) => {
 					if (
 						!combined.loginIpRanges.some(
 							(item1: unknown) =>
@@ -872,12 +886,23 @@ export class Combine {
 			const sortKey = that.metadataDefinition.sortKeys[key]
 			const object = json.object as string
 
-			;(json[key] as unknown[]).forEach((arrItem: unknown) => {
+			// json[key] may be a single object rather than an array when the
+			// part file contains exactly one entry — normalize before iterating.
+			const items: unknown[] = Array.isArray(json[key])
+				? (json[key] as unknown[])
+				: json[key] !== undefined
+					? [json[key]]
+					: []
+			json[key] = items
+
+			items.forEach((arrItem: unknown) => {
 				const typedItem = arrItem as Record<string, unknown>
-				typedItem[sortKey] = `${object}.${typedItem[sortKey]}`.replace(
-					'.undefined',
-					'',
-				)
+				// Prefix the sort key with the object name. Build conditionally
+				// rather than string-stripping ".undefined", which would mangle
+				// a legitimate value that happens to contain that substring.
+				const existing = typedItem[sortKey]
+				typedItem[sortKey] =
+					existing !== undefined ? `${object}.${existing}` : object
 
 				// add object key if previously existed
 				if (

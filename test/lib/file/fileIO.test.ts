@@ -296,6 +296,76 @@ describe('readFile', () => {
 		expect(parsed).toHaveProperty('root')
 	})
 
+	it('should force types/members to arrays for a single-element package.xml', async () => {
+		// Regression: fast-xml-parser must not yield `types` as a plain object
+		// when package.xml has only one <types> block. The selective isArray()
+		// in getXmlParser() forces `types` and `members` to arrays.
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
+		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
+		mockFs.promises.readFile.mockResolvedValue(
+			'<Package><types><members>MyLabel</members><name>CustomLabels</name></types><version>56.0</version></Package>',
+		)
+
+		const parsed = (await readFile(
+			ctx,
+			'/test/package.xml',
+			true,
+			mockFs as unknown as typeof fs,
+		)) as { Package: { types: { members: unknown }[] } }
+
+		expect(Array.isArray(parsed.Package.types)).toBe(true)
+		expect(parsed.Package.types).toHaveLength(1)
+		expect(Array.isArray(parsed.Package.types[0].members)).toBe(true)
+		expect(parsed.Package.types[0].members).toEqual(['MyLabel'])
+	})
+
+	it('should keep types/members as arrays for a multi-element package.xml', async () => {
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
+		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
+		mockFs.promises.readFile.mockResolvedValue(
+			'<Package><types><members>A</members><members>B</members><name>CustomLabels</name></types><types><members>C</members><name>Profile</name></types></Package>',
+		)
+
+		const parsed = (await readFile(
+			ctx,
+			'/test/package.xml',
+			true,
+			mockFs as unknown as typeof fs,
+		)) as { Package: { types: { members: unknown }[] } }
+
+		expect(parsed.Package.types).toHaveLength(2)
+		expect(parsed.Package.types[0].members).toEqual(['A', 'B'])
+		expect(parsed.Package.types[1].members).toEqual(['C'])
+	})
+
+	it('should leave non-package single elements as scalars (isArray is selective)', async () => {
+		// Guards against isArray() degrading into a blanket () => true.
+		mockFs.promises.lstat.mockResolvedValue({
+			isSymbolicLink: () => false,
+			isFile: () => true,
+		} as fs.Stats)
+		mockFs.promises.stat.mockResolvedValue({ isFile: () => true })
+		mockFs.promises.readFile.mockResolvedValue(
+			'<root><item>value</item></root>',
+		)
+
+		const parsed = (await readFile(
+			ctx,
+			'/test/file.xml',
+			true,
+			mockFs as unknown as typeof fs,
+		)) as { root: { item: unknown } }
+
+		expect(Array.isArray(parsed.root.item)).toBe(false)
+		expect(parsed.root.item).toBe('value')
+	})
+
 	it('should read raw text when convert is false', async () => {
 		mockFs.promises.lstat.mockResolvedValue({
 			isSymbolicLink: () => false,

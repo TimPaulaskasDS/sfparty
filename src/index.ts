@@ -819,65 +819,71 @@ yargs(hideBin(process.argv))
 						reject(error)
 					})
 			})
-			startProm.then((result) => {
-				global.git!.enabled = result
+			startProm
+				.then((result) => {
+					global.git!.enabled = result
 
-				if (global.git!.enabled) {
-					const addManifest =
-						(argv as unknown as SplitCombineArgv).package ||
-						'manifest/package-party.xml'
-					const desManifest =
-						(argv as unknown as SplitCombineArgv).destructive ||
-						'manifest/destructiveChanges-party.xml'
+					if (global.git!.enabled) {
+						const addManifest =
+							(argv as unknown as SplitCombineArgv).package ||
+							'manifest/package-party.xml'
+						const desManifest =
+							(argv as unknown as SplitCombineArgv).destructive ||
+							'manifest/destructiveChanges-party.xml'
 
-					addPkg = new packageUtil.Package(addManifest)
-					desPkg = new packageUtil.Package(desManifest)
-					// SEC-013: Create temporary context for getPackageXML calls
-					// Note: This is a temporary workaround until full migration
-					const tempCtx = createContext({
-						basedir: global.__basedir || '',
-						logger: global.logger!,
-						displayError: global.displayError!,
-						format:
-							(argv as unknown as SplitCombineArgv).format ||
-							'yaml',
-						metaTypes: global.metaTypes!,
-						git: global.git,
-						signConfig: false,
-						verifyConfig: false,
-						icons: global.icons!,
-						consoleTransport: global.consoleTransport!,
-						runType: global.runType ?? null,
-					})
-					const prom1 = addPkg.getPackageXML(tempCtx, fileUtils)
-					const prom2 = desPkg.getPackageXML(tempCtx, fileUtils)
+						addPkg = new packageUtil.Package(addManifest)
+						desPkg = new packageUtil.Package(desManifest)
+						// SEC-013: Create temporary context for getPackageXML calls
+						// Note: This is a temporary workaround until full migration
+						const tempCtx = createContext({
+							basedir: global.__basedir || '',
+							logger: global.logger!,
+							displayError: global.displayError!,
+							format:
+								(argv as unknown as SplitCombineArgv).format ||
+								'yaml',
+							metaTypes: global.metaTypes!,
+							git: global.git,
+							signConfig: false,
+							verifyConfig: false,
+							icons: global.icons!,
+							consoleTransport: global.consoleTransport!,
+							runType: global.runType ?? null,
+						})
+						const prom1 = addPkg.getPackageXML(tempCtx, fileUtils)
+						const prom2 = desPkg.getPackageXML(tempCtx, fileUtils)
 
-					Promise.allSettled([prom1, prom2]).then((results) => {
-						const rejected = results.filter(
-							(p) => p.status === 'rejected',
+						return Promise.allSettled([prom1, prom2]).then(
+							(results) => {
+								const rejected = results.filter(
+									(p) => p.status === 'rejected',
+								)
+								if (rejected.length > 0) {
+									const rejectedValue = (
+										rejected[0] as PromiseRejectedResult
+									).reason
+									throw rejectedValue instanceof Error
+										? rejectedValue
+										: new Error(String(rejectedValue))
+								} else {
+									combineHandler(
+										argv as unknown as SplitCombineArgv,
+										processStartTime,
+									)
+								}
+							},
 						)
-						if (rejected.length > 0) {
-							const rejectedValue = (
-								rejected[0] as PromiseRejectedResult
-							).reason
-							throw new Error(rejectedValue)
-						} else {
-							combineHandler(
-								argv as unknown as SplitCombineArgv,
-								processStartTime,
-							)
-						}
-					})
-				} else {
-					combineHandler(
-						argv as unknown as SplitCombineArgv,
-						processStartTime,
-					)
-				}
-			})
-			startProm.catch((error) => {
-				global.displayError?.(error, true)
-			})
+					} else {
+						combineHandler(
+							argv as unknown as SplitCombineArgv,
+							processStartTime,
+						)
+					}
+					return undefined
+				})
+				.catch((error) => {
+					global.displayError?.(error, true)
+				})
 		},
 	})
 	.demandCommand(1, errorMessage)

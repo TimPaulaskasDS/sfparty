@@ -81,6 +81,18 @@ describe('validatePath', () => {
 		const result = validatePath('subdir/file.txt', '/workspace')
 		expect(result).toBe('/workspace/subdir/file.txt')
 	})
+
+	it('should reject a sibling directory that shares the root prefix', () => {
+		// /workspace-evil must not pass validation against root /workspace —
+		// a bare startsWith() check would wrongly accept it.
+		expect(() =>
+			validatePath('/workspace-evil/file.txt', '/workspace'),
+		).toThrow('Path traversal detected: path outside workspace')
+	})
+
+	it('should accept the workspace root itself', () => {
+		expect(validatePath('/workspace', '/workspace')).toBe('/workspace')
+	})
 })
 
 describe('sanitizeErrorPath', () => {

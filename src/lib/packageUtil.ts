@@ -166,6 +166,21 @@ export class Package {
 			}
 			that.packageJSON = json
 			if (json.Package.types !== undefined) {
+				if (!Array.isArray(json.Package.types)) {
+					json.Package.types = [
+						json.Package.types as unknown as PackageNode,
+					]
+				}
+				json.Package.types.forEach((typeItem) => {
+					if (
+						typeItem.members !== undefined &&
+						!Array.isArray(typeItem.members)
+					) {
+						typeItem.members = [
+							typeItem.members as unknown as string,
+						]
+					}
+				})
 				transformJSON(json.Package.types)
 			}
 			cleanPackage(that, ctx)

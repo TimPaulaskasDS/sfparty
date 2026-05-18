@@ -27,3 +27,9 @@ export const metadataDefinition: MetadataDefinition = {
 		name: undefined,
 	},
 }
+
+// Drives the selective isArray() in fileUtils.getXmlParser(). package.xml and
+// destructiveChanges.xml are the only XML files read through convertXML(), and
+// `types`/`members` are their only repeatable elements — forcing them to arrays
+// stops a single-element file from parsing as an object.
+export const PACKAGE_ARRAY_ELEMENTS = new Set(['types', 'members'])

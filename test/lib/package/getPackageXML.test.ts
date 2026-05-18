@@ -951,3 +951,83 @@ it('should handle xml2json boolean conversion for false', async () => {
 	const result = await pkg.getPackageXML(ctx, fileUtils)
 	expect(result).toBe('existing')
 })
+
+it('should handle types as a plain object when package.xml has only one type block', async () => {
+	// Regression: fast-xml-parser returns a plain object (not an array) when there is
+	// only one <types> element. Without the normalization fix this throws
+	// "TypeError: json.forEach is not a function".
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
+		Package: {
+			types: {
+				members: ['MyLabel'],
+				name: 'CustomLabels',
+			},
+			version: '56.0',
+		},
+	})
+	global.git = { append: true }
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
+	expect(result).toBe('existing')
+	expect(Array.isArray(pkg.packageJSON?.Package.types)).toBe(true)
+	expect(pkg.packageJSON?.Package.types?.[0].name).toBe('CustomLabels')
+})
+
+it('should handle members as a plain string when a type has only one member', async () => {
+	// Regression: fast-xml-parser returns a plain string (not an array) when there is
+	// only one <members> element inside a <types> block. Without normalization
+	// cleanPackage's members.filter call throws.
+	mockFileExists.mockReturnValue(true)
+	mockReadFile.mockResolvedValue({
+		Package: {
+			types: [
+				{
+					members: 'OnlyOneMember',
+					name: 'CustomLabels',
+				},
+			],
+			version: '56.0',
+		},
+	})
+	global.git = { append: true }
+	const ctx = createTestContext({ git: { enabled: true, append: true } })
+	const result = await pkg.getPackageXML(ctx, fileUtils)
+	expect(result).toBe('existing')
+	expect(Array.isArray(pkg.packageJSON?.Package.types?.[0].members)).toBe(
+		true,
+	)
+	expect(pkg.packageJSON?.Package.types?.[0].members).toContain(
+		'OnlyOneMember',
+	)
+})
+
+it('should parse a real single-type package.xml through the production XML parser', async () => {
+	// Integration test: exercises the REAL fileUtils.readFile -> fast-xml-parser
+	// path instead of mocking readFile. fast-xml-parser is configured with
+	// isArray: () => false, so a package.xml with exactly one <types> block (and
+	// one <members>) is parsed as plain objects, not arrays. Every other test in
+	// this file mocks readFile with hand-shaped arrays, so this production data
+	// shape was never covered — which is how the json.forEach crash shipped.
+	const path = await import('path')
+	const realFileUtils = await import('../../../src/lib/fileUtils.js')
+	const basedir = path.join(process.cwd(), 'test/data/packages')
+	const xmlPath = path.join(basedir, 'packageSingleType.xml')
+
+	const realPkg = new Package(xmlPath)
+	const ctx = createTestContext({
+		git: { enabled: true, append: true },
+		basedir,
+	})
+	const result = await realPkg.getPackageXML(
+		ctx,
+		realFileUtils as unknown as FileUtilsInterface,
+	)
+	expect(result).toBe('existing')
+	expect(Array.isArray(realPkg.packageJSON?.Package.types)).toBe(true)
+	expect(realPkg.packageJSON?.Package.types).toHaveLength(1)
+	const singleType = realPkg.packageJSON?.Package.types?.[0]
+	expect(singleType?.name).toBe('CustomLabels')
+	expect(Array.isArray(singleType?.members)).toBe(true)
+	expect(singleType?.members).toEqual(['MyLabel'])
+})
