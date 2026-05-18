@@ -749,8 +749,17 @@ async function processFile(
 			}
 		}
 	} else {
-		// For singleFiles (e.g., classAccesses.yaml)
-		fileName = path.join(baseDir, `${key}.${that.ctx.format}`)
+		// singleFiles pass the whole array and are written to `<key>.yaml`;
+		// a directory entry (json is one element) is written to a file named
+		// by its sort-key value, e.g. labels/<fullName>.yaml. Without the
+		// sort-key name every entry in a directory clobbers `<key>.yaml`.
+		const sortKey = that.metadataDefinition.sortKeys[key]
+		const sortKeyValue = json[sortKey]
+		const baseName =
+			typeof sortKeyValue === 'string' && sortKeyValue.length > 0
+				? sortKeyValue
+				: key
+		fileName = path.join(baseDir, `${baseName}.${that.ctx.format}`)
 
 		// Use cleanedArray if cleanup was applied, otherwise use cleanedJson
 		newJSON = {}

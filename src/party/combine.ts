@@ -308,15 +308,6 @@ export class Combine {
 				}
 				await saveXML(that)
 				return true
-			} else if (
-				success &&
-				typeof success === 'object' &&
-				success &&
-				typeof success === 'object' &&
-				'name' in success &&
-				success.name === 'YAMLException'
-			) {
-				throw success
 			} else {
 				// Handle special cases where we should return true instead of 'deleted'
 				if (
@@ -372,9 +363,7 @@ export class Combine {
 			}
 		}
 
-		async function processParts(
-			that: Combine,
-		): Promise<boolean | string | Error> {
+		async function processParts(that: Combine): Promise<boolean> {
 			if (processed.type !== that.#root) {
 				processed.current = 0
 				processed.type = that.#root
@@ -435,24 +424,14 @@ export class Combine {
 				}
 				return true
 			} catch (error) {
+				// 'delete XML' is a control-flow sentinel: the source is gone,
+				// so the combined XML should be removed rather than written.
 				if (error instanceof Error && error.message === 'delete XML') {
 					return false
-				} else if (
-					error &&
-					typeof error === 'object' &&
-					error &&
-					typeof error === 'object' &&
-					'name' in error &&
-					error.name === 'YAMLException'
-				) {
-					throw error
-				} else {
-					// FIXME: this swallows genuine errors and reports success,
-					// masking partial/corrupt XML output. It cannot be removed
-					// until the combine test suite is rebuilt — 137 tests
-					// currently pass only because errors are swallowed here.
-					return true
 				}
+				// Any other error is a genuine failure. Never swallow it and
+				// report success — that would write a partial/corrupt XML file.
+				throw error
 			}
 		}
 
