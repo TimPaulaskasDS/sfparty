@@ -14,19 +14,16 @@ export function replaceSpecialChars(str: string): string {
 	}
 
 	const sanitized = str
-		.replace(/\*/g, '\u002a')
-		.replace(/\?/g, '\u003f')
-		.replace(/</g, '\u003c')
-		.replace(/>/g, '\u003e')
-		.replace(/"/g, '\u0022')
-		.replace(/\|/g, '\u007c')
-		.replace(/\\/g, '\u005c')
-		.replace(/:/g, '\u003a')
+		.replace(/\*/g, '\uff0a')
+		.replace(/\?/g, '\uff1f')
+		.replace(/</g, '\uff1c')
+		.replace(/>/g, '\uff1e')
+		.replace(/"/g, '\uff02')
+		.replace(/\|/g, '\uff5c')
+		.replace(/\\/g, '\uff3c')
+		.replace(/:/g, '\uff1a')
 
 	// Cache the sanitized result if the string contains special characters
-	// Note: In JavaScript, \u002a === '*', so sanitized === str, but we cache
-	// to avoid re-processing strings that need sanitization (for performance)
-	// We check if any special characters exist in the original string
 	const hasSpecialChars = /[*?<>"|\\:]/.test(str)
 	if (hasSpecialChars) {
 		sanitizedPathCache.set(str, sanitized)

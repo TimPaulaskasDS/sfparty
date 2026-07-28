@@ -82,7 +82,7 @@ describe('createDirectory', () => {
 
 		await createDirectory('/test/*path', mockFs as unknown as typeof fs)
 
-		expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/test/\u002apath', {
+		expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/test/\uff0apath', {
 			recursive: true,
 		})
 	})

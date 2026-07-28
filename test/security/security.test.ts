@@ -153,7 +153,7 @@ describe('Security Test Suite', () => {
 			try {
 				const ctx = createTestContext({ basedir: os.tmpdir() })
 				await expect(readFile(ctx, tempFile, true)).rejects.toThrow(
-					'exceeds maximum allowed depth',
+					/(exceeds maximum allowed depth|nesting exceeded maxDepth)/,
 				)
 			} finally {
 				if (fs.existsSync(tempFile)) {

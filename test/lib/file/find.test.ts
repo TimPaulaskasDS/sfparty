@@ -140,12 +140,12 @@ describe('find', () => {
 		)
 		// Should replace * with unicode escape
 		expect(mockFs.promises.lstat).toHaveBeenCalledWith(
-			'/test/path/file\u002a.txt',
+			'/test/path/file\uff0a.txt',
 		)
 		expect(mockFs.promises.stat).toHaveBeenCalledWith(
-			'/test/path/file\u002a.txt',
+			'/test/path/file\uff0a.txt',
 		)
-		expect(result).toBe('/test/path/file*.txt')
+		expect(result).toBe('/test/path/file\uff0a.txt')
 	})
 
 	it('should return null at filesystem root', async () => {

@@ -104,24 +104,15 @@ describe('WriteBatcher', () => {
 			expect(batcher.getQueueLength()).toBe(0)
 		})
 
-		it('should sanitize file paths with special characters', async () => {
-			// Test all special characters that need sanitization
+		it('should preserve caller-supplied file paths with special characters', async () => {
 			const specialChars = ['*', '?', '<', '>', '|', ':']
 			for (const char of specialChars) {
 				const filePath = path.join(tempDir, `test${char}file.txt`)
 				await writeBatcher.addWrite(filePath, `content-${char}`)
 				await writeBatcher.flush()
 
-				// Path should be sanitized (special chars replaced with unicode)
-				const sanitizedPath = filePath
-					.replace(/\*/g, '\u002a')
-					.replace(/\?/g, '\u003f')
-					.replace(/</g, '\u003c')
-					.replace(/>/g, '\u003e')
-					.replace(/\|/g, '\u007c')
-					.replace(/:/g, '\u003a')
-				expect(fs.existsSync(sanitizedPath)).toBe(true)
-				expect(fs.readFileSync(sanitizedPath, 'utf8')).toBe(
+				expect(fs.existsSync(filePath)).toBe(true)
+				expect(fs.readFileSync(filePath, 'utf8')).toBe(
 					`content-${char}`,
 				)
 			}

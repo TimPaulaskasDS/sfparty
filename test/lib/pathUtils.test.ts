@@ -40,11 +40,9 @@ describe('pathUtils', () => {
 			// String has special chars, so sanitized !== str = true
 			// Therefore: line 28 executes (cache.set)
 			const result1 = replaceSpecialChars(input)
-			// The sanitized version uses Unicode escapes (same characters, different representation)
-			// In JavaScript, \u002a === '*', so result1 === input, but we cache for performance
-			const expected = input // They're the same in JavaScript (Unicode escapes = literal chars)
+			const expected = 'coverage-test＊path？with＜special＞chars'
 			expect(result1).toBe(expected)
-			expect(result1).toBe(input) // They're the same in JavaScript
+			expect(result1).not.toBe(input)
 
 			// Verify cache was set (line 28 executed)
 			expect(getCacheSize()).toBe(1)
@@ -73,10 +71,10 @@ describe('pathUtils', () => {
 			// First call: sanitizes and caches (covers line 28: sanitizedPathCache.set)
 			const first = replaceSpecialChars(input)
 			const expected = input
-				.replace(/\*/g, '\u002a')
-				.replace(/\?/g, '\u003f')
+				.replace(/\*/g, '\uff0a')
+				.replace(/\?/g, '\uff1f')
 			expect(first).toBe(expected)
-			// Note: \u002a is * and \u003f is ?, so they look the same but are different internally
+			// Note: \uff0a is * and \uff1f is ?, so they look the same but are different internally
 			// We verify the function works by checking the cache behavior
 
 			// Second call: should hit cache (covers line 13: return sanitizedPathCache.get(str)!)
@@ -112,56 +110,56 @@ describe('pathUtils', () => {
 		it('should replace asterisk (*) with Unicode equivalent', () => {
 			const input = 'file*.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u002a.txt')
+			expect(result).toBe('file\uff0a.txt')
 		})
 
 		it('should replace question mark (?) with Unicode equivalent', () => {
 			const input = 'file?.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u003f.txt')
+			expect(result).toBe('file\uff1f.txt')
 		})
 
 		it('should replace less than (<) with Unicode equivalent', () => {
 			const input = 'file<.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u003c.txt')
+			expect(result).toBe('file\uff1c.txt')
 		})
 
 		it('should replace greater than (>) with Unicode equivalent', () => {
 			const input = 'file>.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u003e.txt')
+			expect(result).toBe('file\uff1e.txt')
 		})
 
 		it('should replace double quote (") with Unicode equivalent', () => {
 			const input = 'file".txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u0022.txt')
+			expect(result).toBe('file\uff02.txt')
 		})
 
 		it('should replace pipe (|) with Unicode equivalent', () => {
 			const input = 'file|.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u007c.txt')
+			expect(result).toBe('file\uff5c.txt')
 		})
 
 		it('should replace backslash (\\) with Unicode equivalent', () => {
 			const input = 'file\\.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u005c.txt')
+			expect(result).toBe('file\uff3c.txt')
 		})
 
 		it('should replace colon (:) with Unicode equivalent', () => {
 			const input = 'file:.txt'
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u003a.txt')
+			expect(result).toBe('file\uff1a.txt')
 		})
 
 		it('should replace multiple special characters', () => {
 			const input = 'file*?<>"|\\:.txt'
 			const result = replaceSpecialChars(input)
 			expect(result).toBe(
-				'file\u002a\u003f\u003c\u003e\u0022\u007c\u005c\u003a.txt',
+				'file\uff0a\uff1f\uff1c\uff1e\uff02\uff5c\uff3c\uff1a.txt',
 			)
 		})
 
@@ -169,7 +167,7 @@ describe('pathUtils', () => {
 			const input = '*?<>"|\\:'
 			const result = replaceSpecialChars(input)
 			expect(result).toBe(
-				'\u002a\u003f\u003c\u003e\u0022\u007c\u005c\u003a',
+				'\uff0a\uff1f\uff1c\uff1e\uff02\uff5c\uff3c\uff1a',
 			)
 		})
 
@@ -177,7 +175,7 @@ describe('pathUtils', () => {
 			const input = 'normal*path?with<special>chars'
 			const result = replaceSpecialChars(input)
 			expect(result).toBe(
-				'normal\u002apath\u003fwith\u003cspecial\u003echars',
+				'normal\uff0apath\uff1fwith\uff1cspecial\uff1echars',
 			)
 		})
 
@@ -226,8 +224,8 @@ describe('pathUtils', () => {
 				// Second call - should use cache (hits line 13: return sanitizedPathCache.get(str)!)
 				const result2 = replaceSpecialChars(input)
 
-				expect(result1).toBe('file\u002a.txt')
-				expect(result2).toBe('file\u002a.txt')
+				expect(result1).toBe('file\uff0a.txt')
+				expect(result2).toBe('file\uff0a.txt')
 				expect(result1).toBe(result2)
 				// Verify both calls returned the same reference (from cache)
 			})
@@ -241,8 +239,8 @@ describe('pathUtils', () => {
 				const first = replaceSpecialChars(input)
 				// Second call should hit cache at line 13
 				const second = replaceSpecialChars(input)
-				expect(first).toBe('unique\u003fcache\u003ftest.txt')
-				expect(second).toBe('unique\u003fcache\u003ftest.txt')
+				expect(first).toBe('unique\uff1fcache\uff1ftest.txt')
+				expect(second).toBe('unique\uff1fcache\uff1ftest.txt')
 				expect(first).toBe(second)
 			})
 
@@ -264,7 +262,7 @@ describe('pathUtils', () => {
 				const result2 = replaceSpecialChars(input)
 
 				expect(result1).toBe(result2)
-				expect(result1).toBe('file\u003f\u002a.txt')
+				expect(result1).toBe('file\uff1f\uff0a.txt')
 			})
 
 			it('should clear cache with clearPathSanitizationCache', () => {
@@ -272,14 +270,14 @@ describe('pathUtils', () => {
 
 				// First call - should sanitize and cache
 				const result1 = replaceSpecialChars(input)
-				expect(result1).toBe('file\u002a.txt')
+				expect(result1).toBe('file\uff0a.txt')
 
 				// Clear cache
 				clearPathSanitizationCache()
 
 				// Second call - should sanitize again (cache was cleared)
 				const result2 = replaceSpecialChars(input)
-				expect(result2).toBe('file\u002a.txt')
+				expect(result2).toBe('file\uff0a.txt')
 			})
 
 			it('should handle multiple different inputs with cache', () => {
@@ -315,7 +313,7 @@ describe('pathUtils', () => {
 
 			// Verify cache is cleared by checking behavior
 			const result = replaceSpecialChars(input)
-			expect(result).toBe('file\u002a.txt')
+			expect(result).toBe('file\uff0a.txt')
 		})
 
 		it('should handle clearing empty cache', () => {
@@ -332,9 +330,9 @@ describe('pathUtils', () => {
 			clearPathSanitizationCache()
 
 			// All should work after clearing
-			expect(replaceSpecialChars('file*.txt')).toBe('file\u002a.txt')
-			expect(replaceSpecialChars('file?.txt')).toBe('file\u003f.txt')
-			expect(replaceSpecialChars('file<.txt')).toBe('file\u003c.txt')
+			expect(replaceSpecialChars('file*.txt')).toBe('file\uff0a.txt')
+			expect(replaceSpecialChars('file?.txt')).toBe('file\uff1f.txt')
+			expect(replaceSpecialChars('file<.txt')).toBe('file\uff1c.txt')
 		})
 	})
 })
