@@ -1,0 +1,1 @@
+command -v aidev-track >/dev/null 2>&1 && aidev-track hook pre-rebase "$1" "$2" || true
